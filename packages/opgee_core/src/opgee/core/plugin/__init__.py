@@ -2,4 +2,4 @@ import pluggy
 
 ENTRYPOINT = "opgext"
 
-hookimpl = pluggy.HookimplMarker(ENTRYPOINT)
+opgext_impl = pluggy.HookimplMarker(ENTRYPOINT)
