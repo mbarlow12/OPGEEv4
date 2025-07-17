@@ -11,7 +11,7 @@ import numpy as np
 from ..units import ureg
 from ..common import TemperaturePressure, STP
 from ..log import getLogger
-from ..process import Process
+from .._process import Process
 from ..stream import PHASE_GAS
 
 _logger = getLogger(__name__)  # data logging

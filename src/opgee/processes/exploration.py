@@ -11,7 +11,7 @@ import math
 from ..units import ureg
 from ..energy import EN_DIESEL
 from ..log import getLogger
-from ..process import Process
+from .._process import Process
 
 _logger = getLogger(__name__)
 

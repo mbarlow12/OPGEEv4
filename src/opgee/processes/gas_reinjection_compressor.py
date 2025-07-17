@@ -10,7 +10,7 @@ from ..units import ureg
 from ..emissions import EM_FUGITIVES
 from ..energy import EN_ELECTRICITY
 from ..log import getLogger
-from ..process import Process
+from .._process import Process
 from .compressor import Compressor
 from .shared import get_energy_carrier
 

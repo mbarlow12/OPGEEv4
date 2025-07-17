@@ -12,7 +12,7 @@ from .common import OpgeeObject
 from opgee.field import Field
 
 from .log import getLogger
-from .process import Process
+from ._process import Process
 
 _logger = getLogger(__name__)
 

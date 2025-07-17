@@ -14,7 +14,7 @@ from ..error import OpgeeException
 from ..energy import EN_NATURAL_GAS
 from ..import_export import N2, CO2_Flooding, NATURAL_GAS
 from ..log import getLogger
-from ..process import Process
+from .._process import Process
 from ..stream import PHASE_GAS, Stream
 
 from .shared import get_init_lifting_stream

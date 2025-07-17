@@ -27,7 +27,7 @@ from .error import (
 from .import_export import ImportExport
 from .log import getLogger
 from .post_processor import PostProcessor
-from .process import Process, Aggregator, Reservoir, decache_subclasses
+from ._process import Process, Aggregator, Reservoir, decache_subclasses
 from .process_groups import ProcessChoice
 from .processes.steam_generator import SteamGenerator
 from .processes.transport_energy import TransportEnergy
@@ -661,7 +661,7 @@ class Field(Container):
         :return: A list of tuples of (item_name, partial_CI)
         """
         from .error import ZeroEnergyFlowError
-        from .process import Boundary
+        from ._process import Boundary
 
         try:
             energy = self.boundary_energy_flow_rate(analysis)

@@ -12,7 +12,7 @@ from ..energy import EN_ELECTRICITY
 from ..error import OpgeeException
 from ..import_export import WATER
 from ..log import getLogger
-from ..process import Process
+from .._process import Process
 
 _logger = getLogger(__name__)
 

@@ -8,7 +8,7 @@
 #
 from ..common import TemperaturePressure
 from ..import_export import DILUENT
-from ..process import Process
+from .._process import Process
 from .shared import get_energy_carrier
 
 

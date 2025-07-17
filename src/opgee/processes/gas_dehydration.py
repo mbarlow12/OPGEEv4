@@ -13,8 +13,8 @@ from ..emissions import EM_FUGITIVES
 from ..energy import EN_NATURAL_GAS, EN_ELECTRICITY
 from ..error import OpgeeException
 from ..log import getLogger
-from ..process import Process
-from ..process import run_corr_eqns
+from .._process import Process
+from .._process import run_corr_eqns
 from ..thermodynamics import ChemicalInfo
 from .shared import get_bounded_value, predict_blower_energy_use
 

@@ -8,7 +8,7 @@
 #
 from .shared import get_energy_carrier, get_energy_consumption
 from ..log import getLogger
-from ..process import Process
+from .._process import Process
 
 _logger = getLogger(__name__)
 

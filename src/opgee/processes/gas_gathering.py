@@ -10,7 +10,7 @@ import math
 from ..units import ureg
 from ..emissions import EM_FUGITIVES
 from ..log import getLogger
-from ..process import Process
+from .._process import Process
 from ..stream import Stream
 
 _logger = getLogger(__name__)

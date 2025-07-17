@@ -13,8 +13,8 @@ from ..common import STP, TemperaturePressure
 from ..emissions import EM_FUGITIVES
 from ..energy import EN_ELECTRICITY
 from ..log import getLogger
-from ..process import Process
-from ..process import run_corr_eqns
+from .._process import Process
+from .._process import run_corr_eqns
 from ..stream import PHASE_GAS, Stream
 from .compressor import Compressor
 from .shared import get_energy_carrier, predict_blower_energy_use, get_bounded_value

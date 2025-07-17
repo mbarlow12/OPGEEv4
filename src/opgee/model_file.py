@@ -17,7 +17,7 @@ from .error import OpgeeException, XmlFormatError
 from .log import getLogger
 from .model import Model
 from .pkg_utils import resourceStream
-from .process import reload_subclass_dict
+from ._process import reload_subclass_dict
 from .stream import Stream
 from .utils import getBooleanXML, is_relpath, loadModuleFromPath, mkdirs, splitAndStrip
 from .xml_utils import merge_elements, save_xml

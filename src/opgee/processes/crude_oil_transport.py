@@ -8,7 +8,7 @@
 #
 from ..import_export import CRUDE_OIL
 from ..log import getLogger
-from ..process import Process
+from .._process import Process
 from .shared import get_energy_carrier
 
 _logger = getLogger(__name__)

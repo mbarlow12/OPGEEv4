@@ -10,7 +10,7 @@ from ..units import ureg
 from ..emissions import EM_FUGITIVES
 from ..energy import EN_NATURAL_GAS, EN_DIESEL
 from ..log import getLogger
-from ..process import Process
+from .._process import Process
 from ..stream import PHASE_GAS
 
 _logger = getLogger(__name__)

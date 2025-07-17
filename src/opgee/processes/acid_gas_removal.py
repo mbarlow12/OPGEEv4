@@ -10,7 +10,7 @@ from ..units import ureg
 from ..emissions import EM_FUGITIVES
 from ..energy import EN_ELECTRICITY
 from ..log import getLogger
-from ..process import Process, run_corr_eqns
+from .._process import Process, run_corr_eqns
 from .compressor import Compressor
 from .shared import get_energy_carrier, predict_blower_energy_use, get_bounded_value, get_energy_consumption
 

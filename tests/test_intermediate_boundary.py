@@ -1,7 +1,7 @@
 import pytest
 from opgee.units import ureg
 from opgee.model_file import ModelFile
-from opgee.process import Process
+from opgee._process import Process
 from opgee.combine_streams import combine_streams
 
 xml_string = """

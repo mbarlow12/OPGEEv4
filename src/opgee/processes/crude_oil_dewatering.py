@@ -10,7 +10,7 @@ from ..units import ureg
 from ..common import TemperaturePressure
 from ..error import OpgeeException
 from ..log import getLogger
-from ..process import Process
+from .._process import Process
 from ..stream import PHASE_LIQUID
 from .shared import get_energy_carrier
 

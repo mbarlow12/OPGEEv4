@@ -8,7 +8,7 @@
 #
 from ..common import std_pressure
 from ..log import getLogger
-from ..process import Process
+from .._process import Process
 from ..processes.compressor import Compressor
 from ..stream import PHASE_GAS
 from .shared import get_energy_carrier

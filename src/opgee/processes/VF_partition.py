@@ -8,7 +8,7 @@
 #
 from ..common import STP
 from ..log import getLogger
-from ..process import Process
+from .._process import Process
 from ..stream import PHASE_GAS, Stream
 
 _logger = getLogger(__name__)

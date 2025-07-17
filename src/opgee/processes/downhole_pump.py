@@ -12,7 +12,7 @@ from ..units import ureg
 from ..common import TemperaturePressure
 from ..emissions import EM_FUGITIVES
 from ..log import getLogger
-from ..process import Process
+from .._process import Process
 from ..stream import Stream, PHASE_GAS
 from ..combine_streams import combine_streams
 from .shared import get_energy_carrier, get_energy_consumption_stages

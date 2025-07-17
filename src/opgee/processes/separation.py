@@ -10,7 +10,7 @@ from ..combine_streams import combine_streams
 from ..common import TemperaturePressure
 from ..emissions import EM_FUGITIVES
 from ..log import getLogger
-from ..process import Process
+from .._process import Process
 from ..processes.compressor import Compressor
 from ..stream import Stream, PHASE_GAS
 from .shared import get_energy_carrier, get_energy_consumption_stages
