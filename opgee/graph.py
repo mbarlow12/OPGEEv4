@@ -9,31 +9,37 @@
 import pydot
 
 from .common import OpgeeObject
+from opgee.field import Field
+
 from .log import getLogger
 from .process import Process
 
 _logger = getLogger(__name__)
 
+
 def add_subclasses(graph, cls, show_process_subclasses=False):
     name = cls.__name__
-    graph.add_node(pydot.Node(name, shape='box'))
+    graph.add_node(pydot.Node(name, shape="box"))
 
     if (not show_process_subclasses) and (cls == Process):
         return
 
     subs = cls.__subclasses__()
     for sub in subs:
-        graph.add_edge(pydot.Edge(name, sub.__name__, color='black'))
+        graph.add_edge(pydot.Edge(name, sub.__name__, color="black"))
         add_subclasses(graph, sub, show_process_subclasses=show_process_subclasses)
+
 
 def display_in_notebook(graph):
     from .utils import ipython_info
 
     # if in a notebook, also display it directly
-    if ipython_info() == 'notebook':
+    if ipython_info() == "notebook":
         from IPython.display import Image, display
+
         png = graph.create_png()
         display(Image(png))
+
 
 def write_class_diagram(pathname, show_process_subclasses=False):
     """
@@ -45,12 +51,13 @@ def write_class_diagram(pathname, show_process_subclasses=False):
     :param limit: (str) either 'all' or 'core')
     :return: None
     """
-    graph = pydot.Dot('classes', graph_type='graph', bgcolor='white')
+    graph = pydot.Dot("classes", graph_type="graph", bgcolor="white")
     add_subclasses(graph, OpgeeObject, show_process_subclasses=show_process_subclasses)
 
     _logger.info(f"Writing {pathname}")
     graph.write_png(pathname)
     display_in_notebook(graph)
+
 
 def write_model_diagram(model, pathname, levels=0):
     """
@@ -62,6 +69,7 @@ def write_model_diagram(model, pathname, levels=0):
         A value of zero implies no limit.
     :return: None
     """
+
     def name_of(obj):
         class_name = obj.__class__.__name__
         obj_name = obj.name
@@ -70,16 +78,16 @@ def write_model_diagram(model, pathname, levels=0):
     def add_tree(graph, obj, level):
         name = name_of(obj)
         _logger.debug(f"Adding node '{name}'")
-        graph.add_node(pydot.Node(name, shape='box'))
+        graph.add_node(pydot.Node(name, shape="box"))
 
         if levels == 0 or level < levels:
             level += 1
             for child in obj.children():
                 add_tree(graph, child, level)
                 _logger.debug(f"Adding edge('{name}', '{name_of(child)}')")
-                graph.add_edge(pydot.Edge(name, name_of(child), color='black'))
+                graph.add_edge(pydot.Edge(name, name_of(child), color="black"))
 
-    graph = pydot.Dot('model', graph_type='graph', bgcolor='white')
+    graph = pydot.Dot("model", graph_type="graph", bgcolor="white")
     for obj in model.fields():
         add_tree(graph, obj, 1)
 
@@ -90,23 +98,29 @@ def write_model_diagram(model, pathname, levels=0):
     graph.write_png(pathname)
     display_in_notebook(graph)
 
+
 def write_process_diagram(field, pathname):
-    graph = pydot.Dot('model', graph_type='digraph', bgcolor='white')
+    graph = create_process_diagram(field)
+    _logger.info(f"Writing {pathname}")
+    graph.write_png(pathname)
+    display_in_notebook(graph)
+
+
+def create_process_diagram(field: Field):
+    graph = pydot.Dot("model", graph_type="digraph", bgcolor="white")
 
     for name, proc in field.process_dict.items():
         proc.check_enabled()
         if not proc.enabled:
             continue
-        graph.add_node(pydot.Node(name, shape='box'))
+        graph.add_node(pydot.Node(name, shape="box"))
 
     for name, stream in field.stream_dict.items():
-        contents = ', '.join(stream.contents)
-        procs = stream.src_name, stream.dst_name
+        contents = ", ".join(stream.contents)
+        procs: tuple[str, str] = stream.src_name, stream.dst_name
         if not all((field.process_dict[prc].enabled for prc in procs)):
             continue
-        graph.add_edge(pydot.Edge(stream.src_name, stream.dst_name,
-                                  color='black', label=contents))
+        src, dst = procs
+        graph.add_edge(pydot.Edge(src, dst, color="black", label=contents))
 
-    _logger.info(f"Writing {pathname}")
-    graph.write_png(pathname)
-    display_in_notebook(graph)
+    return graph
