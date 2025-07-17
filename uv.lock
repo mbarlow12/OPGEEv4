@@ -6,6 +6,13 @@ resolution-markers = [
     "python_full_version < '3.12'",
 ]
 
+[manifest]
+members = [
+    "opgee",
+    "opgee-cli",
+    "opgee-core",
+]
+
 [[package]]
 name = "alabaster"
 version = "1.0.0"
@@ -1036,6 +1043,22 @@ dev = [
     { name = "pytest", specifier = ">=8.3.4" },
     { name = "ruff", specifier = ">=0.11.8" },
 ]
+
+[[package]]
+name = "opgee-cli"
+version = "0.1.0"
+source = { editable = "packages/opgee_cli" }
+
+[[package]]
+name = "opgee-core"
+version = "0.1.0"
+source = { editable = "packages/opgee_core" }
+dependencies = [
+    { name = "pluggy" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pluggy", specifier = ">=1.5.0" }]
 
 [[package]]
 name = "packaging"
