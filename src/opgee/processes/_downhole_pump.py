@@ -15,7 +15,7 @@ from ..log import getLogger
 from .._process import Process
 from ..stream import Stream, PHASE_GAS
 from ..combine_streams import combine_streams
-from .shared import get_energy_carrier, get_energy_consumption_stages
+from ._shared import get_energy_carrier, get_energy_consumption_stages
 
 _logger = getLogger(__name__)
 

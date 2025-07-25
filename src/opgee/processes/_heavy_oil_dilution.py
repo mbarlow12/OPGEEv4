@@ -9,7 +9,7 @@
 from ..common import TemperaturePressure
 from ..import_export import DILUENT
 from .._process import Process
-from .shared import get_energy_carrier
+from ._shared import get_energy_carrier
 
 
 class HeavyOilDilution(Process):

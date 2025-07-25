@@ -16,8 +16,8 @@ from ..log import getLogger
 from .._process import Process
 from .._process import run_corr_eqns
 from ..stream import PHASE_GAS, Stream
-from .compressor import Compressor
-from .shared import get_energy_carrier, predict_blower_energy_use, get_bounded_value
+from ._compressor import Compressor
+from ._shared import get_energy_carrier, predict_blower_energy_use, get_bounded_value
 
 _logger = getLogger(__name__)
 

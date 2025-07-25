@@ -17,7 +17,7 @@ from ..log import getLogger
 from .._process import Process
 from ..stream import PHASE_GAS, Stream
 
-from .shared import get_init_lifting_stream
+from ._shared import get_init_lifting_stream
 
 _logger = getLogger(__name__)
 

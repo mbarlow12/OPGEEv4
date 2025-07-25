@@ -9,9 +9,9 @@
 from ..common import std_pressure
 from ..log import getLogger
 from .._process import Process
-from ..processes.compressor import Compressor
+from ._compressor import Compressor
 from ..stream import PHASE_GAS
-from .shared import get_energy_carrier
+from ._shared import get_energy_carrier
 
 _logger = getLogger(__name__)
 

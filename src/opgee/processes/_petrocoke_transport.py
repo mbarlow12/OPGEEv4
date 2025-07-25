@@ -9,7 +9,7 @@
 from ..import_export import NGL_LPG
 from ..log import getLogger
 from .._process import Process
-from .shared import get_energy_carrier
+from ._shared import get_energy_carrier
 
 _logger = getLogger(__name__)
 

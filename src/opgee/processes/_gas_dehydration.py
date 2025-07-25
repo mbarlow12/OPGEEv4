@@ -16,7 +16,7 @@ from ..log import getLogger
 from .._process import Process
 from .._process import run_corr_eqns
 from ..thermodynamics import ChemicalInfo
-from .shared import get_bounded_value, predict_blower_energy_use
+from ._shared import get_bounded_value, predict_blower_energy_use
 
 _logger = getLogger(__name__)
 

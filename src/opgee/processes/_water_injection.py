@@ -15,7 +15,7 @@
 #
 import numpy as np
 
-from .shared import get_energy_carrier, get_energy_consumption
+from ._shared import get_energy_carrier, get_energy_consumption
 from ..error import OpgeeException
 from ..log import getLogger
 from .._process import Process

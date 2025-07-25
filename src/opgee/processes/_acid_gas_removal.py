@@ -11,8 +11,8 @@ from ..emissions import EM_FUGITIVES
 from ..energy import EN_ELECTRICITY
 from ..log import getLogger
 from .._process import Process, run_corr_eqns
-from .compressor import Compressor
-from .shared import get_energy_carrier, predict_blower_energy_use, get_bounded_value, get_energy_consumption
+from ._compressor import Compressor
+from ._shared import get_energy_carrier, predict_blower_energy_use, get_bounded_value, get_energy_consumption
 
 _logger = getLogger(__name__)
 

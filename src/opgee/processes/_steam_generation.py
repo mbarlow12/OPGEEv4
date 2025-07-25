@@ -13,7 +13,7 @@ from ..error import BalanceError
 from ..import_export import WATER
 from ..log import getLogger
 from .._process import Process
-from .shared import get_energy_consumption
+from ._shared import get_energy_consumption
 
 _logger = getLogger(__name__)
 

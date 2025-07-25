@@ -29,8 +29,8 @@ from .log import getLogger
 from .post_processor import PostProcessor
 from ._process import Process, Aggregator, Reservoir, decache_subclasses
 from .process_groups import ProcessChoice
-from .processes.steam_generator import SteamGenerator
-from .processes.transport_energy import TransportEnergy
+from .processes._steam_generator import SteamGenerator
+from .processes._transport_energy import TransportEnergy
 from .smart_defaults import SmartDefault
 from .stream import Stream
 from .thermodynamics import Oil, Gas, Water
