@@ -8,9 +8,9 @@
 #
 import math
 
-from ..units import ureg
-from ..energy import EN_DIESEL
-from ..log import getLogger
+from .._units import ureg
+from .._energy import EN_DIESEL
+from .._log import getLogger
 from .._process import Process
 
 _logger = getLogger(__name__)

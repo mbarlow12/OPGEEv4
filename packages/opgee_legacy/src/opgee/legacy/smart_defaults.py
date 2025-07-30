@@ -9,8 +9,8 @@
 import networkx as nx
 
 from .common import OpgeeObject, split_attr_name
-from .error import OpgeeException
-from .log import getLogger
+from ._error import OpgeeException
+from ._log import getLogger
 
 _logger = getLogger(__name__)
 

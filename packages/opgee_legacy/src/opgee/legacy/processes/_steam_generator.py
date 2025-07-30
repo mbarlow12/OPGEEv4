@@ -8,9 +8,9 @@
 #
 import pandas as pd
 
-from ..units import ureg
+from .._units import ureg
 from ..common import OpgeeObject
-from ..stream import PHASE_GAS
+from .._stream import PHASE_GAS
 
 
 class SteamGenerator(OpgeeObject):  # N.B. NOT a subclass of Process

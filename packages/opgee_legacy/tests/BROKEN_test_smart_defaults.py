@@ -1,9 +1,9 @@
-from opgee.analysis import Analysis
-from opgee.common import A
-from opgee.field import Field
-from opgee.mcs.simulation import Simulation
-from opgee.smart_defaults import SmartDefault
-from opgee.mcs.simulation import Distribution
+from opgee.legacy._analysis import Analysis
+from opgee.legacy.common import A
+from opgee.legacy._field import Field
+from opgee.legacy.mcs.simulation import Simulation
+from opgee.legacy.smart_defaults import SmartDefault
+from opgee.legacy.mcs.simulation import Distribution
 
 @SmartDefault.register('TEST_abcdef', ['TEST_foo', 'TEST_bar'])
 def smart_dflt_1(foo, bar):
@@ -35,7 +35,7 @@ def test_simulation():
     Simulation.new(pathname, analysis_name=analysis_name, trials=N, overwrite=True)
 
 def test_dependency_decorators():
-    from opgee.mcs.LHS import getPercentiles
+    from opgee.legacy.mcs.LHS import getPercentiles
 
     attr_dict = {'TEST_foo': 3, 'TEST_bar': 4, 'TEST_baz': 10, 'TEST_age': 20}
 

@@ -1,8 +1,8 @@
 from dash import dcc, html
 from dash.dependencies import Input, Output, State
 
-from ..error import ZeroEnergyFlowError
-from ..log import getLogger
+from .._error import ZeroEnergyFlowError
+from .._log import getLogger
 from .widgets import OpgeePane, get_analysis_and_field, horiz_space
 
 _logger = getLogger(__name__)

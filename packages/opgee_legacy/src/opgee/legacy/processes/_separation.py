@@ -8,11 +8,11 @@
 #
 from ..combine_streams import combine_streams
 from ..common import TemperaturePressure
-from ..emissions import EM_FUGITIVES
-from ..log import getLogger
+from .._emissions import EM_FUGITIVES
+from .._log import getLogger
 from .._process import Process
 from ._compressor import Compressor
-from ..stream import Stream, PHASE_GAS
+from .._stream import Stream, PHASE_GAS
 from ._shared import get_energy_carrier, get_energy_consumption_stages
 
 _logger = getLogger(__name__)

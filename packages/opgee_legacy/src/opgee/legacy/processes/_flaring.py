@@ -6,10 +6,10 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-from ..emissions import EM_FLARING
-from ..log import getLogger
+from .._emissions import EM_FLARING
+from .._log import getLogger
 from .._process import Process
-from ..stream import Stream
+from .._stream import Stream
 
 _logger = getLogger(__name__)
 

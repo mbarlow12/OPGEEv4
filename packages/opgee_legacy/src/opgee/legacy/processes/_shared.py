@@ -6,10 +6,10 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-from ..units import ureg
-from ..energy import EN_NATURAL_GAS, EN_ELECTRICITY, EN_DIESEL, EN_RESID
-from ..error import OpgeeException
-from ..stream import Stream, PHASE_GAS
+from .._units import ureg
+from .._energy import EN_NATURAL_GAS, EN_ELECTRICITY, EN_DIESEL, EN_RESID
+from .._error import OpgeeException
+from .._stream import Stream, PHASE_GAS
 
 _slope = {"NG_engine": -0.6035,
           "NG_turbine": -0.1279}

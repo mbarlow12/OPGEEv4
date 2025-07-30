@@ -8,12 +8,12 @@
 #
 import pandas as pd
 
-from .units import ureg
+from ._units import ureg
 from .common import STP
 from .common import TemperaturePressure
-from .log import getLogger
-from .stream import Stream
-from .thermodynamics import Oil, Gas, Water
+from ._log import getLogger
+from ._stream import Stream
+from ._thermodynamics import Oil, Gas, Water
 
 _logger = getLogger(__name__)
 

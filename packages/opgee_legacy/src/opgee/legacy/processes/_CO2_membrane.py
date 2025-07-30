@@ -7,10 +7,10 @@
 # See LICENSE.txt for license details.
 #
 from ..common import std_pressure
-from ..log import getLogger
+from .._log import getLogger
 from .._process import Process
 from ._compressor import Compressor
-from ..stream import PHASE_GAS
+from .._stream import PHASE_GAS
 from ._shared import get_energy_carrier
 
 _logger = getLogger(__name__)

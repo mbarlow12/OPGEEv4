@@ -1,11 +1,11 @@
 import os
 import pytest
 
-from opgee.analysis import Analysis
-from opgee.constants import DETAILED_RESULT
-from opgee.error import AbstractMethodError, McsUserError
-from opgee.field import Field, FieldResult
-from opgee.post_processor import PostProcessor
+from opgee.legacy._analysis import Analysis
+from opgee.legacy.constants import DETAILED_RESULT
+from opgee.legacy._error import AbstractMethodError, McsUserError
+from opgee.legacy._field import Field, FieldResult
+from opgee.legacy.post_processor import PostProcessor
 
 from .utils_for_tests import load_test_model, path_to_test_file, tempdir
 
@@ -104,7 +104,7 @@ def test_cmd_line_post_proc(opgee_main):
         assert os.path.exists(csv_file)
 
 def test_auto_loading(opgee_main):
-    from opgee.config import setParam
+    from opgee.legacy.config import setParam
     PostProcessor.decache()
 
     setParam('OPGEE.PostProcPluginPath', path_to_test_file('post-proc-plugins'))
@@ -135,7 +135,7 @@ def test_auto_loading(opgee_main):
 
 @pytest.mark.skip()
 def test_no_auto_loading(opgee_main):
-    from opgee.config import setParam
+    from opgee.legacy.config import setParam
     PostProcessor.decache()
 
     setParam('OPGEE.PostProcPluginPath', path_to_test_file('post-proc-plugins'))

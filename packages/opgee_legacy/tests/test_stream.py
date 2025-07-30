@@ -1,7 +1,7 @@
 import pytest
-from opgee.error import OpgeeException
-from opgee._process import Process
-from opgee.units import ureg
+from opgee.legacy._error import OpgeeException
+from opgee.legacy._process import Process
+from opgee.legacy._units import ureg
 
 from .utils_for_tests import load_test_model
 
@@ -42,7 +42,7 @@ def stream_model(configure_logging_for_tests):
 
 
 def test_carbon_number():
-    from opgee.stream import is_carbon_number
+    from opgee.legacy._stream import is_carbon_number
     assert is_carbon_number("C2") and is_carbon_number("C200")
 
     assert not is_carbon_number("foo")
@@ -124,8 +124,8 @@ def test_combustion_stream(stream_model):
     assert CO2_stream.gas_flow_rate("CO2") == ureg.Quantity(pytest.approx(8.950127703143934), "t/d")
 
 def test_stream_utils(stream_model):
-    from opgee.common import TemperaturePressure
-    from opgee.stream import Stream
+    from opgee.legacy.common import TemperaturePressure
+    from opgee.legacy._stream import Stream
     tp = None
     s = Stream('stream1', tp)
     assert s.tp == None

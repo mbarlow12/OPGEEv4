@@ -1,9 +1,9 @@
 import os
 import pytest
 
-from opgee.units import ureg
-from opgee.error import OpgeeException
-from opgee.utils import (getBooleanXML, coercible, mkdirs, loadModuleFromPath,
+from opgee.legacy._units import ureg
+from opgee.legacy._error import OpgeeException
+from opgee.legacy.utils import (getBooleanXML, coercible, mkdirs, loadModuleFromPath,
                          removeTree, parseTrialString)
 from .utils_for_tests import tmpdir
 
@@ -56,7 +56,7 @@ def test_mkdirs():
     with pytest.raises(FileNotFoundError):
         removeTree(d, ignore_errors=False)
 
-    from opgee.config import IsWindows
+    from opgee.legacy.config import IsWindows
     if not IsWindows:
         with pytest.raises(OSError):
             mkdirs('/not/a/real/path')

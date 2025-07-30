@@ -18,8 +18,8 @@ from itertools import islice, product
 
 from ..common import OpgeeObject, Timer
 from ..config import getParam, getParamAsInt, getParamAsBoolean
-from ..error import RemoteError, McsSystemError, TrialErrorWrapper
-from ..log  import getLogger, setLogFile
+from .._error import RemoteError, McsSystemError, TrialErrorWrapper
+from .._log  import getLogger, setLogFile
 from .simulation import Simulation, combine_results
 
 _logger = getLogger(__name__)

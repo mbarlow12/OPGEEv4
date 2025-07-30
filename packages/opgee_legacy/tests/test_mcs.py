@@ -2,10 +2,10 @@ from pathlib import Path
 import pytest
 from io import StringIO
 
-from opgee.error import McsUserError
-from opgee.mcs.simulation import read_distributions, Simulation, Distribution
-from opgee.mcs.parameter_list import ParameterList
-from opgee.tool import opg
+from opgee.legacy._error import McsUserError
+from opgee.legacy.mcs.simulation import read_distributions, Simulation, Distribution
+from opgee.legacy.mcs.parameter_list import ParameterList
+from opgee.legacy.tool import opg
 
 from .utils_for_tests import tmpdir, path_to_test_file
 

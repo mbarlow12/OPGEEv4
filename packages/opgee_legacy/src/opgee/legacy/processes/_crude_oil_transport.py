@@ -6,8 +6,8 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-from ..import_export import CRUDE_OIL
-from ..log import getLogger
+from .._import_export import CRUDE_OIL
+from .._log import getLogger
 from .._process import Process
 from ._shared import get_energy_carrier
 

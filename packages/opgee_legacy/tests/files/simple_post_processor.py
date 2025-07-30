@@ -1,6 +1,6 @@
 import os
 
-from opgee.post_processor import PostProcessor
+from opgee.legacy.post_processor import PostProcessor
 
 class SimplePostProcessor(PostProcessor):
     results = []

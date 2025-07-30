@@ -9,7 +9,7 @@ import configparser
 import os
 import platform
 
-from .error import ConfigFileError, OpgeeException
+from ._error import ConfigFileError, OpgeeException
 from .pkg_utils import getResource
 
 DEFAULT_SECTION = 'DEFAULT'

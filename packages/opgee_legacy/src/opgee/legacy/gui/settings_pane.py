@@ -6,7 +6,7 @@ from pathlib import Path
 from ..attributes import AttrDefs
 from ..config import getParam
 from ..gui.widgets import attr_inputs
-from ..log import getLogger
+from .._log import getLogger
 from ..utils import mkdirs
 
 from .widgets import OpgeePane
@@ -112,7 +112,7 @@ class SettingsPane(OpgeePane):
         :return: none
         """
         from lxml import etree as ET
-        from ..units import magnitude
+        from .._units import magnitude
         from ..utils import coercible
 
         attr_defs = AttrDefs.get_instance()

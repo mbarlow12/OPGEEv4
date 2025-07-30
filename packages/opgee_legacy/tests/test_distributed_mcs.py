@@ -1,5 +1,5 @@
 import re
-from opgee.field import FieldResult
+from opgee.legacy._field import FieldResult
 
 def test_field_status():
     analysis_name = 'test'

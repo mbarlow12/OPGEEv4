@@ -1,7 +1,7 @@
 import pytest
-from opgee.units import ureg
+from opgee.legacy._units import ureg
 from .utils_for_tests import load_model_from_str
-from opgee.error import XmlFormatError
+from opgee.legacy._error import XmlFormatError
 from .utils_for_tests import load_test_model
 from .test_processes import approx_equal
 

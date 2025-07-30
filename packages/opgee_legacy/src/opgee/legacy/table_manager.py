@@ -11,8 +11,8 @@ import os
 import pandas as pd
 
 from .common import OpgeeObject
-from .error import OpgeeException
-from .log import getLogger
+from ._error import OpgeeException
+from ._log import getLogger
 from .pkg_utils import resourceStream
 
 _logger = getLogger(__name__)

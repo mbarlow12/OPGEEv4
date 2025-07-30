@@ -1,9 +1,9 @@
 import os
 import pytest
-from opgee.config import (unixPath, getHomeDir, pathjoin, getConfig, getParam,
+from opgee.legacy.config import (unixPath, getHomeDir, pathjoin, getConfig, getParam,
                           getParamAsBoolean, getParamAsInt, getParamAsFloat,
                           setSection, USR_CONFIG_FILE, stringTrue)
-from opgee.error import OpgeeException, ConfigFileError
+from opgee.legacy._error import OpgeeException, ConfigFileError
 from .utils_for_tests import load_config_from_string
 
 def test_unixpath():

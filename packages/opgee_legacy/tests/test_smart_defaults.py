@@ -1,4 +1,4 @@
-from opgee.units import ureg
+from opgee.legacy._units import ureg
 from .utils_for_tests import load_model_from_str
 
 template = """<?xml version='1.0' encoding='UTF-8'?>

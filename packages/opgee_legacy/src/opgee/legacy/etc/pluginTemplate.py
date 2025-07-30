@@ -3,7 +3,7 @@
 # '-h / --help' runs as quickly as possible. Import needed files in the
 # run() method instead.
 #
-from opgee.subcommand import SubcommandABC
+from opgee.legacy.subcommand import SubcommandABC
 
 class MyNewCommand(SubcommandABC):
     def __init__(self, subparsers):
@@ -29,7 +29,7 @@ class MyNewCommand(SubcommandABC):
         holding the parsed command-line arguments, and "tool" is a reference to
         the running OpgeeTool instance.
         '''
-        # from opgee.log import getLogger
+        # from opgee.legacy._log import getLogger
         # _logger = getLogger(__name__)
 
         pass

@@ -10,8 +10,8 @@ import pint
 import time
 import datetime
 
-from .units import ureg, validate_unit
-from .error import OpgeeException, AbstractMethodError, ModelValidationError
+from ._units import ureg, validate_unit
+from ._error import OpgeeException, AbstractMethodError, ModelValidationError
 from .utils import coercible, getBooleanXML
 
 

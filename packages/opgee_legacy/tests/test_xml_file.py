@@ -1,7 +1,7 @@
 import pytest
 from lxml import etree
-from opgee.XMLFile import XMLFile
-from opgee.error import XmlFormatError
+from opgee.legacy.XMLFile import XMLFile
+from opgee.legacy._error import XmlFormatError
 from .utils_for_tests import path_to_test_file
 
 def test_read_xml():

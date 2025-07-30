@@ -11,8 +11,8 @@ import math
 from ._compressor import Compressor
 from ._shared import get_energy_carrier
 from ..common import TemperaturePressure
-from ..emissions import EM_FUGITIVES
-from ..log import getLogger
+from .._emissions import EM_FUGITIVES
+from .._log import getLogger
 from .._process import Process
 
 _logger = getLogger(__name__)

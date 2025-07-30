@@ -1,5 +1,5 @@
 import pytest
-from opgee.manager import FieldPacket, TrialPacket, _batched
+from opgee.legacy.manager import FieldPacket, TrialPacket, _batched
 
 def test_batched():
     with pytest.raises(ValueError, match="_batched: length must be > 0"):
