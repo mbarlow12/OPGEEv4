@@ -4,9 +4,9 @@
 #
 from lxml import etree as ET
 
-from opgee.config import getParam
-from opgee.pkg_utils import resourceStream
-from opgee.XMLFile import XMLFile
+from opgee.legacy.config import getParam
+from opgee.legacy.pkg_utils import resourceStream
+from opgee.legacy.XMLFile import XMLFile
 
 def main():
     opgee_xml = getParam('OPGEE.ModelFile')

@@ -3,8 +3,8 @@ import os
 from lxml import etree as ET
 from tempfile import mkdtemp
 from .utils_for_tests import path_to_test_file
-from opgee.xml_utils import merge_siblings, str_to_xml
-from opgee.tool import opg
+from opgee.legacy.xml_utils import merge_siblings, str_to_xml
+from opgee.legacy.tool import opg
 
 def assert_same_xml(x1, x2):
     x1_str = ET.tostring(x1, pretty_print=True).decode("utf-8")

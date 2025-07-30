@@ -3,8 +3,8 @@ import functools
 import pytest
 from pint import DimensionalityError, Quantity
 
-from opgee.processes._compressor import Compressor
-from opgee.units import ureg
+from opgee.legacy.processes._compressor import Compressor
+from opgee.legacy.units import ureg
 
 Q_ = ureg.Quantity
 

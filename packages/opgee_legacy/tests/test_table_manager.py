@@ -1,7 +1,7 @@
 import pytest
-from opgee.energy import EN_NATURAL_GAS, EN_NGL
-from opgee.error import OpgeeException
-from opgee.table_manager import TableManager
+from opgee.legacy.energy import EN_NATURAL_GAS, EN_NGL
+from opgee.legacy.error import OpgeeException
+from opgee.legacy.table_manager import TableManager
 from .utils_for_tests import path_to_test_file
 
 def test_updates(test_model):

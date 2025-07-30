@@ -1,8 +1,8 @@
 import pytest
-from opgee.config import getConfig
-from opgee.log import setLogLevels, configureLogs
-from opgee.model_file import ModelFile
-from opgee.tool import Opgee
+from opgee.legacy.config import getConfig
+from opgee.legacy.log import setLogLevels, configureLogs
+from opgee.legacy.model_file import ModelFile
+from opgee.legacy.tool import Opgee
 from .utils_for_tests import load_test_model
 
 

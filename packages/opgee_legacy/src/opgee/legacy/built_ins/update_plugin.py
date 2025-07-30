@@ -38,8 +38,8 @@ class UpdateCommand(SubcommandABC):
         from collections import OrderedDict
         import os
         from lxml import etree as ET
-        from opgee.error import CommandlineError, XmlFormatError
-        from opgee.XMLFile import XMLFile
+        from opgee.legacy.error import CommandlineError, XmlFormatError
+        from opgee.legacy.XMLFile import XMLFile
 
         input = args.model_file
         if not os.path.isfile(input):

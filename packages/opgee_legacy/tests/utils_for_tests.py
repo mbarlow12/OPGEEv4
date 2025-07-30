@@ -1,8 +1,8 @@
 from contextlib import contextmanager
 from io import StringIO
-from opgee.config import pathjoin, getParam, setParam, readConfigFile
-from opgee.model_file import ModelFile
-from opgee._process import Process
+from opgee.legacy.config import pathjoin, getParam, setParam, readConfigFile
+from opgee.legacy.model_file import ModelFile
+from opgee.legacy._process import Process
 
 @contextmanager
 def tempdir():

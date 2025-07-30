@@ -7,13 +7,13 @@ from lxml import etree
 from pint import Quantity
 from pydot import Dot
 
-from opgee.attributes import AttrDefs
-from opgee.common import A
-from opgee.field import Field
-from opgee.graph import create_process_diagram
-from opgee.log import getLogger
-from opgee.model_file import ModelFile
-from opgee.smart_defaults import SmartDefault
+from opgee.legacy.attributes import AttrDefs
+from opgee.legacy.common import A
+from opgee.legacy.field import Field
+from opgee.legacy.graph import create_process_diagram
+from opgee.legacy.log import getLogger
+from opgee.legacy.model_file import ModelFile
+from opgee.legacy.smart_defaults import SmartDefault
 
 _logger = getLogger(__name__)
 

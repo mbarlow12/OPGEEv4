@@ -7,13 +7,13 @@ import pytest
 from pandas import DataFrame
 import pandas as pd
 
-from opgee.audit import AuditRow, _generate_field_audit_report, audit_field
-from opgee.config import getParam, setParam, getConfig
-from opgee.constants import DETAILED_RESULT
-from opgee.error import OpgeeException
-from opgee.model_file import ModelFile
-from opgee.field import Field
-from opgee.units import ureg
+from opgee.legacy.audit import AuditRow, _generate_field_audit_report, audit_field
+from opgee.legacy.config import getParam, setParam, getConfig
+from opgee.legacy.constants import DETAILED_RESULT
+from opgee.legacy.error import OpgeeException
+from opgee.legacy.model_file import ModelFile
+from opgee.legacy.field import Field
+from opgee.legacy.units import ureg
 from tests.utils_for_tests import path_to_test_file
 
 

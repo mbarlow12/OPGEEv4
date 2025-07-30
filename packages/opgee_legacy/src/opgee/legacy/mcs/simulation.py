@@ -416,7 +416,7 @@ class Simulation(OpgeeObject):
         return d
 
     def field_dir(self, field):
-        from opgee.field import Field
+        from opgee.legacy.field import Field
 
         field_name = field.name if isinstance(field, Field) else field
         d = self.field_dir_path(self.pathname, field_name)

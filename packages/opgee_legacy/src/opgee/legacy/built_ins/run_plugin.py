@@ -5,7 +5,7 @@
    See the https://opensource.org/licenses/MIT for license details.
 """
 from ..subcommand import SubcommandABC
-from opgee.constants import SIMPLE_RESULT
+from opgee.legacy.constants import SIMPLE_RESULT
 from ..log import getLogger, setLogFile
 
 _logger = getLogger(__name__)

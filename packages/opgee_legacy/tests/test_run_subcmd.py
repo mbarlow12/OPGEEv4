@@ -1,10 +1,10 @@
 from glob import glob
 import os
 import pytest
-from opgee.config import setParam, pathjoin
-from opgee.error import CommandlineError
-from opgee.post_processor import PostProcessor
-from opgee.tool import opg
+from opgee.legacy.config import setParam, pathjoin
+from opgee.legacy.error import CommandlineError
+from opgee.legacy.post_processor import PostProcessor
+from opgee.legacy.tool import opg
 from .utils_for_tests import path_to_test_file, tempdir
 
 @pytest.fixture(autouse=True)
