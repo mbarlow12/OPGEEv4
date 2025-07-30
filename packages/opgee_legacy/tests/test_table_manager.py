@@ -1,6 +1,6 @@
 import pytest
-from opgee.legacy.energy import EN_NATURAL_GAS, EN_NGL
-from opgee.legacy.error import OpgeeException
+from opgee.legacy._energy import EN_NATURAL_GAS, EN_NGL
+from opgee.legacy._error import OpgeeException
 from opgee.legacy.table_manager import TableManager
 from .utils_for_tests import path_to_test_file
 

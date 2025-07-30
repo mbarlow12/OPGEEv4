@@ -1,6 +1,6 @@
 import pytest
-from opgee.legacy.error import OpgeeException
-from opgee.legacy.stream import Stream
+from opgee.legacy._error import OpgeeException
+from opgee.legacy._stream import Stream
 from .utils_for_tests import load_test_model, path_to_test_file
 
 @pytest.fixture(scope="function")

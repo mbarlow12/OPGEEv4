@@ -10,10 +10,10 @@ from collections import defaultdict
 
 import pandas as pd
 
-from .units import ureg, validate_unit, magnitude
+from ._units import ureg, validate_unit, magnitude
 from .common import OpgeeObject, XmlInstantiable, A, instantiate_subelts, elt_name
-from .error import AttributeError, ModelValidationError
-from .log import getLogger
+from ._error import AttributeError, ModelValidationError
+from ._log import getLogger
 from .utils import coercible
 
 _logger = getLogger(__name__)

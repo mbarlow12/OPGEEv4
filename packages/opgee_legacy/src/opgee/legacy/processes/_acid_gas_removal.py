@@ -6,10 +6,10 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-from ..units import ureg
-from ..emissions import EM_FUGITIVES
-from ..energy import EN_ELECTRICITY
-from ..log import getLogger
+from .._units import ureg
+from .._emissions import EM_FUGITIVES
+from .._energy import EN_ELECTRICITY
+from .._log import getLogger
 from .._process import Process, run_corr_eqns
 from ._compressor import Compressor
 from ._shared import get_energy_carrier, predict_blower_energy_use, get_bounded_value, get_energy_consumption

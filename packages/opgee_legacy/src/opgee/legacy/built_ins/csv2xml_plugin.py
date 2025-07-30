@@ -6,7 +6,7 @@
 """
 from pathlib import Path
 from ..subcommand import SubcommandABC
-from ..log import getLogger
+from .._log import getLogger
 
 _logger = getLogger(__name__)
 
@@ -127,7 +127,7 @@ class Csv2XmlCommand(SubcommandABC):
         return parser
 
     def run(self, args, tool):
-        from ..error import CommandlineError
+        from .._error import CommandlineError
 
         input_csv = args.inputCSV
         if input_csv is None:

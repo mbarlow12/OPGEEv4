@@ -1,10 +1,10 @@
 import os
 import pytest
 
-from opgee.legacy.analysis import Analysis
+from opgee.legacy._analysis import Analysis
 from opgee.legacy.constants import DETAILED_RESULT
-from opgee.legacy.error import AbstractMethodError, McsUserError
-from opgee.legacy.field import Field, FieldResult
+from opgee.legacy._error import AbstractMethodError, McsUserError
+from opgee.legacy._field import Field, FieldResult
 from opgee.legacy.post_processor import PostProcessor
 
 from .utils_for_tests import load_test_model, path_to_test_file, tempdir

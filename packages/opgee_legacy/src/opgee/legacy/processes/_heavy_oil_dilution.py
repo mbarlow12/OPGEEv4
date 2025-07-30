@@ -7,7 +7,7 @@
 # See LICENSE.txt for license details.
 #
 from ..common import TemperaturePressure
-from ..import_export import DILUENT
+from .._import_export import DILUENT
 from .._process import Process
 from ._shared import get_energy_carrier
 

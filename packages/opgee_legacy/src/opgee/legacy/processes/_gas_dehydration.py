@@ -8,14 +8,14 @@
 #
 import numpy as np
 
-from ..units import ureg
-from ..emissions import EM_FUGITIVES
-from ..energy import EN_NATURAL_GAS, EN_ELECTRICITY
-from ..error import OpgeeException
-from ..log import getLogger
+from .._units import ureg
+from .._emissions import EM_FUGITIVES
+from .._energy import EN_NATURAL_GAS, EN_ELECTRICITY
+from .._error import OpgeeException
+from .._log import getLogger
 from .._process import Process
 from .._process import run_corr_eqns
-from ..thermodynamics import ChemicalInfo
+from .._thermodynamics import ChemicalInfo
 from ._shared import get_bounded_value, predict_blower_energy_use
 
 _logger = getLogger(__name__)

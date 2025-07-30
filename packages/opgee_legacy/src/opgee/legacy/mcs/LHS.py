@@ -18,7 +18,7 @@ import numpy as np
 from scipy import stats
 from pandas import DataFrame
 
-from ..log import getLogger
+from .._log import getLogger
 
 _logger = getLogger(__name__)
 

@@ -14,9 +14,9 @@ import traceback
 from ..config import pathjoin
 from ..constants import SIMPLE_RESULT, ERROR_RESULT
 from ..common import OpgeeObject, split_attr_name
-from ..error import OpgeeException, McsSystemError, McsUserError, CommandlineError
-from ..field import FieldResult
-from ..log import getLogger
+from .._error import OpgeeException, McsSystemError, McsUserError, CommandlineError
+from .._field import FieldResult
+from .._log import getLogger
 from ..model_file import ModelFile
 from ..pkg_utils import resourceStream
 from ..utils import mkdirs, removeTree
@@ -416,7 +416,7 @@ class Simulation(OpgeeObject):
         return d
 
     def field_dir(self, field):
-        from opgee.legacy.field import Field
+        from opgee.legacy._field import Field
 
         field_name = field.name if isinstance(field, Field) else field
         d = self.field_dir_path(self.pathname, field_name)

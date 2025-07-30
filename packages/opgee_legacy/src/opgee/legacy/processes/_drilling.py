@@ -8,12 +8,12 @@
 #
 import numpy as np
 
-from ..units import ureg
-from ..emissions import EM_LAND_USE
-from ..energy import EN_DIESEL
-from ..log import getLogger
+from .._units import ureg
+from .._emissions import EM_LAND_USE
+from .._energy import EN_DIESEL
+from .._log import getLogger
 from .._process import Process
-from ..stream import Stream
+from .._stream import Stream
 
 _logger = getLogger(__name__)
 

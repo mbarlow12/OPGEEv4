@@ -10,8 +10,8 @@ from io import BytesIO
 from lxml import etree as ET
 
 from .config import getConfigDict, getParam
-from .error import XmlFormatError
-from .log import getLogger
+from ._error import XmlFormatError
+from ._log import getLogger
 
 _logger = getLogger(__name__)
 
@@ -114,7 +114,7 @@ class XMLFile(object):
         # use the cached version if available
         schema = self.parsed_schemas.get(self.schemaPath)
         if not schema:
-            ref = imp.files('opgee') / self.schemaPath
+            ref = imp.files('opgee.legacy') / self.schemaPath
 
             with imp.as_file(ref) as path:
                 xsd = ET.parse(path)

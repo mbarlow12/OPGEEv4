@@ -1,5 +1,5 @@
 import pytest
-from opgee.legacy.error import OpgeeException
+from opgee.legacy._error import OpgeeException
 from .utils_for_tests import load_test_model
 
 

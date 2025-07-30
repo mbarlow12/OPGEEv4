@@ -1,4 +1,4 @@
-from opgee.legacy.error import ModelValidationError
+from opgee.legacy._error import ModelValidationError
 from opgee.legacy._process import Process
 
 class UserProcess1(Process):

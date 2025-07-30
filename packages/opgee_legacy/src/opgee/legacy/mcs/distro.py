@@ -16,8 +16,8 @@ import re
 import numpy as np
 from scipy.stats import lognorm, triang, uniform, norm, rv_discrete, truncnorm
 
-from ..error import OpgeeException, DistributionSpecError, McsUserError
-from ..log import getLogger
+from .._error import OpgeeException, DistributionSpecError, McsUserError
+from .._log import getLogger
 from ..pkg_utils import resourceStream
 
 _logger = getLogger(__name__)

@@ -8,14 +8,14 @@
 #
 import pandas as pd
 
-from ..units import ureg
+from .._units import ureg
 from ..common import STP, TemperaturePressure
-from ..emissions import EM_FUGITIVES
-from ..energy import EN_ELECTRICITY
-from ..log import getLogger
+from .._emissions import EM_FUGITIVES
+from .._energy import EN_ELECTRICITY
+from .._log import getLogger
 from .._process import Process
 from .._process import run_corr_eqns
-from ..stream import PHASE_GAS, Stream
+from .._stream import PHASE_GAS, Stream
 from ._compressor import Compressor
 from ._shared import get_energy_carrier, predict_blower_energy_use, get_bounded_value
 

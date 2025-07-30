@@ -2,7 +2,7 @@ from pathlib import Path
 import pytest
 from io import StringIO
 
-from opgee.legacy.error import McsUserError
+from opgee.legacy._error import McsUserError
 from opgee.legacy.mcs.simulation import read_distributions, Simulation, Distribution
 from opgee.legacy.mcs.parameter_list import ParameterList
 from opgee.legacy.tool import opg

@@ -1,6 +1,6 @@
 import pytest
 
-from opgee.legacy.error import OpgeeException
+from opgee.legacy._error import OpgeeException
 from opgee.legacy.model_file import ModelFile, extract_model, fields_for_analysis
 
 from .utils_for_tests import path_to_test_file

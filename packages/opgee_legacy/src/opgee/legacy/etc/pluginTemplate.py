@@ -29,7 +29,7 @@ class MyNewCommand(SubcommandABC):
         holding the parsed command-line arguments, and "tool" is a reference to
         the running OpgeeTool instance.
         '''
-        # from opgee.legacy.log import getLogger
+        # from opgee.legacy._log import getLogger
         # _logger = getLogger(__name__)
 
         pass

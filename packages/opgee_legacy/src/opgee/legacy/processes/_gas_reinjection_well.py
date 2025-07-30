@@ -6,8 +6,8 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-from ..emissions import EM_FUGITIVES
-from ..log import getLogger
+from .._emissions import EM_FUGITIVES
+from .._log import getLogger
 from .._process import Process
 
 _logger = getLogger(__name__)

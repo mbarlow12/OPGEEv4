@@ -3,7 +3,7 @@ import os
 import pytest
 
 from opgee.legacy.config import IsWindows
-from opgee.legacy.error import CommandlineError
+from opgee.legacy._error import CommandlineError
 from tests.utils_for_tests import path_to_test_file
 
 DEVNULL = 'nul' if IsWindows else '/dev/null'

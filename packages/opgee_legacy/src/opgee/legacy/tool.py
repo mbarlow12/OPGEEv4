@@ -13,8 +13,8 @@ import sys
 from glob import glob
 
 from .config import (pathjoin, getParam, getConfig, getParamAsBoolean, setParam, getSection, setSection)
-from .error import OpgeeException, CommandlineError
-from .log import setLogLevels, configureLogs
+from ._error import OpgeeException, CommandlineError
+from ._log import setLogLevels, configureLogs
 from .subcommand import clean_help
 from .version import VERSION
 

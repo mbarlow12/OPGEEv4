@@ -11,18 +11,18 @@ from typing import Union, Optional
 import pandas as pd
 import pint
 
-from .units import ureg, magnitude
+from ._units import ureg, magnitude
 from .attributes import AttrDefs, AttributeMixin
 from .combine_streams import combine_streams
 from .config import getParamAsBoolean
 from .container import Container
 from .common import OpgeeObject, XmlInstantiable, elt_name, instantiate_subelts
-from .emissions import Emissions, EM_COMBUSTION
-from .energy import EN_ELECTRICITY, Energy
-from .error import OpgeeException, AbstractMethodError, OpgeeIterationConverged, ModelValidationError
-from .import_export import ImportExport
-from .log import getLogger
-from .stream import Stream
+from ._emissions import Emissions, EM_COMBUSTION
+from ._energy import EN_ELECTRICITY, Energy
+from ._error import OpgeeException, AbstractMethodError, OpgeeIterationConverged, ModelValidationError
+from ._import_export import ImportExport
+from ._log import getLogger
+from ._stream import Stream
 from .utils import getBooleanXML
 
 _logger = getLogger(__name__)

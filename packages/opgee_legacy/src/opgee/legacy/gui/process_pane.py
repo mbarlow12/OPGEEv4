@@ -4,7 +4,7 @@ from dash.dependencies import Input, Output, State
 from textwrap import dedent as d
 
 from ..common import name_of
-from ..log import getLogger
+from .._log import getLogger
 from .widgets import get_analysis_and_field, gui_switches, OpgeePane
 
 _logger = getLogger(__name__)
@@ -347,7 +347,7 @@ def field_network_graph(field, show_stream_contents=False, show_disabled_procs=F
 
 def emissions_table(analysis, procs):
     import pandas as pd
-    from ..emissions import Emissions
+    from .._emissions import Emissions
 
     columns = [{'name': 'Name', 'id': 'Name'}] + [{'name': col, 'id': col} for col in Emissions.categories]
 

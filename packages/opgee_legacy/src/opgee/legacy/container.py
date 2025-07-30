@@ -8,12 +8,12 @@
 #
 from .attributes import AttrDefs, AttributeMixin
 from .common import XmlInstantiable
-from .emissions import Emissions
-from .energy import Energy
-from .error import OpgeeException
-from .import_export import ImportExport
-from .log import getLogger
-from .units import ureg
+from ._emissions import Emissions
+from ._energy import Energy
+from ._error import OpgeeException
+from ._import_export import ImportExport
+from ._log import getLogger
+from ._units import ureg
 
 _logger = getLogger(__name__)
 

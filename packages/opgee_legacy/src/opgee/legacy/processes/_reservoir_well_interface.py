@@ -8,11 +8,11 @@
 #
 import numpy as np
 
-from ..units import ureg
+from .._units import ureg
 from ..common import TemperaturePressure, STP
-from ..log import getLogger
+from .._log import getLogger
 from .._process import Process
-from ..stream import PHASE_GAS
+from .._stream import PHASE_GAS
 
 _logger = getLogger(__name__)  # data logging
 

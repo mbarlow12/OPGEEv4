@@ -6,14 +6,14 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-from ..units import ureg
+from .._units import ureg
 from ..common import TemperaturePressure
-from ..emissions import EM_FUGITIVES
-from ..energy import EN_NATURAL_GAS, EN_ELECTRICITY, EN_DIESEL
-from ..log import getLogger
+from .._emissions import EM_FUGITIVES
+from .._energy import EN_NATURAL_GAS, EN_ELECTRICITY, EN_DIESEL
+from .._log import getLogger
 from .._process import Process
-from ..stream import Stream
-from ..error import OpgeeException
+from .._stream import Stream
+from .._error import OpgeeException
 
 _logger = getLogger(__name__)
 

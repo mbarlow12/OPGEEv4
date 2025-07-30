@@ -10,7 +10,7 @@
 import io
 import pkgutil
 
-from .error import OpgeeException
+from ._error import OpgeeException
 
 DFLT_ENCODING = 'utf-8'
 
@@ -24,7 +24,7 @@ def getResource(relpath, decode=DFLT_ENCODING):
         None to return the data without decoding.
     :return: the file contents
     """
-    contents = pkgutil.get_data('opgee', relpath)
+    contents = pkgutil.get_data('opgee.legacy', relpath)
     return contents.decode(decode) if decode else contents
 
 def resourceStream(relpath, stream_type='text', decode=DFLT_ENCODING):

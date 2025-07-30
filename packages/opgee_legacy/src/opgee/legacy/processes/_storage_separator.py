@@ -7,9 +7,9 @@
 # See LICENSE.txt for license details.
 #
 from ..common import TemperaturePressure
-from ..log import getLogger
+from .._log import getLogger
 from .._process import Process
-from ..stream import Stream
+from .._stream import Stream
 
 _logger = getLogger(__name__)
 

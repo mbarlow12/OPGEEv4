@@ -12,8 +12,8 @@ from pint.facets.plain import PlainQuantity as Quantity
 
 from opgee.legacy.common import OpgeeObject, TemperaturePressure
 from opgee.legacy.processes._shared import get_energy_consumption
-from opgee.legacy.stream import Stream
-from opgee.legacy.units import ureg
+from opgee.legacy._stream import Stream
+from opgee.legacy._units import ureg
 
 # type aliases
 Q_Float = Quantity[float]

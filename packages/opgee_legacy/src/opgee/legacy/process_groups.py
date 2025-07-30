@@ -9,8 +9,8 @@
 from collections import OrderedDict
 
 from .common import XmlInstantiable, elt_name, instantiate_subelts
-from .error import OpgeeException
-from .log import getLogger
+from ._error import OpgeeException
+from ._log import getLogger
 from .utils import getBooleanXML
 
 _logger = getLogger(__name__)

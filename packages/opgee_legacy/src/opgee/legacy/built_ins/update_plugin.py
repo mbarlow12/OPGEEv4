@@ -4,7 +4,7 @@
 # Copyright (c) 2023 the author and The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-from ..log import getLogger
+from .._log import getLogger
 from ..subcommand import SubcommandABC
 
 _logger = getLogger(__name__)
@@ -38,7 +38,7 @@ class UpdateCommand(SubcommandABC):
         from collections import OrderedDict
         import os
         from lxml import etree as ET
-        from opgee.legacy.error import CommandlineError, XmlFormatError
+        from opgee.legacy._error import CommandlineError, XmlFormatError
         from opgee.legacy.XMLFile import XMLFile
 
         input = args.model_file

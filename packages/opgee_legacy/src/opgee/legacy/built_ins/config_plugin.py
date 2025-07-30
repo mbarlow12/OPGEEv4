@@ -4,7 +4,7 @@
 .. Copyright (c) 2016 Richard Plevin
    See the https://opensource.org/licenses/MIT for license details.
 '''
-from ..error import OpgeeException, CommandlineError
+from .._error import OpgeeException, CommandlineError
 from ..subcommand import SubcommandABC, clean_help
 
 class ConfigCommand(SubcommandABC):

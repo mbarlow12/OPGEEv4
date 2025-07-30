@@ -7,7 +7,7 @@
    See the https://opensource.org/licenses/MIT for license details.
 """
 from ..subcommand import SubcommandABC, clean_help
-from ..log import getLogger
+from .._log import getLogger
 
 _logger = getLogger(__name__)
 
@@ -55,7 +55,7 @@ class GraphCommand(SubcommandABC):
         return parser
 
     def run(self, args, tool):
-        from ..error import CommandlineError
+        from .._error import CommandlineError
         from ..graph import write_model_diagram, write_class_diagram, write_process_diagram
         from ..model_file import ModelFile
 

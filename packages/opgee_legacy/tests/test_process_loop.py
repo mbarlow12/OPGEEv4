@@ -1,5 +1,5 @@
-from opgee.legacy.units import ureg
-from opgee.legacy.stream import Stream, PHASE_LIQUID
+from opgee.legacy._units import ureg
+from opgee.legacy._stream import Stream, PHASE_LIQUID
 from opgee.legacy._process import Process
 from .utils_for_tests import load_test_model
 

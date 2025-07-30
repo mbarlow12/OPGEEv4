@@ -9,9 +9,9 @@ from pydot import Dot
 
 from opgee.legacy.attributes import AttrDefs
 from opgee.legacy.common import A
-from opgee.legacy.field import Field
+from opgee.legacy._field import Field
 from opgee.legacy.graph import create_process_diagram
-from opgee.legacy.log import getLogger
+from opgee.legacy._log import getLogger
 from opgee.legacy.model_file import ModelFile
 from opgee.legacy.smart_defaults import SmartDefault
 

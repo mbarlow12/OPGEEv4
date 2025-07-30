@@ -1,9 +1,9 @@
 import pandas as pd
 import pytest
-from opgee.legacy.units import ureg
-from opgee.legacy.energy import EN_NATURAL_GAS, EN_CRUDE_OIL
-from opgee.legacy.emissions import EM_FLARING
-from opgee.legacy.error import OpgeeException, ZeroEnergyFlowError
+from opgee.legacy._units import ureg
+from opgee.legacy._energy import EN_NATURAL_GAS, EN_CRUDE_OIL
+from opgee.legacy._emissions import EM_FLARING
+from opgee.legacy._error import OpgeeException, ZeroEnergyFlowError
 from opgee.legacy._process import Process, _get_subclass, Reservoir
 
 

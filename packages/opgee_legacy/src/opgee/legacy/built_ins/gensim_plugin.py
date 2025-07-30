@@ -8,7 +8,7 @@
 # Copyright (c) 2022-2023 the author and The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-from ..log import getLogger
+from .._log import getLogger
 from ..subcommand import SubcommandABC
 
 _logger = getLogger(__name__)
@@ -58,7 +58,7 @@ class GensimCommand(SubcommandABC):
 
 
     def run(self, args, tool):
-        from ..error import McsUserError, CommandlineError
+        from .._error import McsUserError, CommandlineError
         from ..mcs.simulation import Simulation, read_distributions
         from ..mcs.parameter_list import ParameterList
 

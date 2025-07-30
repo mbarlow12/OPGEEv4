@@ -9,9 +9,9 @@
 import pydot
 
 from .common import OpgeeObject
-from opgee.legacy.field import Field
+from opgee.legacy._field import Field
 
-from .log import getLogger
+from ._log import getLogger
 from ._process import Process
 
 _logger = getLogger(__name__)

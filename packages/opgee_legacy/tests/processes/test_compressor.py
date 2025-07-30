@@ -4,7 +4,7 @@ import pytest
 from pint import DimensionalityError, Quantity
 
 from opgee.legacy.processes._compressor import Compressor
-from opgee.legacy.units import ureg
+from opgee.legacy._units import ureg
 
 Q_ = ureg.Quantity
 

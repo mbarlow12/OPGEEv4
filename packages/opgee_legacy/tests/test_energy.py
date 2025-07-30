@@ -1,7 +1,7 @@
-from opgee.legacy.units import ureg
-from opgee.legacy.energy import (Energy, EN_DIESEL, EN_NATURAL_GAS, EN_RESID,
+from opgee.legacy._units import ureg
+from opgee.legacy._energy import (Energy, EN_DIESEL, EN_NATURAL_GAS, EN_RESID,
                           EN_PETCOKE, EN_CRUDE_OIL, EN_ELECTRICITY)
-from opgee.legacy.error import OpgeeException
+from opgee.legacy._error import OpgeeException
 import pytest
 
 def test_set_rate():

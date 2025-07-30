@@ -10,10 +10,10 @@ import pandas as pd
 from opgee.legacy.audit import AuditRow, _generate_field_audit_report, audit_field
 from opgee.legacy.config import getParam, setParam, getConfig
 from opgee.legacy.constants import DETAILED_RESULT
-from opgee.legacy.error import OpgeeException
+from opgee.legacy._error import OpgeeException
 from opgee.legacy.model_file import ModelFile
-from opgee.legacy.field import Field
-from opgee.legacy.units import ureg
+from opgee.legacy._field import Field
+from opgee.legacy._units import ureg
 from tests.utils_for_tests import path_to_test_file
 
 
@@ -147,7 +147,7 @@ def test_audit_on_run_failure(tmp_path: Path, opgee_main):
     def mocked_field_run_processes(self, analysis):
         raise OpgeeException("Test exception")
 
-    with patch("opgee.field.Field.run_processes", mocked_field_run_processes):
+    with patch("opgee.legacy._field.Field.run_processes", mocked_field_run_processes):
         audit_path, proc_graph_path = audit_setup_and_run(tmp_path, opgee_main, "Field")
         assert audit_path.exists()
 
