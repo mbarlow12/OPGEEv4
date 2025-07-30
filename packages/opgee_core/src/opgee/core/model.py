@@ -38,18 +38,18 @@ class Model:
         # self.table_mgr = tbl_mgr = TableManager(updates=table_updates)
 
         # load all the GWP options
-        df = tbl_mgr.get_table("GWP")
+        # df = tbl_mgr.get_table("GWP")
 
-        self.gwp_horizons = list(df.Years.unique())
-        self.gwp_versions = list(df.columns[2:])
-        self.gwp_dict = {
-            y: df.query("Years == @y")
-            .set_index("Gas", drop=True)
-            .drop("Years", axis="columns")
-            for y in self.gwp_horizons
-        }
+        # self.gwp_horizons = list(df.Years.unique())
+        # self.gwp_versions = list(df.columns[2:])
+        # self.gwp_dict = {
+        #     y: df.query("Years == @y")
+        #     .set_index("Gas", drop=True)
+        #     .drop("Years", axis="columns")
+        #     for y in self.gwp_horizons
+        # }
 
-        constants_df = tbl_mgr.get_table("constants")
+        # constants_df = tbl_mgr.get_table("constants")
         self.constants = {
             name: ureg.Quantity(float(row.value), row.unit)
             for name, row in constants_df.iterrows()
