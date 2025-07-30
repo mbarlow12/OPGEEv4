@@ -50,6 +50,9 @@ classifiers = [
 requires = ["uv_build>=0.7.20,<0.8"]
 build-backend = "uv_build"
 
+[tool.uv.build-backend]
+module-name = "opgee.core"
+
 [project.urls]
 Homepage = "https://github.com/RMI/OPGEEv4"
 Downloads = "https://github.com/RMI/OPGEEv4.git"
