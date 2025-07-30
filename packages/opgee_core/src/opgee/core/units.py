@@ -1,16 +1,16 @@
-from typing import Final, Optional
-
+from typing import Final, cast
 import pint
-from pint.registry import ApplicationRegistry
+from pint.registry import ApplicationRegistry, Quantity
+from pint.facets.plain.quantity import PlainQuantity
 
-from opgee.error import OpgeeException
-from opgee.log import getLogger
+from .error import OpgeeException
+from .log import getLogger
 from opgee.pkg_utils import resourceStream
 
 _logger = getLogger(__name__)
 
 # "shadowed" variable here to improve type hinting for `ureg`
-_ureg: Optional[ApplicationRegistry] = None
+_ureg: ApplicationRegistry | None = None
 
 if _ureg is None:
     _ureg = pint.get_application_registry()
@@ -21,10 +21,12 @@ if _ureg is None:
 
 ureg: Final[ApplicationRegistry] = _ureg
 Qty = _ureg.Quantity
+_Q = Quantity
 del _ureg
 
 # to avoid redundantly reporting bad units
 _undefined_units = {}
+
 
 def validate_unit(unit):
     """
@@ -48,7 +50,9 @@ def validate_unit(unit):
     return None
 
 
-def magnitude(value, units=None):
+def magnitude(
+    value: pint.Quantity | float, units: pint.Unit | str | None = None
+) -> float:
     """
     Return the magnitude of ``value``. If ``value`` is a ``pint.Quantity`` and
     ``units`` is not None, check that ``value`` has the expected units and
@@ -59,11 +63,11 @@ def magnitude(value, units=None):
     :param units: (None or pint.Unit) the expected units
     :return: the magnitude of `value`
     """
-    if isinstance(value, ureg.Quantity):
+    if isinstance(value, Quantity):
         # if optional units are provided, validate them
-        if units:
+        if units is not None:
             if not isinstance(units, pint.Unit):
-                units = ureg.Unit(units)
+                units = cast(pint.Unit, ureg.Unit(units))
             if value.units != units:
                 raise OpgeeException(f"magnitude: value {value} units are not {units}")
 

@@ -144,7 +144,7 @@ class Stream(AttributeMixin, XmlInstantiable):
     _extensions = {}
 
     _units = ureg.Unit("tonne/day")
-    
+
     tp: TemperaturePressure
 
     def __init__(
@@ -216,20 +216,21 @@ class Stream(AttributeMixin, XmlInstantiable):
 
         columns = ["phase", "component", "value", "units"]
 
-        items = [('T', self.tp.T),
-                 ('P', self.tp.P),
-                 ('API', self.API)]
+        items = [("T", self.tp.T), ("P", self.tp.P), ("API", self.API)]
 
-        tuples = [(no_phase, name, value.m, str(value.units))
-                    for name, value in items if value is not None and value.m != 0]
+        tuples = [
+            (no_phase, name, value.m, str(value.units))
+            for name, value in items
+            if value is not None and value.m != 0
+        ]
 
         extras = pd.DataFrame(data=tuples, columns=columns)
-        result = pd.concat([df, extras], axis='rows')
+        result = pd.concat([df, extras], axis="rows")
 
-        result['field'] = self.parent.name
-        result['stream'] = self.name
-        result['source'] = self.src_name
-        result['destination'] = self.dst_name
+        result["field"] = self.parent.name
+        result["stream"] = self.name
+        result["source"] = self.src_name
+        result["destination"] = self.dst_name
 
         col_order = ["field", "stream", "source", "destination"] + columns
         return result[col_order]
@@ -385,7 +386,7 @@ class Stream(AttributeMixin, XmlInstantiable):
         # TBD: Check that this comment remains true with updates to pint. (If not, update the code)
         # It's currently not possible to assign a Quantity to a DataFrame even if
         # the units match. It's magnitude must be extracted. We check the units first...
-        self.components.loc[name, phase] = magnitude(rate, units="tonne/day")
+        self.components.loc[name, phase] = magnitude(rate, unit_str="tonne/day")
         self.initialized = True
 
     def set_API(self, API):

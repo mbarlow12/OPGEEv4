@@ -1,0 +1,21 @@
+from .units import ureg
+from pint import Quantity
+
+AIR_DENSITY_RATIO: Quantity = ureg.Quantity(0.0749, "lb/ft**3")
+AIR_ELEVATION_CORR: Quantity = ureg.Quantity(0.24, "btu/(lb*delta_degF)")
+AMB_AIR_DENSITY: Quantity = ureg.Quantity(0.001225, "kg/m**3")
+DIESEL_LHV: Quantity = ureg.Quantity(128450, "btu/gal")
+GRAVITATIONAL_ACCELERATION: Quantity = ureg.Quantity(9.8, "m/second**2")
+GRAVITATIONAL_CONSTANT: Quantity = ureg.Quantity(32.2, "(lb*ft)/(lbf*s**2)")
+LNG_TEMP: Quantity = ureg.Quantity(-260, "degF")
+MOL_PER_SCF: Quantity = ureg.Quantity(1.1953, "mol/scf")
+NG_HEATING_VALUE: Quantity = ureg.Quantity(935.5, "btu/scf")
+PETROCOKE_HEATING_VALUE: Quantity = ureg.Quantity(26949429, "btu/tonne")
+RESIDUAL_OIL_LHV: Quantity = ureg.Quantity(140352.522201194, "btu/gal")
+RESIDUAL_OIL_DENSITY: Quantity = ureg.Quantity(3752, "g/gal")
+STD_PRESSURE: Quantity = ureg.Quantity(14.676, "psia")
+STD_TEMPERATURE: Quantity = ureg.Quantity(60.0, "degF")
+TONNE_TO_BBL: Quantity = ureg.Quantity(7.33, "bbl_oil/tonne")
+UNIVERSAL_GAS_CONSTANTS: Quantity = ureg.Quantity(8.31446261815324, "joule/mol/kelvin")
+WATER_FVF: Quantity = ureg.Quantity(1, "dimensionless")
+DAYS_PER_YEAR: Quantity = ureg.Quantity(365.0, "day/year")

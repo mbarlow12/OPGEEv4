@@ -6,25 +6,15 @@
 #
 import re
 
-from .config import getParamAsList
-from .container import Container
-from .common import elt_name, OpgeeObject
 from .emissions import Emissions
 from .error import OpgeeException
 from .field import Field
 from .log import getLogger
-from .utils import getBooleanXML
 
 _logger = getLogger(__name__)
 
 
-class Group(OpgeeObject):
-    def __init__(self, elt):
-        self.is_regex = getBooleanXML(elt.attrib.get('regex', 0))
-        self.text = elt.text
-
-
-class Analysis(Container):
+class Analysis:
     """
     Describes a single `Analysis`, which can contain multiple `Fields`, including
     several attributes common to an analysis, including:
@@ -39,32 +29,36 @@ class Analysis(Container):
 
     See also :doc:`OPGEE XML documentation <opgee-xml>`
     """
-    def __init__(self, name, parent=None, attr_dict=None, field_names=None, groups=None):
+
+    def __init__(
+        self, name, parent=None, attr_dict=None, field_names=None, groups=None
+    ):
         super().__init__(name, attr_dict=attr_dict, parent=parent)
-        self.check_attr_constraints(self.attr_dict)
 
         if not parent:
-            raise OpgeeException("Tried to create Analysis without specifying parent (Model)")
+            raise OpgeeException(
+                "Tried to create Analysis without specifying parent (Model)"
+            )
 
         self.model = model = parent
 
         # self.field_dict = None
-        self._field_names = field_names     # may be extended in add_children()
+        self._field_names = field_names  # may be extended in add_children()
         self.groups = [] if groups is None else groups
 
         self.fn_unit = self.attr("functional_unit")
         self.boundary = self.attr("boundary")
 
         # Create validation sets from system.cfg to avoid hard-coding these
-        self.functional_units = set(getParamAsList('OPGEE.FunctionalUnits'))
+        self.functional_units = set(getParamAsList("OPGEE.FunctionalUnits"))
 
         # This is set in use_GWP() below to a pandas Series holding the current
         # values in use, indexed by gas name.
         self.gwp = None
 
         # Use the GWP years and version specified in XML
-        gwp_horizon = self.attr('GWP_horizon')
-        gwp_version = self.attr('GWP_version')
+        gwp_horizon = self.attr("GWP_horizon")
+        gwp_version = self.attr("GWP_version")
 
         self.use_GWP(gwp_horizon, gwp_version)
 
@@ -75,10 +69,16 @@ class Analysis(Container):
             text = group.text
             if group.is_regex:
                 prog = re.compile(text)
-                matches = [field for field in model.fields() for
-                           name in field.group_names if prog.match(name)]
+                matches = [
+                    field
+                    for field in model.fields()
+                    for name in field.group_names
+                    if prog.match(name)
+                ]
             else:
-                matches = [field for field in model.fields() if text in field.group_names]
+                matches = [
+                    field for field in model.fields() if text in field.group_names
+                ]
 
             fields.extend(matches)
             self._field_names.extend([field.name for field in matches])
@@ -97,7 +97,6 @@ class Analysis(Container):
         # Use list comprehension rather than set.intersection to maintain original order
         self._field_names = [name for name in self._field_names if name in names]
 
-
     def get_field(self, name, raiseError=True) -> Field:
         """
         Find a `Field` by name in an `Analysis`.
@@ -108,7 +107,9 @@ class Analysis(Container):
         """
         field = self.field_dict.get(name)
         if field is None and raiseError:
-            raise OpgeeException(f"Field named '{name}' is not defined in Analysis '{self.name}'")
+            raise OpgeeException(
+                f"Field named '{name}' is not defined in Analysis '{self.name}'"
+            )
 
         return field
 
@@ -118,7 +119,9 @@ class Analysis(Container):
 
         :return: (iterator) of Field instances
         """
-        flds = [f for f in self.field_dict.values() if f.is_enabled()]  # N.B. returns an iterator
+        flds = [
+            f for f in self.field_dict.values() if f.is_enabled()
+        ]  # N.B. returns an iterator
         return flds
 
     def field_names(self, enabled_only=True):
@@ -157,36 +160,21 @@ class Analysis(Container):
 
         known_horizons = model.gwp_horizons
         if gwp_horizon not in known_horizons:
-            raise OpgeeException(f"GWP years must be one of {known_horizons}; value given was {gwp_horizon}")
+            raise OpgeeException(
+                f"GWP years must be one of {known_horizons}; value given was {gwp_horizon}"
+            )
 
         known_versions = model.gwp_versions
         if gwp_version not in known_versions:
-            raise OpgeeException(f"GWP version must be one of {known_versions}; value given was {gwp_version}")
+            raise OpgeeException(
+                f"GWP version must be one of {known_versions}; value given was {gwp_version}"
+            )
 
         df = model.gwp_dict[gwp_horizon]
         gwp = df[gwp_version]
-        self.gwp = gwp.reindex(index=Emissions.emissions)  # keep them in the same order for consistency
-
-    # def GWP(self, gas):
-    #     """
-    #     Return the GWP for the given gas, using the model's settings for GWP time horizon and
-    #     the version of GWPs to use.
-    #
-    #     :param gas: (str) a gas for which a GWP has been defined. Current list is CO2, CO, CH4, N2O, and VOC.
-    #     :return: (int) GWP value
-    #     """
-    #     hydrocarbons = Stream._hydrocarbons
-    #     carbon_number = gas
-    #     gas = carbon_to_molecule(gas) if gas in hydrocarbons else gas
-    #     non_methane_hydrocarbons = Stream._non_methane_hydrocarbons
-    #
-    #     if carbon_number in non_methane_hydrocarbons:
-    #         result = self.gwp["VOC"]
-    #     elif gas in self.gwp:
-    #         result = self.gwp[gas]
-    #     else:
-    #         result = 0
-    #     return result
+        self.gwp = gwp.reindex(
+            index=Emissions.emissions
+        )  # keep them in the same order for consistency
 
     def run(self, compute_ci=True):
         """
@@ -227,8 +215,16 @@ class Analysis(Container):
         """
         name = elt_name(elt)
         attr_dict = cls.instantiate_attrs(elt)
-        field_names = field_names or [elt_name(node) for node in elt.findall('FieldRef')]
-        groups = [Group(node) for node in elt.findall('Group')]
+        field_names = field_names or [
+            elt_name(node) for node in elt.findall("FieldRef")
+        ]
+        groups = [Group(node) for node in elt.findall("Group")]
 
-        obj = Analysis(name, attr_dict=attr_dict, parent=parent, field_names=field_names, groups=groups)
+        obj = Analysis(
+            name,
+            attr_dict=attr_dict,
+            parent=parent,
+            field_names=field_names,
+            groups=groups,
+        )
         return obj
