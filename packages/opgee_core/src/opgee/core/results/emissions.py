@@ -1,8 +1,9 @@
 from collections.abc import Iterable
-from typing import Final, Literal, overload
+from typing import Final, Literal
 
 from pandas import DataFrame, Series
-from opgee.core.emissions import EmissionsCategory, GHGEmitter, Emissions, GASES
+
+from opgee.core.emissions import GASES, Emissions, GHGEmitter
 
 GHG: Final[str] = "GHG"
 
