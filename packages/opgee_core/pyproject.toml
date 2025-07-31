@@ -6,7 +6,10 @@ readme = "README.md"
 authors = [{ name = "Michael Barlow", email = "mbarlow@rmi.org" }]
 requires-python = ">=3.10"
 dependencies = [
+    "networkx>=3.5",
+    "pandas>=2.3.1",
     "pint>=0.24.4",
+    "pint-pandas>=0.6.2",
     "pluggy>=1.5.0",
 ]
 

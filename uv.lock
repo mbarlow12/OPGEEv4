@@ -1093,13 +1093,19 @@ name = "opgee-core"
 version = "0.1.0"
 source = { editable = "packages/opgee_core" }
 dependencies = [
+    { name = "networkx" },
+    { name = "pandas" },
     { name = "pint" },
+    { name = "pint-pandas" },
     { name = "pluggy" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "networkx", specifier = ">=3.5" },
+    { name = "pandas", specifier = ">=2.3.1" },
     { name = "pint", specifier = ">=0.24.4" },
+    { name = "pint-pandas", specifier = ">=0.6.2" },
     { name = "pluggy", specifier = ">=1.5.0" },
 ]
 

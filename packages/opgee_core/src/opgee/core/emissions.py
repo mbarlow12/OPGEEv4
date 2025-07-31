@@ -6,11 +6,12 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
+from enum import StrEnum
+from typing import TypeGuard
 import pandas as pd
 import pint
 
 from .units import magnitude, ureg
-from .common import OpgeeObject
 from .error import OpgeeException
 from .stream import Stream
 
@@ -30,6 +31,35 @@ EM_CO2 = "CO2"
 EM_GHG = "GHG"
 
 
+class EmissionsCategory(StrEnum):
+    COMBUSTION = "combustion"
+    LAND_USE = "land_use"
+    VENTING = "venting"
+    FLARING = "flaring"
+    FUGITIVES = "fugitives"
+    OTHER = "other"
+
+
+class EmissionsGas(StrEnum):
+    VOC = EM_VOC
+    CO = EM_CO
+    CH4 = EM_CH4
+    C1 = EM_C1
+    N2O = EM_N2O
+    CO2 = EM_CO2
+
+
+GASES = tuple(gas.value for gas in EmissionsGas)
+EMISSIONS_INDEX = tuple((*GASES, EM_GHG))
+CATEGORIES = set(ecat.value for ecat in EmissionsCategory)
+
+
+def _is_emissions_category(
+    category: str | EmissionsCategory,
+) -> TypeGuard[EmissionsCategory]:
+    return category in EmissionsCategory
+
+
 class EmissionsError(OpgeeException):
     def __init__(self, func_name, category, gas):
         self.func_name = func_name
@@ -44,7 +74,7 @@ class EmissionsError(OpgeeException):
             return f"{self.func_name}: Unrecognized gas '{self.gas}'"
 
 
-class Emissions(OpgeeObject):
+class Emissions:
     """
     Emissions is an object wrapper around a pandas.Series holding emission flow
     rates for a pre-defined set of substances, defined in ``Emissions.emissions``.
@@ -72,6 +102,8 @@ class Emissions(OpgeeObject):
 
     _units = ureg.Unit("tonne/day")
 
+    data: pd.DataFrame
+
     @classmethod
     def create_emissions_matrix(cls):
         """
@@ -80,7 +112,10 @@ class Emissions(OpgeeObject):
         :return: (pandas.DataFrame) Zero-filled emissions DataFrame
         """
         return pd.DataFrame(
-            data=0.0, index=cls.indices, columns=cls.categories, dtype="pint[tonne/day]"
+            data=0.0,
+            index=pd.Index(EMISSIONS_INDEX),
+            columns=pd.Index(CATEGORIES),
+            dtype="pint[tonne/day]",
         )
 
     def __init__(self):

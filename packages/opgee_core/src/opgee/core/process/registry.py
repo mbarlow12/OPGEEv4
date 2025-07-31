@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 class ProcessRegistry(object):
     _instance = None
 
-    def __new__(cls):
+    def __new__(cls, hook):
         if cls._instance is None:
             cls._self = super().__new__(cls)
         return cls._self
@@ -23,4 +23,4 @@ class ProcessRegistry(object):
         self._classes.add(proc)
 
     def register_procs(self):
-        self.procs = self.hook.opgee_register_process()
+        self.procs = self.hook.opgee_register_process_classes(registry=self)

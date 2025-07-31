@@ -6,128 +6,26 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
+from dataclasses import make_dataclass
 from typing import Union, Optional
 
 import pandas as pd
 import pint
 
-from .units import ureg, magnitude
-from .combine_streams import combine_streams
-from .emissions import Emissions, EM_COMBUSTION
-from .energy import EN_ELECTRICITY, Energy
-from .error import (
+from opgee.core.units import ureg, magnitude
+from opgee.core.emissions import Emissions, EM_COMBUSTION
+from opgee.core.energy import EN_ELECTRICITY, Energy
+from opgee.core.error import (
     OpgeeException,
     AbstractMethodError,
     OpgeeIterationConverged,
     ModelValidationError,
 )
-from .import_export import ImportExport
-from .log import getLogger
-from .stream import Stream
+from opgee.core.import_export import ImportExport
+from opgee.core.log import getLogger
+from opgee.core.stream import Stream
 
 _logger = getLogger(__name__)
-
-
-def get_subclasses(cls):
-    for subclass in cls.__subclasses__():
-        yield from get_subclasses(subclass)
-        yield subclass
-
-
-def _subclass_dict(superclass):
-    """
-    Return a dictionary of all defined subclasses of `superclass`, keyed by name.
-    Does not descent beyond immediate subclasses.
-
-    :return: (dict) subclasses keyed by name
-    """
-    allow_redef = getParamAsBoolean(
-        "OPGEE.AllowProcessRedefinition"
-    )  # DOCUMENT this feature
-
-    d = {}
-
-    for cls in get_subclasses(superclass):
-        name = cls.__name__
-        prior = d.get(name)
-
-        if prior is None:
-            d[name] = cls
-        else:
-            if prior != cls:
-                msg = f"Class '{name}' is defined by both {cls} and {prior}"
-                if allow_redef:
-                    print(msg)
-                else:
-                    raise OpgeeException(msg)
-
-    return d
-
-
-#
-# Cache of known subclasses of Aggregator and Process
-#
-_Subclass_dict: Optional[dict] = None
-
-
-def decache_subclasses():
-    global _Subclass_dict
-    _Subclass_dict = None
-
-
-def _get_subclass(cls, subclass_name, reload=False):
-    """
-    Return the class for `subclass_name`, which must be a known subclass of `cls`.
-
-    :param cls: (type) the class (Process or Aggregator) for which we're finding a subclass.
-    :param subclass_name: (str) the name of the subclass
-    :param reload: (bool) if True, reload the cache of subclasses of `cls`.
-    :return: (type) the class object
-    :raises: OpgeeException if `cls` is not Process or Aggregator or if the subclass is not known.
-    """
-    if reload or _Subclass_dict is None:
-        reload_subclass_dict()
-
-    try:
-        d = _Subclass_dict[cls]
-    except KeyError:
-        classes = list(_Subclass_dict.keys())
-        raise OpgeeException(f"_get_subclass: cls {cls} must be one of {classes}")
-
-    try:
-        return d[subclass_name]
-    except KeyError:
-        raise OpgeeException(f"Class {subclass_name} is not a known subclass of {cls}")
-
-
-# DOCUMENT this feature
-class IntermediateValues(OpgeeObject):
-    """
-    Stores "interesting" intermediate values from processes for display in GUI.
-    """
-
-    def __init__(self):
-        self.data = pd.DataFrame(columns=("value", "unit", "desc"))
-
-    def store(self, name, value, unit=None, desc=None):
-        # Strip magnitude and unit from Quantity objects
-        if isinstance(value, pint.Quantity):
-            unit = str(value.u)
-            value = value.m
-
-        self.data.loc[name, ("value", "unit", "desc")] = (value, unit or "", desc or "")
-
-    def get(self, name):
-        """
-        Return the record associated with `name`.
-
-        :param name: (str) the name of an intermediate value
-        :return: (pd.Series) the row in the DataFrame of intermediate values for this process.
-        """
-        try:
-            return self.data.loc[name]
-        except KeyError:
-            raise OpgeeException(f"An intermediate value for '{name}' was not found")
 
 
 def run_corr_eqns(x1, x2, x3, x4, x5, coef_df):
@@ -170,7 +68,7 @@ def run_corr_eqns(x1, x2, x3, x4, x5, coef_df):
     return result
 
 
-class Process(AttributeMixin, XmlInstantiable):
+class Process:
     """
     The "leaf" node in the container/process hierarchy. ``Process`` is an abstract superclass: actual
     runnable Process instances must be of subclasses of ``Process``, defined either in `opgee/processes/*.py`
@@ -216,12 +114,6 @@ class Process(AttributeMixin, XmlInstantiable):
         boundary=None,
     ):
         name = name or self.__class__.__name__
-
-        AttributeMixin.__init__(self, attr_dict=attr_dict)
-        XmlInstantiable.__init__(self, name, parent=parent)
-
-        self.model = self.find_container("Model")
-        self.field = field = self.find_container("Field")
 
         # One or more of these are used by most processes
         self.gas = field.gas
@@ -1049,200 +941,3 @@ class Process(AttributeMixin, XmlInstantiable):
                 return False
 
         return True
-
-    @classmethod
-    def from_xml(cls, elt, parent=None):
-        """
-        Instantiate an instance from an XML element
-
-        :param elt: (etree.Element) representing a <Process> element
-        :param parent: (opgee.Analysis) the Analysis containing the new Process
-        :return: (Process) instance populated from XML
-        """
-        name = elt_name(elt)
-
-        if name == "test_proc":
-            pass
-
-        a = elt.attrib
-        desc = a.get("desc")
-        impute_start = a.get("impute-start")
-        cycle_start = a.get("cycle-start")
-        boundary = a.get("boundary")  # optional
-
-        classname = a["class"]  # required by XML schema
-        subclass = _get_subclass(Process, classname)
-        attr_dict = subclass.instantiate_attrs(elt, is_process=True)
-
-        proc = subclass(
-            name,
-            attr_dict=attr_dict,
-            parent=parent,
-            desc=desc,
-            cycle_start=cycle_start,
-            impute_start=impute_start,
-            boundary=boundary,
-        )
-
-        proc.set_enabled(a.get("enabled", "1"))
-        proc.set_extend(a.get("extend", "0"))
-        proc.set_run_after(getBooleanXML(a.get("after", "0")))
-
-        return proc
-
-
-class Boundary(Process):
-    """
-    Used to define system boundaries in XML, e.g., <Process class="Boundary" name="Production">
-    """
-
-    def __init__(self, *args, **kwargs):
-        boundary = kwargs.get("boundary")
-        if not boundary:
-            raise OpgeeException(
-                f"XML elements of class 'Boundary' must define a 'boundary' attribute"
-            )
-
-        name = f"{boundary}Boundary"  # e.g., "ProductionBoundary"
-        super().__init__(name, **kwargs)
-
-    def is_chosen_boundary(self, analysis):
-        proc = self.field.boundary_process(analysis)
-        return proc == self
-
-    def set_enabled(self, value):
-        super().set_enabled(value)
-
-        if not value:
-            for s in self.inputs:
-                s.set_enabled(False)
-
-            for s in self.outputs:
-                s.set_enabled(False)
-
-    def run(self, analysis):
-        is_chosen_boundary = self.is_chosen_boundary(analysis)
-        # TODO:
-        # There's a bug in the handling of the streams at boundaries. Basically, if we select the Distribution Boundary, there's no stream
-        # containing PC or oil connected (those are only inputs to the ProductionBoundry). Thus the exports are off
-        # and can lead to divide by 0 errors.
-        #
-        # How would we allow for accurate analysis at the various boundaries?
-        # Option 1: remove "Boundary" processes from the graph. The idea of a boundary would instead be a partition of the underlying
-        # graph. This might present better accuracy and a simpler interface/xml structure.
-        #
-        # Option 2: ensure that all output from intermediate boundaries is carried to the selected boundary. I don't know how we would
-        # achieve this without double counting a lot of stream contents. Perhaps we could add a "remaining" output stream to all boundaries.
-        # If an input stream doesn't have a commensurate output, we'd add its flow rates to the "remaining" stream. All boundaries would be
-        # connected to each other by the "remaining" stream, ensuring that material flows are represented at any/all boundaries.
-
-        # Process boundary if only if the chosen boundary has not been processed
-        if self.field.get_process_data("is_chosen_boundary_processed") is None:
-            # If we're an intermediate boundary, copy all inputs to outputs based on contents
-            if not is_chosen_boundary:
-                for in_stream in self.inputs:
-                    if in_stream.is_uninitialized():
-                        break
-                    contents = in_stream.contents
-                    if len(contents) != 1:
-                        raise ModelValidationError(
-                            f"Streams to and from boundaries must have only a "
-                            f"single Content declaration; {self} inputs are {contents}"
-                        )
-
-                    # If not exactly one stream that declares the same contents, raises error
-                    out_stream = self.find_output_stream(contents[0], raiseError=False)
-
-                    # TODO: Fix this test
-                    # if out_stream is None:
-                    #     raise ModelValidationError(f"Missing output stream for '{contents[0]}' in {self} boundary")
-
-                    if out_stream:
-                        out_stream.copy_flow_rates_from(in_stream)
-
-            # Hit the user choose boundary
-            else:
-                combined_streams = combine_streams(self.inputs)
-
-                # calculate gas + LPG energy flow rate
-                exported_gas_LPG_LHV = self.field.gas.energy_flow_rate(combined_streams)
-
-                # calculate oil energy flow rate (TODO: this can be replaced by composite oil)
-                exported_oil_LHV = (
-                    combined_streams.liquid_flow_rate("oil")
-                    * self.field.oil.mass_energy_density()
-                )
-
-                # calculate PC energy flow rate
-                exported_PC_LHV = combined_streams.liquid_flow_rate(
-                    "PC"
-                ) * self.model.const("petrocoke-heating-value")
-
-                exported_prod_LHV = (
-                    exported_gas_LPG_LHV + exported_oil_LHV + exported_PC_LHV
-                )
-
-                self.field.save_process_data(exported_prod_LHV=exported_prod_LHV)
-                self.field.save_process_data(boundary_API=combined_streams.API)
-
-                if exported_prod_LHV.m != 0:
-                    self.field.save_process_data(is_chosen_boundary_processed=True)
-
-
-class Reservoir(Process):
-    """
-    Reservoir represents natural resources such as oil and gas reservoirs, and water sources
-    in the subsurface. Each Field object holds a single Reservoir instance.
-    """
-
-    def __init__(self, parent=None):
-        super().__init__("Reservoir", parent=parent, desc="The Reservoir")
-
-    def run(self, analysis):
-        self.print_running_msg()
-
-
-#
-# This class is defined here rather than in container.py to avoid import loops and to
-# allow the reference to Aggregator above.
-#
-class Aggregator(Container):
-    def __init__(self, name, attr_dict=None, parent=None):
-        super().__init__(name, attr_dict=attr_dict, parent=parent)
-
-    def add_children(self, aggs=None, procs=None):
-        super().add_children(aggs=aggs, procs=procs)
-
-    @classmethod
-    def from_xml(cls, elt, parent=None):
-        """
-        Instantiate an instance from an XML element
-
-        :param elt: (etree.Element) representing a <Aggregator> element
-        :param parent: (XmlInstantiable) the parent in the Model object
-            hierarchy for the object created here
-        :return: (Aggregator) instance populated from XML
-        """
-        name = elt_name(elt)
-        attr_dict = cls.instantiate_attrs(elt)
-        obj = cls(name, attr_dict=attr_dict, parent=parent)
-
-        aggs = instantiate_subelts(elt, Aggregator, parent=obj)
-        procs = instantiate_subelts(elt, Process, parent=obj)
-
-        obj.add_children(aggs=aggs, procs=procs)
-
-        # Aggregators are disabled if they are empty or contain only disabled aggs & procs
-        enabled = not all([not child.is_enabled() for child in aggs + procs])
-        obj.set_enabled(enabled)
-
-        return obj
-
-
-def reload_subclass_dict():
-    global _Subclass_dict
-
-    _Subclass_dict = {
-        Aggregator: _subclass_dict(Aggregator),
-        Process: _subclass_dict(Process),
-    }
