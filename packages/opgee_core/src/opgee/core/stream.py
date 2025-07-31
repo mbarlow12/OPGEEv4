@@ -8,67 +8,25 @@
 #
 import re
 from copy import copy
-from enum import Enum
-from typing import Final
 
-import numpy as np
 import pandas as pd
 import pint
 import pint_pandas
 
-from .units import ureg, magnitude
-from .error import OpgeeException, ModelValidationError
-from .fluid_dynamics import TemperaturePressure
-from .log import getLogger
-from .table_manager import TableManager
+from opgee.core.substances import PUBCHEM_CIDS
+from opgee.core.units import ureg, magnitude
+from opgee.core.error import OpgeeException, ModelValidationError
+from opgee.core.fluid_dynamics import TemperaturePressure
+from opgee.core.log import getLogger
+from opgee.core.thermodynamics.chemical_info import ChemicalInfo
 
 _logger = getLogger(__name__)
-
-
-class Phase(Enum):
-    SOLID = "solid"
-    LIQUID = "liquid"
-    GAS = "gas"
-
 
 # constants to use instead of strings
 PHASE_SOLID = "solid"
 PHASE_LIQUID = "liquid"
 PHASE_GAS = "gas"
 
-PUBCHEM_CIDS: Final[tuple[tuple[str, int], ...]] = (
-    ("C1", 297),
-    ("C2", 6324),
-    ("C3", 6334),
-    ("C4", 7843),
-    ("C5", 8003),
-    ("C6", 8058),
-    ("C7", 8900),
-    ("C8", 356),
-    ("C9", 8141),
-    ("C10", 15600),
-    ("C11", 14257),
-    ("C12", 8182),
-    ("C13", 12388),
-    ("C14", 12389),
-    ("C15", 12391),
-    ("C16", 11006),
-    ("C17", 12398),
-    ("C18", 11635),
-    ("C19", 12401),
-    ("C20", 8222),
-    ("C21", 12403),
-    ("C22", 12405),
-    ("C23", 12534),
-    ("C24", 12592),
-    ("C25", 12406),
-    ("C26", 12407),
-    ("C27", 11636),
-    ("C28", 12408),
-    ("C29", 12409),
-    ("C30", 12535),
-)
-HYDROCARBONS = tuple(cnum for cnum, _ in PUBCHEM_CIDS)
 # Compile the patterns at load time for better performance
 _carbon_number_prog = re.compile(r"^C(\d+)$")
 _hydrocarbon_prog = re.compile(r"^(C\d+)H(\d+)$")
@@ -110,10 +68,6 @@ def carbon_to_molecule(c_name):
     return molecule
 
 
-PUBCHEM_CID_DF: Final[pd.DataFrame] = pd.DataFrame(
-    data=np.array(tuple(zip(*PUBCHEM_CIDS))),
-    columns=pd.Index("carbon_number", "PubChem"),
-)
 
 
 #
@@ -675,9 +629,6 @@ class Stream:
         :param stream: (Stream) a Stream with combustible components
         :return: (pint.Quantity(unit="tonne/day")) the mass rate of CO2 from combustion.
         """
-        from .thermodynamics import (
-            ChemicalInfo,
-        )  # avoids circular imports (stream <-> thermodynamics)
 
         component_MW = ChemicalInfo.mol_weights()
 

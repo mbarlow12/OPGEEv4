@@ -14,47 +14,52 @@
 .. Copyright (c) 2016-2022 Richard Plevin
    See the https://opensource.org/licenses/MIT for license details.
 """
+
 import logging
 import os
+from pathlib import Path
 
-from .config import getParam, getParamAsBoolean, configLoaded
+PKGNAME = __name__.split(".")[0]
 
-PKGNAME = __name__.split('.')[0]
+_Loggers: dict[
+    str, logging.Logger
+] = {}  # loggers created herein, keyed by module or package name
+_LogLevels: dict[str, str] = {}  # log levels keyed by module or package name
+_verbose = False  # whether _debug() msgs should print
 
-_Loggers    = {}      # loggers created herein, keyed by module or package name
-_LogLevels  = None    # log levels keyed by module or package name
-_verbose    = False   # whether _debug() msgs should print
 
 # Can't use this module to debug itself
 def _debug(msg):
     if _verbose:
         print(msg)
 
+
 # Note: 'traitlets' library uses root logger, which we don't want to enable here
 def _createPkgLogger(dotspec):
-    pkgName = dotspec.split('.')[0]
+    pkgName = dotspec.split(".")[0]
 
     if pkgName and pkgName not in _Loggers:
         _debug('_createPkgLogger("%s") from %s' % (pkgName, dotspec))
         logger = getLogger(pkgName)
         logger.propagate = False
 
-def getLogger(name):
-    '''
+
+def getLogger(name: str) -> logging.Logger:
+    """
     Register a logger, which will be set up after the configuration
     file is read.
 
     :param name: the name of the logger, conventionally passed as __name__.
     :return: a logging logger instance
-    '''
+    """
     _debug('getLogger("%s")' % name)
 
     try:
         logger = _Loggers[name]
 
     except KeyError:
-        logger = logging.getLogger(name)
-        logger.propagate = True             # set to False for explicitly named modules
+        logger: logging.Logger = logging.getLogger(name)
+        logger.propagate = True  # set to False for explicitly named modules
         _Loggers[name] = logger
 
     _configureLogger(name)
@@ -62,7 +67,8 @@ def getLogger(name):
 
     return logger
 
-def parseLevels(levelStr=None):
+
+def parseLevels(levelStr: str) -> dict[str, str]:
     """
     Get log levels for pygcam as a whole or for indicated modules individually.
     Modules starting with a '.' are interpreted to be in pygcam, i.e., ".config"
@@ -74,21 +80,20 @@ def parseLevels(levelStr=None):
         If levelStr is None, the value of the variable 'OPGEE.LogLevel' is used.
     :return: (dict) of log levels, keyed by module names
     """
-    def splitAndStrip(s, delim):
+
+    def splitAndStrip(s: str, delim: str):
         items = [item.strip() for item in s.split(delim)]
         return items
 
-    result = {}
+    result: dict[str, str] = {}
 
-    levelStr = levelStr or getParam('OPGEE.LogLevel')
-
-    levels = splitAndStrip(levelStr, ',')
+    levels = splitAndStrip(levelStr, ",")
     for level in levels:
-        if ':' in level:
-            module, lvl = splitAndStrip(level, ':')
+        if ":" in level:
+            module, lvl = splitAndStrip(level, ":")
             # if '.' not in module or module[0] == '.':
             #     module = PKGNAME + '.' + (module[1:] if module[0] == '.' else module)
-            if module[0] == '.':
+            if module[0] == ".":
                 module = PKGNAME + module
         else:
             module = PKGNAME
@@ -97,6 +102,7 @@ def parseLevels(levelStr=None):
         result[module] = lvl.upper()
 
     return result
+
 
 #
 # Copied here from utils.py to avoid an import loop
@@ -113,18 +119,33 @@ def _mkdirs(newdir, mode=0o770):
         if e.errno != EEXIST:
             raise
 
-def _addHandler(logger, formatStr, logFile=None):
+
+def _addHandler(logger: logging.Logger, formatStr: str, logFile: Path | str | None=None):
     if logFile:
         _mkdirs(os.path.dirname(logFile))
 
-    handler = logging.FileHandler(logFile, mode='a') if logFile else logging.StreamHandler()
+    handler = (
+        logging.FileHandler(logFile, mode="a") if logFile else logging.StreamHandler()
+    )
     handler.setFormatter(logging.Formatter(formatStr))
     logger.addHandler(handler)
-    _debug("Added %s log handler for '%s'" % ('file' if logFile else 'console', logger.name))
+    _debug(
+        "Added %s log handler for '%s'"
+        % ("file" if logFile else "console", logger.name)
+    )
 
-def _configureLogger(name, force=False):
+
+def _configureLogger(
+    name: str,
+    logConsole: bool = False,
+    consoleFormat: str = "%%(levelname)s %%(name)s: %%(message)s",
+    log_level: str = "WARN",
+    logFile: Path | str | None = None,
+    fileFormat: str = "%%(asctime)s %%(levelname)s %%(name)s:%%(lineno)d %%(message)s",
+    force: bool =False
+):
     try:
-        logger = _Loggers[name]
+        logger: logging.Logger = _Loggers[name]
     except KeyError:
         # add unknown logger names
         logger = getLogger(name)  # N.B. adds logger to _Loggers dict
@@ -135,8 +156,8 @@ def _configureLogger(name, force=False):
         return
 
     global _LogLevels
-    if not _LogLevels:
-        setLogLevels(getParam('OPGEE.LogLevel') or 'WARN')
+    if len(_LogLevels) == 0:
+        setLogLevels(log_level)
 
     if name in _LogLevels:
         level = _LogLevels[name]
@@ -146,7 +167,7 @@ def _configureLogger(name, force=False):
         parent = logger.parent
         # Handle case of user plugins, which aren't in pygcam package
         # but we'd like them to default to the 'pygcam' loglevel
-        if isinstance(parent, logging.RootLogger):
+        if isinstance(parent, logging.RootLogger) or parent is None:
             parent = getLogger(PKGNAME)
 
         logger.setLevel(parent.level)
@@ -155,45 +176,35 @@ def _configureLogger(name, force=False):
 
     # flush and remove all handlers
     _debug("Flushing and removing all handlers for %s" % logger)
-    handlers = logger.handlers.copy() # avoid iterating over the list we're removing items from
+    handlers = (
+        logger.handlers.copy()
+    )  # avoid iterating over the list we're removing items from
     for handler in handlers:
         if not isinstance(handler, logging.NullHandler):
             handler.flush()
         logger.removeHandler(handler)
 
-    logConsole = getParamAsBoolean('OPGEE.LogConsole')
     if logConsole:
-        consoleFormat = getParam('OPGEE.LogConsoleFormat')
         _addHandler(logger, consoleFormat)
 
-    logFile = getParam('OPGEE.LogFile')
-    if logFile:
-        fileFormat = getParam('OPGEE.LogFileFormat')
+    if logFile is not None:
         _addHandler(logger, fileFormat, logFile=logFile)
 
     if not logger.handlers:
         logger.addHandler(logging.NullHandler())
         _debug("Added NullHandler to root logger")
 
-def setLogFile(pathname, remove_old_file=False):
-    from .config import setParam
-    if remove_old_file and os.path.isfile(pathname):
-        os.remove(pathname)
-
-    setParam('OPGEE.LogFile', pathname)
-    configureLogs(force=True)
-
 
 def configureLogs(force=False):
-    '''
+    """
     Do basicConfig setup and configure package loggers based on the information
     in the config instance given. Unless force == True, loggers with handlers will
     not be reconfigured.
 
     :param force: (bool) if True, reconfigure the logs even if already configured.
     :return: none
-    '''
-    if not configLoaded() or not _Loggers:
+    """
+    if not _Loggers:
         return
 
     # First configure explicitly named modules
@@ -207,8 +218,9 @@ def configureLogs(force=False):
         if name not in explicit:
             _configureLogger(name, force=force)
 
-def setLogLevels(levelStr):
-    '''
+
+def setLogLevels(levelStr: str):
+    """
     Set the logging level string, which can define levels for packages and/or modules.
     Must call configureLogs(force=True) afterwards. Level string can be a single level,
     which is used as the default for all modules, or module-specific settings, e.g.,
@@ -216,6 +228,6 @@ def setLogLevels(levelStr):
 
     :param levelStr: (str) comma-delimited module:LEVEL pairs, or just a single LEVEL
     :return: none
-    '''
+    """
     global _LogLevels
     _LogLevels = parseLevels(levelStr)

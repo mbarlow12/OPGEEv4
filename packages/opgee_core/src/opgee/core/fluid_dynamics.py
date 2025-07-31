@@ -1,4 +1,5 @@
 import pint
+from opgee.core.units import ureg
 
 class TemperaturePressure:
     """
@@ -35,3 +36,8 @@ class TemperaturePressure:
 
     def copy_from(self, tp):
         self.set(T=tp.T, P=tp.P)
+
+# Standard temperature and pressure
+std_temperature = ureg.Quantity(60.0, "degF")
+std_pressure    = ureg.Quantity(14.676, "psia")
+STP = TemperaturePressure(std_temperature, std_pressure)

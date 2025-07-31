@@ -9,7 +9,6 @@
 import pandas as pd
 import pint
 
-from .common import OpgeeObject
 from .error import OpgeeException
 from .energy import (EN_CRUDE_OIL, EN_DIESEL, EN_ELECTRICITY, EN_NATURAL_GAS,
                      EN_NGL, EN_PETCOKE, EN_RESID, EN_UPG_PROC_GAS)
@@ -33,7 +32,7 @@ H2 = "H2"
 CO2_Flooding = "CO2 flooding"
 
 
-class ImportExport(OpgeeObject):
+class ImportExport:
     IMPORT = 'import'
     EXPORT = 'export'
     NET_IMPORTS = 'net imports'
