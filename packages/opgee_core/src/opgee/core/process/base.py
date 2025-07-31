@@ -6,14 +6,15 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
+from abc import abstractmethod
 from dataclasses import make_dataclass
-from typing import Union, Optional
+from typing import TypedDict, Union, Optional
 
 import pandas as pd
 import pint
 
 from opgee.core.units import ureg, magnitude
-from opgee.core.emissions import Emissions, EM_COMBUSTION
+from opgee.core.emissions import Emissions, EM_COMBUSTION, GHGEmitter
 from opgee.core.energy import EN_ELECTRICITY, Energy
 from opgee.core.error import (
     OpgeeException,
@@ -68,7 +69,12 @@ def run_corr_eqns(x1, x2, x3, x4, x5, coef_df):
     return result
 
 
-class Process:
+class StreamSpec(TypedDict):
+    required: tuple[str, ...]
+    optionsl: tuple[str, ...]
+
+
+class Process(GHGEmitter):
     """
     The "leaf" node in the container/process hierarchy. ``Process`` is an abstract superclass: actual
     runnable Process instances must be of subclasses of ``Process``, defined either in `opgee/processes/*.py`
@@ -102,6 +108,8 @@ class Process:
     # or redefine the methods required_inputs() / required_outputs()
     _required_inputs = []
     _required_outputs = []
+
+    emissions: Emissions
 
     def __init__(
         self,
@@ -810,6 +818,7 @@ class Process:
         """
         pass
 
+    @abstractmethod
     def run(self, analysis):
         """
         This method implements the behavior required of the Process subclass, when
@@ -843,16 +852,6 @@ class Process:
         """
         pass
 
-    #
-    # The next two methods are provided to allow Aggregator to call children() and
-    # run_children() without type checking. For Processes, these are just no-ops.
-    #
-    def children(self):
-        return []
-
-    def run_children(self, **kwargs):
-        pass
-
     def print_running_msg(self):
         _logger.debug(f"Running {type(self)} name='{self.name}'")
 
@@ -863,39 +862,6 @@ class Process:
 
         return self.attr("leak_rate")
 
-    def init_intermediate_results(self, names):
-        """
-
-        :param names:
-        :return:
-        """
-        self.intermediate_results = {name: (Energy(), Emissions()) for name in names}
-
-    def get_intermediate_results(self):
-        """
-        This method will be overridden in the water treatment subprocess
-
-        :return: A dictionary of energy and emission instances or None
-        """
-
-        return self.intermediate_results
-
-    def sum_intermediate_results(self):
-        """
-        Sum intermediate energy and emission results
-
-        :return:
-        """
-
-        if self.intermediate_results is None:
-            return
-
-        self.energy.reset()
-        self.emissions.reset()
-
-        for key, (energy, emission) in self.intermediate_results.items():
-            self.energy.add_rates_from(energy)
-            self.emissions.add_rates_from(emission)
 
     # DOCUMENT handling of user-defined processes not listed in process_EF table
     def get_process_EF(self):

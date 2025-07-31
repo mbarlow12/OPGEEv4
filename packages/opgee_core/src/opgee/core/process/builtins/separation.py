@@ -7,7 +7,7 @@
 # See LICENSE.txt for license details.
 #
 from ..combine_streams import combine_streams
-from ..common import TemperaturePressure
+from opgee.core.fluid_dynamics import TemperaturePressure
 from ..emissions import EM_FUGITIVES
 from ..log import getLogger
 from .._process import Process

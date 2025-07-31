@@ -8,26 +8,67 @@
 #
 import re
 from copy import copy
+from enum import Enum
+from typing import Final
 
+import numpy as np
 import pandas as pd
 import pint
 import pint_pandas
 
 from .units import ureg, magnitude
-from .attributes import AttributeMixin
-from .common import XmlInstantiable, elt_name, TemperaturePressure
 from .error import OpgeeException, ModelValidationError
+from .fluid_dynamics import TemperaturePressure
 from .log import getLogger
 from .table_manager import TableManager
-from .utils import getBooleanXML, coercible
 
 _logger = getLogger(__name__)
+
+
+class Phase(Enum):
+    SOLID = "solid"
+    LIQUID = "liquid"
+    GAS = "gas"
+
 
 # constants to use instead of strings
 PHASE_SOLID = "solid"
 PHASE_LIQUID = "liquid"
 PHASE_GAS = "gas"
 
+PUBCHEM_CIDS: Final[tuple[tuple[str, int], ...]] = (
+    ("C1", 297),
+    ("C2", 6324),
+    ("C3", 6334),
+    ("C4", 7843),
+    ("C5", 8003),
+    ("C6", 8058),
+    ("C7", 8900),
+    ("C8", 356),
+    ("C9", 8141),
+    ("C10", 15600),
+    ("C11", 14257),
+    ("C12", 8182),
+    ("C13", 12388),
+    ("C14", 12389),
+    ("C15", 12391),
+    ("C16", 11006),
+    ("C17", 12398),
+    ("C18", 11635),
+    ("C19", 12401),
+    ("C20", 8222),
+    ("C21", 12403),
+    ("C22", 12405),
+    ("C23", 12534),
+    ("C24", 12592),
+    ("C25", 12406),
+    ("C26", 12407),
+    ("C27", 11636),
+    ("C28", 12408),
+    ("C29", 12409),
+    ("C30", 12535),
+)
+HYDROCARBONS = tuple(cnum for cnum, _ in PUBCHEM_CIDS)
 # Compile the patterns at load time for better performance
 _carbon_number_prog = re.compile(r"^C(\d+)$")
 _hydrocarbon_prog = re.compile(r"^(C\d+)H(\d+)$")
@@ -69,10 +110,16 @@ def carbon_to_molecule(c_name):
     return molecule
 
 
+PUBCHEM_CID_DF: Final[pd.DataFrame] = pd.DataFrame(
+    data=np.array(tuple(zip(*PUBCHEM_CIDS))),
+    columns=pd.Index("carbon_number", "PubChem"),
+)
+
+
 #
 # Can streams have emissions (e.g., leakage) or is that attributed to a process?
 #
-class Stream(AttributeMixin, XmlInstantiable):
+class Stream:
     """
     The `Stream` class represent the flow rates of single substances or mingled combinations of co-flowing substances
     in any of the three states of matter (solid, liquid, or gas). Streams and stream components are specified in mass
@@ -86,23 +133,16 @@ class Stream(AttributeMixin, XmlInstantiable):
     See also :doc:`OPGEE XML documentation <opgee-xml>`
     """
 
-    _phases = [PHASE_SOLID, PHASE_LIQUID, PHASE_GAS]
-
     # HCs with 1-60 carbon atoms, i.e., C1, C2, ..., C50
-    mgr = TableManager()
-    table_name = "pubchem-cid"
-    pubchem_cid_df = mgr.get_table(table_name)
+    carbon_nums, pc_ids = tuple(zip(*PUBCHEM_CIDS))
+    pubchem_cid_df: pd.DataFrame = pd.DataFrame(
+        data={"PubChem": pc_ids}, index=pd.Index(carbon_nums)
+    )
 
     idx = pubchem_cid_df.index
     _hydrocarbons = list(idx)
     max_carbon_number = len(_hydrocarbons)
     _carbon_number_dict = {f"C{n}": float(n) for n in range(1, max_carbon_number + 1)}
-
-    # Verify that the pubchem-cid index includes 1..N where N is the max_carbon number
-    if set(_carbon_number_dict.keys()) != set(idx):
-        raise ModelValidationError(
-            f"{table_name} must contain carbon numbers 1..{max_carbon_number}."
-        )
 
     # All hydrocarbon gases other than methane (C1) are considered VOCs.
     VOCs = _hydrocarbons[1:]
@@ -146,10 +186,11 @@ class Stream(AttributeMixin, XmlInstantiable):
     _units = ureg.Unit("tonne/day")
 
     tp: TemperaturePressure
+    name: str
 
     def __init__(
         self,
-        name,
+        name: str,
         tp,
         parent=None,
         API=None,
@@ -159,10 +200,8 @@ class Stream(AttributeMixin, XmlInstantiable):
         contents=None,
         impute=True,
     ):
-        AttributeMixin.__init__(self)  # no-op, but here for completeness
-        XmlInstantiable.__init__(self, name, parent=parent)
-
         # TBD: rename this self.comp_matrix for clarity
+        self.name = name
         self.components = (
             self.create_component_matrix() if comp_matrix is None else comp_matrix
         )
@@ -227,7 +266,7 @@ class Stream(AttributeMixin, XmlInstantiable):
         extras = pd.DataFrame(data=tuples, columns=columns)
         result = pd.concat([df, extras], axis="rows")
 
-        result["field"] = self.parent.name
+        # result["field"] = self.parent.name
         result["stream"] = self.name
         result["source"] = self.src_name
         result["destination"] = self.dst_name
@@ -667,81 +706,81 @@ class Stream(AttributeMixin, XmlInstantiable):
         else:
             return stream_type in self.contents
 
-    @classmethod
-    def from_xml(cls, elt, parent=None):
-        """
-        Instantiate an instance from an XML element
-
-        :param elt: (etree.Element) representing a <Stream> element
-        :param parent: (opgee.Field) the Field containing the new Stream
-        :return: (Stream) instance of class Stream
-        """
-        a = elt.attrib
-        src = a["src"]
-        dst = a["dst"]
-        name = a.get("name") or f"{src} => {dst}"
-        impute = getBooleanXML(a.get("impute", "1"))
-
-        # There should be 2 attributes: temperature and pressure
-        # N.B. These are added via <ClassAttrs> in etc/attributes.xml and cannot
-        # currently be added via XML, i.e., not permitted in opgee.xsd.
-        attr_dict = cls.instantiate_attrs(elt)
-        expected = {"temperature", "pressure", "API"}
-        if set(attr_dict.keys()) != expected:
-            raise OpgeeException(
-                f"Stream {name}: expected attributes {sorted(expected)}"
-            )
-
-        temp = attr_dict["temperature"].value
-        pres = attr_dict["pressure"].value
-        tp = TemperaturePressure(temp, pres)
-
-        API = attr_dict["API"].value
-
-        contents = [node.text for node in elt.findall("Contains")]
-
-        # Set up the stream component info, if provided
-        comp_elts = elt.findall("Component")
-        has_exogenous_data = len(comp_elts) > 0
-
-        if has_exogenous_data:
-            matrix = cls.create_component_matrix()
-
-            for comp_elt in comp_elts:
-                a = comp_elt.attrib
-                comp_name = elt_name(comp_elt)
-                rate = coercible(comp_elt.text, float)
-                phase = a[
-                    "phase"
-                ]  # required by XML schema to be one of the 3 legal values
-
-                # convert hydrocarbon molecule name to carbon number format
-                if is_hydrocarbon(comp_name):
-                    comp_name = molecule_to_carbon(comp_name)
-
-                if comp_name not in matrix.index:
-                    raise OpgeeException(
-                        f"Unrecognized stream component name '{comp_name}'."
-                    )
-
-                matrix.loc[comp_name, phase] = rate
-
-        else:
-            matrix = None  # let the stream create it
-
-        obj = Stream(
-            name,
-            tp,
-            API=API,
-            parent=parent,
-            comp_matrix=matrix,
-            src_name=src,
-            dst_name=dst,
-            contents=contents,
-            impute=impute,
-        )
-
-        return obj
+    # @classmethod
+    # def from_xml(cls, elt, parent=None):
+    #     """
+    #     Instantiate an instance from an XML element
+    #
+    #     :param elt: (etree.Element) representing a <Stream> element
+    #     :param parent: (opgee.Field) the Field containing the new Stream
+    #     :return: (Stream) instance of class Stream
+    #     """
+    #     a = elt.attrib
+    #     src = a["src"]
+    #     dst = a["dst"]
+    #     name = a.get("name") or f"{src} => {dst}"
+    #     impute = getBooleanXML(a.get("impute", "1"))
+    #
+    #     # There should be 2 attributes: temperature and pressure
+    #     # N.B. These are added via <ClassAttrs> in etc/attributes.xml and cannot
+    #     # currently be added via XML, i.e., not permitted in opgee.xsd.
+    #     attr_dict = cls.instantiate_attrs(elt)
+    #     expected = {"temperature", "pressure", "API"}
+    #     if set(attr_dict.keys()) != expected:
+    #         raise OpgeeException(
+    #             f"Stream {name}: expected attributes {sorted(expected)}"
+    #         )
+    #
+    #     temp = attr_dict["temperature"].value
+    #     pres = attr_dict["pressure"].value
+    #     tp = TemperaturePressure(temp, pres)
+    #
+    #     API = attr_dict["API"].value
+    #
+    #     contents = [node.text for node in elt.findall("Contains")]
+    #
+    #     # Set up the stream component info, if provided
+    #     comp_elts = elt.findall("Component")
+    #     has_exogenous_data = len(comp_elts) > 0
+    #
+    #     if has_exogenous_data:
+    #         matrix = cls.create_component_matrix()
+    #
+    #         for comp_elt in comp_elts:
+    #             a = comp_elt.attrib
+    #             comp_name = elt_name(comp_elt)
+    #             rate = coercible(comp_elt.text, float)
+    #             phase = a[
+    #                 "phase"
+    #             ]  # required by XML schema to be one of the 3 legal values
+    #
+    #             # convert hydrocarbon molecule name to carbon number format
+    #             if is_hydrocarbon(comp_name):
+    #                 comp_name = molecule_to_carbon(comp_name)
+    #
+    #             if comp_name not in matrix.index:
+    #                 raise OpgeeException(
+    #                     f"Unrecognized stream component name '{comp_name}'."
+    #                 )
+    #
+    #             matrix.loc[comp_name, phase] = rate
+    #
+    #     else:
+    #         matrix = None  # let the stream create it
+    #
+    #     obj = Stream(
+    #         name,
+    #         tp,
+    #         API=API,
+    #         parent=parent,
+    #         comp_matrix=matrix,
+    #         src_name=src,
+    #         dst_name=dst,
+    #         contents=contents,
+    #         impute=impute,
+    #     )
+    #
+    #     return obj
 
     @property
     def hydrocarbons(self):

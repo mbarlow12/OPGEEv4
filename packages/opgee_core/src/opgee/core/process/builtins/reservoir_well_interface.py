@@ -9,7 +9,7 @@
 import numpy as np
 
 from ..units import ureg
-from ..common import TemperaturePressure, STP
+from opgee.core.fluid_dynamics import TemperaturePressure, STP
 from ..log import getLogger
 from .._process import Process
 from ..stream import PHASE_GAS
