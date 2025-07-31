@@ -7,7 +7,7 @@ hookspec = pluggy.HookspecMarker(ENTRYPOINT)
 
 
 @hookspec
-def opgee_register_process(registry: ProcessRegistry) -> None:
+def opgee_register_process_classes(registry: ProcessRegistry) -> None:
     """Allow plugins to register new Process subclasses.
 
     Parameters

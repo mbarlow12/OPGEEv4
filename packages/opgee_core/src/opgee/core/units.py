@@ -1,3 +1,5 @@
+import os
+from pathlib import Path
 from typing import Final, cast
 import pint
 from pint.registry import ApplicationRegistry, Quantity
@@ -5,7 +7,6 @@ from pint.facets.plain.quantity import PlainQuantity
 
 from .error import OpgeeException
 from .log import getLogger
-from opgee.pkg_utils import resourceStream
 
 _logger = getLogger(__name__)
 
@@ -15,8 +16,8 @@ _ureg: ApplicationRegistry | None = None
 if _ureg is None:
     _ureg = pint.get_application_registry()
     del _ureg._units["bbl"]
-    stream = resourceStream("etc/units.txt")
-    lines = [line.strip() for line in stream.readlines()]
+    stream = Path(os.path.dirname(__file__)) / "etc/units.txt"
+    lines = [line.strip() for line in stream.open().readlines()]
     _ureg.load_definitions(lines)
 
 ureg: Final[ApplicationRegistry] = _ureg

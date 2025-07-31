@@ -9,7 +9,7 @@
 import numpy as np
 
 from ..units import ureg
-from ..common import TemperaturePressure
+from opgee.core.fluid_dynamics import TemperaturePressure
 from ..emissions import EM_FUGITIVES
 from ..log import getLogger
 from .._process import Process

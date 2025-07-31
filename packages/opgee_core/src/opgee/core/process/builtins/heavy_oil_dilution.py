@@ -6,7 +6,7 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-from ..common import TemperaturePressure
+from opgee.core.fluid_dynamics import TemperaturePressure
 from ..import_export import DILUENT
 from .._process import Process
 from .shared import get_energy_carrier

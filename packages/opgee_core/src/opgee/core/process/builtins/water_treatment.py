@@ -7,7 +7,7 @@
 # See LICENSE.txt for license details.
 #
 from ..units import ureg
-from ..common import TemperaturePressure
+from opgee.core.fluid_dynamics import TemperaturePressure
 from ..energy import EN_ELECTRICITY
 from ..error import OpgeeException
 from ..import_export import WATER
@@ -204,3 +204,37 @@ class WaterTreatment(Process):
             water_volume_rate *= (1 - loss_factor)
 
         return electricity
+
+    def init_intermediate_results(self, names):
+        """
+
+        :param names:
+        :return:
+        """
+        self.intermediate_results = {name: (Energy(), Emissions()) for name in names}
+
+    def get_intermediate_results(self):
+        """
+        This method will be overridden in the water treatment subprocess
+
+        :return: A dictionary of energy and emission instances or None
+        """
+
+        return self.intermediate_results
+
+    def sum_intermediate_results(self):
+        """
+        Sum intermediate energy and emission results
+
+        :return:
+        """
+
+        if self.intermediate_results is None:
+            return
+
+        self.energy.reset()
+        self.emissions.reset()
+
+        for key, (energy, emission) in self.intermediate_results.items():
+            self.energy.add_rates_from(energy)
+            self.emissions.add_rates_from(emission)

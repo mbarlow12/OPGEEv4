@@ -14,50 +14,12 @@ import pint
 from pyXSteam.XSteam import XSteam
 from thermosteam import Chemical, IdealMixture
 
-from .units import ureg
-from .common import OpgeeObject, STP, TemperaturePressure
-from .error import ModelValidationError
-from .stream import PHASE_GAS, PHASE_LIQUID, PHASE_SOLID, Stream
+from ..units import ureg
+from ..fluid_dynamics import STP, TemperaturePressure
+from ..error import ModelValidationError
+from ..stream import PHASE_GAS, PHASE_LIQUID, PHASE_SOLID, Stream
+from .chemical_info import ChemicalInfo
 
-
-class ChemicalInfo(OpgeeObject):
-    instance = None
-
-    def __init__(self):
-        dict_non_hydrocarbon = {name: Chemical(name) for name in Stream.non_hydrocarbon_gases}
-        series = Stream.pubchem_cid_df.PubChem
-        self._chemical_dict = chemical_dict = {name : Chemical(f"PubChem={num}") for name, num in series.items()}
-        chemical_dict.update(dict_non_hydrocarbon)
-        self._mol_weights = pd.Series({name: chemical.MW for name, chemical in chemical_dict.items()},
-                                      dtype="pint[g/mole]")
-
-    @classmethod
-    def get_instance(cls):
-        if cls.instance is None:
-            cls.instance = cls()
-
-        return cls.instance
-
-    @classmethod
-    def chemical(cls, component_name):
-        obj = cls.get_instance()
-        return obj._chemical_dict[component_name]
-
-    @classmethod
-    def mol_weight(cls, component, with_units=True):
-        obj = cls.get_instance()
-        mw = obj._mol_weights.get(component)
-        return mw if with_units else mw.m
-
-    @classmethod
-    def mol_weights(cls):
-        obj = cls.get_instance()
-        return obj._mol_weights
-
-    @classmethod
-    def names(cls):
-        obj = cls.get_instance()
-        return list(obj._mol_weights.keys())
 
 
 def rho(component, temperature, pressure, phase):
@@ -222,7 +184,7 @@ def Pc(component, with_units=True):
     return pc
 
 
-class Air(OpgeeObject):
+class Air:
     """
     The Air class represents the wet air and dry air chemical properties such as molar weights, density, etc.
     The wet air and dry air composition are given. The molecular weight is in unit g/mol and density is in unit
@@ -297,7 +259,7 @@ class DryAir(Air):
         super().__init__(field, composition)
 
 
-class AbstractSubstance(OpgeeObject):
+class AbstractSubstance:
     """
     AbstractSubstance class is superclass of Oil, Gas and Water
     """
