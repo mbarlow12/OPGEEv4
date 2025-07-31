@@ -15,6 +15,7 @@ from .config import getParamAsList
 from .constants import DETAILED_RESULT
 from .container import Container
 from .common import elt_name, instantiate_subelts, dict_from_list, STP
+from .emissions import GHGEmitter
 from .energy import Energy
 from .error import (
     OpgeeException,
@@ -43,27 +44,27 @@ _logger = getLogger(__name__)
 
 class FieldResult:
     def __init__(
-            self,
-            analysis_name,
-            field_name,
-            result_type,
-            energy_data=None,
-            ghg_data=None,  # CO2e
-            gas_data=None,  # individual gases
-            streams_data=None,
-            ci_results=None,
-            energy_output=None,
-            trial_num=None,
-            audit_data=None,
-            error=None,
+        self,
+        analysis_name,
+        field_name,
+        result_type,
+        energy_data=None,
+        ghg_data=None,  # CO2e
+        gas_data=None,  # individual gases
+        streams_data=None,
+        ci_results=None,
+        energy_output=None,
+        trial_num=None,
+        audit_data=None,
+        error=None,
     ):
         self.analysis_name = analysis_name
         self.field_name = field_name
         self.result_type = result_type
         self.ci_results = ci_results  # list of tuples of (node_name, CI)
         self.energy_output = energy_output
-        self.energy = energy_data   # energy consumption data
-        self.emissions = ghg_data   # TBD: change self.emissions to self.ghgs
+        self.energy = energy_data  # energy consumption data
+        self.emissions = ghg_data  # TBD: change self.emissions to self.ghgs
         self.gases = gas_data
         self.streams = streams_data
         self.trial_num = trial_num
@@ -75,7 +76,7 @@ class FieldResult:
         return f"<{self.__class__.__name__} ana:{self.analysis_name} fld:{self.field_name} {trl}err:{self.error} res:{self.result_type}>"
 
 
-def total_emissions(proc, gwp):
+def total_emissions(proc: GHGEmitter, gwp):
     rates = proc.emissions.rates(gwp)
     total = rates.loc["GHG"].sum()
     return total
@@ -275,7 +276,9 @@ class Field(Container):
         self.mined_bitumen_p = self.attr("pressure_mined_bitumen")
         self.mined_bitumen_t = self.attr("temperature_mined_bitumen")
         self.natural_gas_reinjection = self.attr("natural_gas_reinjection")
-        self.natural_gas_to_liquefaction_frac = self.attr("natural_gas_to_liquefaction_frac")
+        self.natural_gas_to_liquefaction_frac = self.attr(
+            "natural_gas_to_liquefaction_frac"
+        )
         self.num_prod_wells = self.attr("num_prod_wells")
         self.num_water_inj_wells = self.attr("num_water_inj_wells")
         self.num_gas_inj_wells = self.attr("num_gas_inj_wells")
@@ -323,7 +326,9 @@ class Field(Container):
             super()._children()
         )  # + self.streams() # Adding this caused several errors...
 
-    def add_children(self, aggs=None, procs=None, streams=None, process_choice_dict=None):
+    def add_children(
+        self, aggs=None, procs=None, streams=None, process_choice_dict=None
+    ):
         # Note that `procs` include only Processes defined at the top-level of the field.
         # Other Processes maybe defined within the Aggregators in `aggs`.
         super().add_children(aggs=aggs, procs=procs)
@@ -369,8 +374,9 @@ class Field(Container):
 
         self.check_attr_constraints(self.attr_dict)
 
-        self.component_fugitive_table, self.loss_mat_gas_ave_df = \
+        self.component_fugitive_table, self.loss_mat_gas_ave_df = (
             self.get_component_fugitive()
+        )
 
         self.finalize_process_graph()
 
@@ -641,7 +647,7 @@ class Field(Container):
         self.carbon_intensity = ci = ureg.Quantity(0, "grams/MJ")
         if boundary_energy_flow_rate.m != 0:
             self.carbon_intensity = ci = (
-                    total_emissions / boundary_energy_flow_rate
+                total_emissions / boundary_energy_flow_rate
             ).to("grams/MJ")
 
         # Also save the numerator and denominator separately for reporting
@@ -672,7 +678,7 @@ class Field(Container):
             )
             return None
 
-        def partial_ci(obj):
+        def partial_ci(obj: GHGEmitter):
             ghgs = obj.emissions.data.sum(axis="columns")["GHG"]
             if not isinstance(ghgs, pint.Quantity):
                 ghgs = ureg.Quantity(ghgs, "tonne/day")
@@ -698,9 +704,9 @@ class Field(Container):
             # Add a 'units' columns using the units from the first element
             # in the dict. N.B. We assume all elements have the same units.
             unit = next(iter(proc_dict.values())).u
-            df['unit'] = unit
+            df["unit"] = unit
 
-            df.index.rename('process', inplace=True)
+            df.index.rename("process", inplace=True)
             return df
 
         gwp = analysis.gwp
@@ -719,12 +725,14 @@ class Field(Container):
         #  remaining columns, and species ['VOC', 'CO', 'CH4', 'N2O', 'CO2', 'GHG'] as rows.
         #  So basically, adding a column to each Emissions dataframe with the name of the
         #  process, then concatenating them into a dataframe.
-        def gas_df_with_name(proc):
+        def gas_df_with_name(proc: GHGEmitter):
             df = proc.emissions.data.reset_index().rename(columns={"index": "gas"})
-            cols = ['field', 'process'] + list(df.columns)
-            df['field'] = self.name
-            df['process'] = proc.name
-            df = df[cols].pint.dequantify()  # move units to 2nd row of column headings...
+            cols = ["field", "process"] + list(df.columns)
+            df["field"] = self.name
+            df["process"] = proc.name
+            df = df[
+                cols
+            ].pint.dequantify()  # move units to 2nd row of column headings...
             return df
 
         gases_by_proc = [gas_df_with_name(proc) for proc in procs]
@@ -742,14 +750,18 @@ class Field(Container):
         :param trial_num: (int) trial number, if running in MCS mode
         :return: (FieldResult) results
         """
-        energy_data, ghg_data, gas_data = self.energy_and_emissions(analysis) \
-            if result_type == DETAILED_RESULT else (None, None, None)
+        energy_data, ghg_data, gas_data = (
+            self.energy_and_emissions(analysis)
+            if result_type == DETAILED_RESULT
+            else (None, None, None)
+        )
 
         nodes = self.processes() if DETAILED_RESULT else self.children()
         ci_tuples = self.partial_ci_values(analysis, nodes)
 
         ci_results = (
-            None if ci_tuples is None
+            None
+            if ci_tuples is None
             else [("TOTAL", self.carbon_intensity)] + ci_tuples
         )
 
@@ -786,7 +798,9 @@ class Field(Container):
         imported_emissions = ureg.Quantity(0.0, "tonne/day")
 
         if self.has_grid_mix:
-            self.upstream_CI.loc[ELECTRICITY] = self.grid_mix_EF.T.dot(self.grid_mix_feed).iloc[0, 0]
+            self.upstream_CI.loc[ELECTRICITY] = self.grid_mix_EF.T.dot(
+                self.grid_mix_feed
+            ).iloc[0, 0]
 
         for product, energy_rate in net_import.items():
             # TODO: Water, N2, and CO2 flooding is not in self.upstream_CI and not in upstream-CI.csv,
@@ -821,7 +835,7 @@ class Field(Container):
             process_name = self.product_boundaries.loc[name, analysis.boundary]
             if process_name and process_name in process_names:
                 carbon_credit += (
-                        export.loc[process_name, name] * self.upstream_CI.loc[name, "EF"]
+                    export.loc[process_name, name] * self.upstream_CI.loc[name, "EF"]
                 )
 
         return carbon_credit
@@ -837,7 +851,7 @@ class Field(Container):
         """
         result = prod_mat_gas[
             (prod_mat_gas["Bin low"] < mean) & (prod_mat_gas["Bin high"] >= mean)
-            ].index.values.astype(int)[0]
+        ].index.values.astype(int)[0]
 
         return result
 
@@ -868,7 +882,7 @@ class Field(Container):
 
         if self.attr("gas_flooding") and self.attr("flood_gas_type") == "CO2":
             productivity += (
-                    oil_rate * self.attr("GFIR") * self.attr("frac_CO2_breakthrough")
+                oil_rate * self.attr("GFIR") * self.attr("frac_CO2_breakthrough")
             )
 
         num_prod_wells = self.attr("num_prod_wells")
@@ -964,8 +978,8 @@ class Field(Container):
 
             if GOR > GOR_cutoff:
                 pump_loss_rate["LU-plunger-norm"] = (
-                        pump_loss_rate["LU-plunger"] * frac_wells_with_plunger
-                        + pump_loss_rate["LU-no plunger"] * frac_wells_with_non_plunger
+                    pump_loss_rate["LU-plunger"] * frac_wells_with_plunger
+                    + pump_loss_rate["LU-no plunger"] * frac_wells_with_non_plunger
                 )
                 pump_loss_rate.drop(
                     "LU-plunger", inplace=True
@@ -1016,7 +1030,7 @@ class Field(Container):
                 & (df["type"] == well_type)
                 & (df["is_flaring"] == is_flaring)
                 & (df["is_REC"] == is_REC)
-                ]
+            ]
 
             return (
                 result["value"].values[0]
@@ -1029,7 +1043,7 @@ class Field(Container):
             no_fracture_rate = find_value(df, "No", well_type, is_flaring, "No")
 
             C1_rate = fracture_rate * frac_well_fractured + no_fracture_rate * (
-                    1 - frac_well_fractured
+                1 - frac_well_fractured
             )
             return C1_rate * event
 
@@ -1097,7 +1111,7 @@ class Field(Container):
                 is_beyond = not is_inside  # improves readability
                 for proc in procs:
                     if (is_inside and proc in beyond) or (
-                            is_beyond and proc not in beyond
+                        is_beyond and proc not in beyond
                     ):
                         msgs.append(f"{agg} spans the {proc.boundary} boundary.")
 
@@ -1195,7 +1209,7 @@ class Field(Container):
         run_afters = {process for process in processes if process.run_after}
 
         cycle_independent = (
-                set(processes) - procs_in_cycles - cycle_dependent - run_afters
+            set(processes) - procs_in_cycles - cycle_dependent - run_afters
         )
         return cycle_independent, procs_in_cycles, cycle_dependent, run_afters
 
@@ -1528,7 +1542,7 @@ class Field(Container):
                 procs, streams = group.processes_and_streams(self)
 
                 # remember the ones to enable
-                if (group_name == selected_group_name):
+                if group_name == selected_group_name:
                     to_enable.extend(procs)
                     to_enable.extend(streams)
 
@@ -1546,7 +1560,6 @@ class Field(Container):
             obj.set_enabled(True)
 
     def sum_process_energy(self, processes_to_exclude=None) -> Energy:
-
         total = Energy()
         processes_to_exclude = processes_to_exclude or []
         for proc in self.processes():
@@ -1734,7 +1747,11 @@ class Field(Container):
         # Owing to constraint that requires num_prod_wells > 0, we return 1 for oils_sands mine.
         # num_prod_wells is used only in Exploration, ReservoirWellInterface, and DownholePump, which
         # shouldn't exist for oils sands mines.
-        return 1 if oil_sands_mine != "None" else max(1.0, round(oil_prod.to("bbl_oil/d").m / 87.5, 0))
+        return (
+            1
+            if oil_sands_mine != "None"
+            else max(1.0, round(oil_prod.to("bbl_oil/d").m / 87.5, 0))
+        )
 
     @SmartDefault.register(
         "num_water_inj_wells", ["oil_sands_mine", "oil_prod", "num_prod_wells"]
@@ -1809,15 +1826,14 @@ class Field(Container):
     def common_gas_process_choice_default(self, oil_sands_mine):
         # Disable the ancillary group of gas-related processes when there is oil sand mine.
         # Otherwise enable all of those processes.
-        return 'None' if oil_sands_mine != 'None' else 'All'
+        return "None" if oil_sands_mine != "None" else "All"
 
-    @SmartDefault.register('prod_water_inlet_temp', ['country'])
+    @SmartDefault.register("prod_water_inlet_temp", ["country"])
     def prod_water_inlet_temp_default(self, country):
+        temperature = 340 if country == "Canada" else 140
+        return ureg.Quantity(temperature, "degF")
 
-        temperature = 340 if country == 'Canada' else 140
-        return ureg.Quantity(temperature, 'degF')
-
-    @SmartDefault.register('num_gas_inj_wells', ['num_prod_wells'])
+    @SmartDefault.register("num_gas_inj_wells", ["num_prod_wells"])
     def num_gas_inj_wells_default(self, num_prod_wells):
         return num_prod_wells * 0.25
 
