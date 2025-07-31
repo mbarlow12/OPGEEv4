@@ -1098,6 +1098,8 @@ dependencies = [
     { name = "pint" },
     { name = "pint-pandas" },
     { name = "pluggy" },
+    { name = "pyxsteam" },
+    { name = "thermosteam" },
 ]
 
 [package.metadata]
@@ -1107,6 +1109,8 @@ requires-dist = [
     { name = "pint", specifier = ">=0.24.4" },
     { name = "pint-pandas", specifier = ">=0.6.2" },
     { name = "pluggy", specifier = ">=1.5.0" },
+    { name = "pyxsteam", specifier = ">=0.4.9" },
+    { name = "thermosteam", specifier = ">=0.51.17" },
 ]
 
 [[package]]
