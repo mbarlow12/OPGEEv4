@@ -7,7 +7,7 @@
 # See LICENSE.txt for license details.
 #
 from enum import StrEnum
-from typing import TypeGuard
+from typing import Protocol, TypeGuard
 import pandas as pd
 import pint
 
@@ -303,3 +303,7 @@ class Emissions:
         :return:
         """
         self.data += emissions.data
+
+
+class GHGEmitter(Protocol):
+    emissions: Emissions
