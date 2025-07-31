@@ -1502,55 +1502,6 @@ class Field:
             else:
                 return None
 
-    def resolve_process_choices(self, process_choice_dict=None):
-        """
-        Disable all processes referenced in a `ProcessChoice`, then enable only the processes
-        in the selected `ProcessGroup`. The name of each `ProcessChoice` must also identify a
-        field-level attribute, whose value indicates the user's choice of `ProcessGroup`.
-
-        :param process_choice_dict: (dict) optional dictionary for nested process choices. Used
-            in recursive calls only.
-        :return: None
-        """
-        attr_dict = self.attr_dict
-
-        if process_choice_dict is None:  # might be an empty dict, but that's ok
-            process_choice_dict = self.process_choice_dict
-
-        #
-        # Turn off all processes identified in groups, then turn on those in the selected groups.
-        #
-        to_enable = []
-        for choice_name, choice in process_choice_dict.items():
-            attr = attr_dict.get(choice_name)
-            if attr is None:
-                raise OpgeeException(
-                    f"ProcessChoice '{choice_name}' has no corresponding attribute in field '{self.name}'"
-                )
-
-            selected_group_name = attr.str_value().lower()
-
-            for group_name, group in choice.groups_dict.items():
-                procs, streams = group.processes_and_streams(self)
-
-                # remember the ones to enable
-                if group_name == selected_group_name:
-                    to_enable.extend(procs)
-                    to_enable.extend(streams)
-
-                    # Handle nested process groups in the enabled group
-                    self.resolve_process_choices(
-                        process_choice_dict=group.process_choice_dict
-                    )
-
-                # disable all objects in all groups
-                for obj in procs + streams:
-                    obj.set_enabled(False)
-
-        # enable the chosen procs and streams
-        for obj in to_enable:
-            obj.set_enabled(True)
-
     def sum_process_energy(self, processes_to_exclude=None) -> Energy:
         total = Energy()
         processes_to_exclude = processes_to_exclude or []
