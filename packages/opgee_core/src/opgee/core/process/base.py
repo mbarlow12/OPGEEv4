@@ -13,6 +13,7 @@ from typing import TypedDict, Union, Optional
 import pandas as pd
 import pint
 
+from opgee.core.results.emissions import compute_ghg
 from opgee.core.units import ureg, magnitude
 from opgee.core.emissions import Emissions, EM_COMBUSTION, GHGEmitter
 from opgee.core.energy import EN_ELECTRICITY, Energy
@@ -114,8 +115,6 @@ class Process(GHGEmitter):
     def __init__(
         self,
         name,
-        attr_dict=None,
-        parent=None,
         desc=None,
         cycle_start=False,
         impute_start=False,
@@ -374,7 +373,7 @@ class Process(GHGEmitter):
         """
         self.emissions.add_rates(category, **kwargs)
 
-    def get_emission_rates(self, analysis, procs_to_exclude=None):
+    def get_emission_rates(self, gwp: pd.Series, procs_to_exclude=None) -> pd.DataFrame:
         """
         Return the emission rates and the calculated GHG value. Uses the current
         choice of GWP values in the Analysis containing this process.
@@ -384,7 +383,7 @@ class Process(GHGEmitter):
         :return: ((pandas.Series, float)) a tuple containing the emissions Series
             and the GHG value computed using the model's current GWP settings.
         """
-        return self.emissions.rates(gwp=analysis.gwp)
+        return compute_ghg(self.emissions, gwp=gwp)
 
     def compute_emission_combustion(self) -> pint.Quantity:
         """

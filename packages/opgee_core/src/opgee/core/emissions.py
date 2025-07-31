@@ -32,12 +32,12 @@ EM_GHG = "GHG"
 
 
 class EmissionsCategory(StrEnum):
-    COMBUSTION = "combustion"
-    LAND_USE = "land_use"
-    VENTING = "venting"
-    FLARING = "flaring"
-    FUGITIVES = "fugitives"
-    OTHER = "other"
+    COMBUSTION = "COMBUSTION"
+    LAND_USE = "LAND_USE"
+    VENTING = "VENTING"
+    FLARING = "FLARING"
+    FUGITIVES = "FUGITIVES"
+    OTHER = "OTHER"
 
 
 class EmissionsGas(StrEnum):
@@ -113,7 +113,7 @@ class Emissions:
         """
         return pd.DataFrame(
             data=0.0,
-            index=pd.Index(EMISSIONS_INDEX),
+            index=pd.Index(GASES),
             columns=pd.Index(CATEGORIES),
             dtype="pint[tonne/day]",
         )

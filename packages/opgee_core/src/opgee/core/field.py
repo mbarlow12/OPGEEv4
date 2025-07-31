@@ -25,9 +25,8 @@ from .error import (
 from .import_export import ImportExport
 from .log import getLogger
 from .process.base import Process
-from opgee.core.process.reservoir import Reservoir
-from opgee.core.processes.builtins.steam_generator import SteamGenerator
-from opgee.core.processes.builtins.transport_energy import TransportEnergy
+from opgee.core.results.emissions import compute_ghg, GHG, compute_emitters_ghg
+from opgee.core.process.builtins import SteamGenerator, TransportEnergy, Reservoir
 from .stream import Stream
 from .thermodynamics import Oil, Gas, Water
 
@@ -68,9 +67,9 @@ class FieldResult:
         return f"<{self.__class__.__name__} ana:{self.analysis_name} fld:{self.field_name} {trl}err:{self.error} res:{self.result_type}>"
 
 
-def total_emissions(proc: GHGEmitter, gwp):
-    rates = proc.emissions.rates(gwp)
-    total = rates.loc["GHG"].sum()
+def total_emissions(proc: GHGEmitter, gwp: pd.Series):
+    rates = compute_ghg(emissions=proc.emissions, gwp=gwp)
+    total: float = rates.loc["GHG"].sum()
     return total
 
 
@@ -478,7 +477,7 @@ class Field:
                 "Impute failed due to a process loop. Use Stream attribute impute='0' to break cycle."
             )
 
-    def run(self, analysis, compute_ci=True, trial_num=None):
+    def run(self, gwp: pd.Series, compute_ci=True, trial_num=None):
         """
         Run all Processes defined for this Field, in the order computed from the graph
         characteristics, using the settings in `analysis` (e.g., GWP).
@@ -514,11 +513,14 @@ class Field:
             # Perform aggregations
             self.get_energy_rates()
 
-            self.get_emission_rates(
-                analysis, procs_to_exclude=self.procs_beyond_boundary
-            )
+            procs = [
+                proc
+                for proc in self.processes()
+                if proc not in self.procs_beyond_boundary
+            ]
+            self.emissions.data = compute_emitters_ghg(emitters=procs, gwp=gwp)
             self.carbon_intensity = (
-                self.compute_carbon_intensity(analysis) if compute_ci else None
+                self.compute_carbon_intensity(gwp=gwp) if compute_ci else None
             )
             _logger.info(timer.stop())
 
@@ -610,17 +612,17 @@ class Field:
 
         return energy
 
-    def compute_carbon_intensity(self, analysis):
+    def compute_carbon_intensity(self, gwp: pd.Series):
         """
         Compute carbon intensity by summing emissions from all processes within the
         selected system boundary and dividing by the flow of the functional unit
         across that boundary stream.
 
-        :param analysis: (Analysis) the analysis this field is part of
+        :param gwp: (pandas.Series) the GWP values series
         :return: (pint.Quantity) carbon intensity in units of g CO2e/MJ
         """
-        rates = self.emissions.rates(analysis.gwp)
-        onsite_emissions = rates.loc["GHG"].sum()
+        rates = compute_ghg(self.emissions, gwp)
+        onsite_emissions = rates.loc[GHG].sum()
         net_import = self.get_net_imported_product()
         imported_emissions = self.get_imported_emissions(net_import)
         total_emissions = onsite_emissions + imported_emissions
