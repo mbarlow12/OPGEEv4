@@ -92,7 +92,7 @@ For example, consider the following values in ``$HOME/opgee.cfg``:
 
     [test]
     # example of setting different logging levels for individual modules
-    OPGEE.LogLevel = INFO, .core:DEBUG, .processes.reservoir_well_interface:DEBUG
+    OPGEE.LogLevel = INFO, .common:DEBUG, .processes.reservoir_well_interface:DEBUG
 
     # example of identifying user-defined Process subclasses
     OPGEE.ClassPath = %(Home)s/tmp/opgee_procs.py
@@ -244,10 +244,10 @@ e.g.,:
 
 .. code-block:: cfg
 
-     OPGEE.LogLevel = WARN, .utils:INFO, .core:DEBUG
+     OPGEE.LogLevel = WARN, .utils:INFO, .common:DEBUG
 
 In this example, the default level is set to ``WARN``, and two opgee modules
-have their levels set: opgee.utils is set to INFO, and opgee.core is set to DEBUG.
+have their levels set: opgee.utils is set to INFO, and opgee.common is set to DEBUG.
 A user's plugin can also use the logging system.
 
 Console / file logs and message formatting

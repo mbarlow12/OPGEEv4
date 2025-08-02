@@ -18,7 +18,7 @@ allow reporting of results at each nesting level.
    :maxdepth: 1
    :glob:
 
-   opgee.core
+   opgee.common
    opgee.processes
    opgee.smart_defaults
    opgee.thermodynamics

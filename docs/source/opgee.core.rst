@@ -7,12 +7,12 @@ and illustrated in the following figure.
 .. figure:: images/class_diagram.png
       :figclass: align-center
 
-``opgee.core``
+``opgee.common``
 ----------------
 
 This module contains core classes of the opgee package.
 
-.. automodule:: opgee.core
+.. automodule:: opgee.common
    :members:
 
 
