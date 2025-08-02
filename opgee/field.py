@@ -14,7 +14,7 @@ from .units import ureg
 from .config import getParamAsList
 from .constants import DETAILED_RESULT
 from .container import Container
-from .core import elt_name, instantiate_subelts, dict_from_list, STP
+from .common import elt_name, instantiate_subelts, dict_from_list, STP
 from .energy import Energy
 from .error import (
     OpgeeException,
@@ -491,7 +491,7 @@ class Field(Container):
             logging purposes.
         :return: None
         """
-        from .core import Timer
+        from .common import Timer
 
         if self.is_enabled():
             timer = Timer("field.run")

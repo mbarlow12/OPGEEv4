@@ -12,7 +12,7 @@ from pathlib import Path
 
 from .attributes import AttrDefs
 from .config import getParam, pathjoin, unixPath
-from .core import Timer
+from .common import Timer
 from .error import OpgeeException, XmlFormatError
 from .log import getLogger
 from .model import Model

@@ -7,7 +7,7 @@
 # See LICENSE.txt for license details.
 #
 from .attributes import AttrDefs, AttributeMixin
-from .core import XmlInstantiable
+from .common import XmlInstantiable
 from .emissions import Emissions
 from .energy import Energy
 from .error import OpgeeException

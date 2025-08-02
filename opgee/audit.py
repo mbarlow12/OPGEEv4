@@ -8,7 +8,7 @@ from pint import Quantity
 from pydot import Dot
 
 from opgee.attributes import AttrDefs
-from opgee.core import A
+from opgee.common import A
 from opgee.field import Field
 from opgee.graph import create_process_diagram
 from opgee.log import getLogger

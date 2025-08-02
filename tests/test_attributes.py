@@ -3,7 +3,7 @@ from lxml import etree as ET
 from opgee.units import ureg
 from opgee.analysis import Analysis
 from opgee.attributes import ClassAttrs, AttributeMixin, AttrDefs
-from opgee.core import instantiate_subelts
+from opgee.common import instantiate_subelts
 from opgee.error import OpgeeException, AttributeError
 from opgee.model import Model
 

@@ -8,7 +8,7 @@
 import glob
 import os
 from .config import getParam
-from .core import OpgeeObject
+from .common import OpgeeObject
 from .error import AbstractMethodError, McsUserError
 
 class PostProcessor(OpgeeObject):

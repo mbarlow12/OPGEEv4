@@ -10,7 +10,7 @@ import pydot
 
 from opgee.field import Field
 
-from .core import OpgeeObject
+from .common import OpgeeObject
 from .log import getLogger
 from .process import Process
 
