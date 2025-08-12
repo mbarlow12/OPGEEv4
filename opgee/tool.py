@@ -12,9 +12,9 @@ import os
 import sys
 from glob import glob
 
-from .config import (pathjoin, getParam, getConfig, getParamAsBoolean, setParam, getSection, setSection)
-from .error import OpgeeException, CommandlineError
-from .log import setLogLevels, configureLogs
+from opgee.config import (pathjoin, getParam, getConfig, getParamAsBoolean, setParam, getSection, setSection)
+from opgee.core.error import OpgeeException, CommandlineError
+from opgee.core.log import setLogLevels, configureLogs
 from .subcommand import clean_help
 from .version import VERSION
 
@@ -171,7 +171,7 @@ class Opgee(object):
         :param path: (str) the pathname of a plugin file.
         :return: an instance of the ``SubcommandABC`` subclass defined in `path`
         """
-        from .utils import loadModuleFromPath
+        from opgee.utils import loadModuleFromPath
 
         def getModObj(mod, name):
             return getattr(mod, name) if name in mod.__dict__ else None

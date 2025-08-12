@@ -9,11 +9,19 @@
 import pandas as pd
 import pint
 
-from .common import OpgeeObject
-from .error import OpgeeException
-from .energy import (EN_CRUDE_OIL, EN_DIESEL, EN_ELECTRICITY, EN_NATURAL_GAS,
-                     EN_NGL, EN_PETCOKE, EN_RESID, EN_UPG_PROC_GAS)
-from .log import getLogger
+from opgee.common import OpgeeObject
+from opgee.core.error import OpgeeException
+from .energy import (
+    EN_CRUDE_OIL,
+    EN_DIESEL,
+    EN_ELECTRICITY,
+    EN_NATURAL_GAS,
+    EN_NGL,
+    EN_PETCOKE,
+    EN_RESID,
+    EN_UPG_PROC_GAS,
+)
+from opgee.core.log import getLogger
 
 _logger = getLogger(__name__)
 
@@ -34,37 +42,43 @@ CO2_Flooding = "CO2 flooding"
 
 
 class ImportExport(OpgeeObject):
-    IMPORT = 'import'
-    EXPORT = 'export'
-    NET_IMPORTS = 'net imports'
+    IMPORT = "import"
+    EXPORT = "export"
+    NET_IMPORTS = "net imports"
 
-    unit_dict = {NATURAL_GAS: "mmbtu/day",
-                 UPG_PROC_GAS: "mmbtu/day",
-                 NGL_LPG: "mmbtu/day",
-                 DILUENT: "mmbtu/day",
-                 CRUDE_OIL: "mmbtu/day",
-                 DIESEL: "mmbtu/day",
-                 RESID: "mmbtu/day",
-                 PETCOKE: "mmbtu/day",
-                 ELECTRICITY: "kWh/day",
-                 WATER: "tonne/day",
-                 N2: "tonne/day",
-                 H2: "tonne/day",
-                 CO2_Flooding: "tonne/day"}
+    unit_dict = {
+        NATURAL_GAS: "mmbtu/day",
+        UPG_PROC_GAS: "mmbtu/day",
+        NGL_LPG: "mmbtu/day",
+        DILUENT: "mmbtu/day",
+        CRUDE_OIL: "mmbtu/day",
+        DIESEL: "mmbtu/day",
+        RESID: "mmbtu/day",
+        PETCOKE: "mmbtu/day",
+        ELECTRICITY: "kWh/day",
+        WATER: "tonne/day",
+        N2: "tonne/day",
+        H2: "tonne/day",
+        CO2_Flooding: "tonne/day",
+    }
 
     imports_set = set(unit_dict.keys())
 
     @classmethod
     def _create_dataframe(cls):
         """
-         Create a DataFrame to hold import or export rates.
-         Used only by the __init__ method.
+        Create a DataFrame to hold import or export rates.
+        Used only by the __init__ method.
 
-         :return: (pandas.DataFrame) An empty imports or exports DataFrame with
-            the columns and types set
-         """
-        df = pd.DataFrame({name: pd.Series([], dtype=f"pint[{units}]")
-                           for name, units in cls.unit_dict.items()})
+        :return: (pandas.DataFrame) An empty imports or exports DataFrame with
+           the columns and types set
+        """
+        df = pd.DataFrame(
+            {
+                name: pd.Series([], dtype=f"pint[{units}]")
+                for name, units in cls.unit_dict.items()
+            }
+        )
 
         return df
 
@@ -86,7 +100,9 @@ class ImportExport(OpgeeObject):
         """
         directions = (self.IMPORT, self.EXPORT)
         if imp_exp not in directions:
-            raise OpgeeException(f"Unknown value for imp_exp: must be one of to add {directions}; got '{imp_exp}'")
+            raise OpgeeException(
+                f"Unknown value for imp_exp: must be one of to add {directions}; got '{imp_exp}'"
+            )
 
         if item not in self.imports_set:
             raise OpgeeException(f"Tried to add {imp_exp} of unknown item '{item}'")
@@ -123,7 +139,12 @@ class ImportExport(OpgeeObject):
         :return: none
         """
         for energy_carrier in energy_use.carriers:
-            self.set_import_export(proc_name, self.IMPORT, energy_carrier, energy_use.get_rate(energy_carrier))
+            self.set_import_export(
+                proc_name,
+                self.IMPORT,
+                energy_carrier,
+                energy_use.get_rate(energy_carrier),
+            )
 
     def set_export(self, proc_name, item, value):
         """
@@ -160,8 +181,13 @@ class ImportExport(OpgeeObject):
 
         def _sum(series, name):
             from .units import ureg
+
             # Sum of an empty series is returned as int(0); need to initialize units
-            return series.sum() if len(series) > 0 else ureg.Quantity(0.0, self.unit_dict[name])
+            return (
+                series.sum()
+                if len(series) > 0
+                else ureg.Quantity(0.0, self.unit_dict[name])
+            )
 
         def _totals(df):
             totals = {name: _sum(df[name], name) for name in df.columns}
@@ -170,9 +196,11 @@ class ImportExport(OpgeeObject):
         imports = _totals(self.import_df)
         exports = _totals(self.export_df)
 
-        d = {self.IMPORT: imports,
-             self.EXPORT: exports,
-             self.NET_IMPORTS: imports - exports}
+        d = {
+            self.IMPORT: imports,
+            self.EXPORT: exports,
+            self.NET_IMPORTS: imports - exports,
+        }
 
         return pd.DataFrame(d)
 

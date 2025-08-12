@@ -11,7 +11,7 @@ from opgee.attributes import AttrDefs
 from opgee.common import A
 from opgee.field import Field
 from opgee.graph import create_process_diagram
-from opgee.log import getLogger
+from opgee.core.log import getLogger
 from opgee.model_file import ModelFile
 from opgee.smart_defaults import SmartDefault
 

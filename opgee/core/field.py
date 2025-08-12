@@ -11,12 +11,12 @@ import pint
 import pandas as pd
 
 from .units import ureg
-from .config import getParamAsList
-from .constants import DETAILED_RESULT
-from .container import Container
-from .common import elt_name, instantiate_subelts, dict_from_list, STP
+from opgee.config import getParamAsList
+from opgee.constants import DETAILED_RESULT
+from opgee.xml.container import Container
+from opgee.common import elt_name, instantiate_subelts, dict_from_list, STP
 from .energy import Energy
-from .error import (
+from opgee.core.error import (
     OpgeeException,
     OpgeeStopIteration,
     OpgeeMaxIterationsReached,
@@ -25,18 +25,18 @@ from .error import (
     ZeroEnergyFlowError,
 )
 from .import_export import ImportExport
-from .log import getLogger
-from .post_processor import PostProcessor
+from opgee.core.log import getLogger
+from opgee.post_processor import PostProcessor
 from .process import Process, Aggregator, Reservoir, decache_subclasses
-from .process_groups import ProcessChoice
+from opgee.xml.process_groups import ProcessChoice
 from .processes.steam_generator import SteamGenerator
 from .processes.transport_energy import TransportEnergy
-from .smart_defaults import SmartDefault
+from opgee.smart_defaults import SmartDefault
 from .stream import Stream
 from .thermodynamics import Oil, Gas, Water
-from .utils import getBooleanXML, roundup
+from opgee.utils import getBooleanXML, roundup
 from .combine_streams import combine_streams
-from .bfs import bfs
+from opgee.bfs import bfs
 
 _logger = getLogger(__name__)
 
@@ -491,7 +491,7 @@ class Field(Container):
             logging purposes.
         :return: None
         """
-        from .common import Timer
+        from opgee.common import Timer
 
         if self.is_enabled():
             timer = Timer("field.run")
@@ -660,7 +660,7 @@ class Field(Container):
         :param nodes: (list of Processes and/or Containers)
         :return: A list of tuples of (item_name, partial_CI)
         """
-        from .error import ZeroEnergyFlowError
+        from opgee.core.error import ZeroEnergyFlowError
         from .process import Boundary
 
         try:
@@ -1112,7 +1112,7 @@ class Field(Container):
         """
         Print a text report showing Streams, energy, and emissions.
         """
-        from .utils import dequantify_dataframe
+        from opgee.utils import dequantify_dataframe
 
         name = self.name
 

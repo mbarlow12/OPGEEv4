@@ -10,16 +10,16 @@ import os
 from copy import deepcopy
 from pathlib import Path
 
-from .attributes import AttrDefs
-from .config import getParam, pathjoin, unixPath
-from .common import Timer
-from .error import OpgeeException, XmlFormatError
-from .log import getLogger
-from .model import Model
-from .pkg_utils import resourceStream
-from .process import reload_subclass_dict
-from .stream import Stream
-from .utils import getBooleanXML, is_relpath, loadModuleFromPath, mkdirs, splitAndStrip
+from opgee.xml.attributes import AttrDefs
+from opgee.config import getParam, pathjoin, unixPath
+from opgee.common import Timer
+from opgee.core.error import OpgeeException, XmlFormatError
+from opgee.core.log import getLogger
+from opgee.core.model import Model
+from opgee.pkg_utils import resourceStream
+from opgee.core.process import reload_subclass_dict
+from opgee.core.stream import Stream
+from opgee.utils import getBooleanXML, is_relpath, loadModuleFromPath, mkdirs, splitAndStrip
 from .xml_utils import merge_elements, save_xml
 from .XMLFile import XMLFile
 

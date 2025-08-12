@@ -14,12 +14,12 @@ import pint
 import pint_pandas
 
 from .units import ureg, magnitude
-from .attributes import AttributeMixin
-from .common import XmlInstantiable, elt_name, TemperaturePressure
-from .error import OpgeeException, ModelValidationError
-from .log import getLogger
+from opgee.xml.attributes import AttributeMixin
+from opgee.common import XmlInstantiable, elt_name, TemperaturePressure
+from opgee.core.error import OpgeeException, ModelValidationError
+from opgee.core.log import getLogger
 from .table_manager import TableManager
-from .utils import getBooleanXML, coercible
+from opgee.utils import getBooleanXML, coercible
 
 _logger = getLogger(__name__)
 

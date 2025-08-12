@@ -10,8 +10,8 @@ import pydot
 
 from opgee.field import Field
 
-from .common import OpgeeObject
-from .log import getLogger
+from opgee.common import OpgeeObject
+from opgee.core.log import getLogger
 from .process import Process
 
 _logger = getLogger(__name__)
@@ -29,7 +29,7 @@ def add_subclasses(graph, cls, show_process_subclasses=False):
         add_subclasses(graph, sub, show_process_subclasses=show_process_subclasses)
 
 def display_in_notebook(graph):
-    from .utils import ipython_info
+    from opgee.utils import ipython_info
 
     # if in a notebook, also display it directly
     if ipython_info() == 'notebook':

@@ -9,9 +9,9 @@
 import pandas as pd
 
 from .units import ureg
-from .common import STP
-from .common import TemperaturePressure
-from .log import getLogger
+from opgee.common import STP
+from opgee.common import TemperaturePressure
+from opgee.core.log import getLogger
 from .stream import Stream
 from .thermodynamics import Oil, Gas, Water
 

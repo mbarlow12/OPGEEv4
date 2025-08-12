@@ -9,14 +9,14 @@
 import pint
 
 from .units import ureg
-from .analysis import Analysis
-from .container import Container
-from .common import elt_name, instantiate_subelts
-from .error import OpgeeException, CommandlineError
+from opgee.analysis import Analysis
+from opgee.xml.container import Container
+from opgee.common import elt_name, instantiate_subelts
+from opgee.core.error import OpgeeException, CommandlineError
 from .field import Field
-from .log import getLogger
+from opgee.core.log import getLogger
 from .table_manager import TableManager
-from .table_update import TableUpdate
+from opgee.table_update import TableUpdate
 
 DEFAULT_SCHEMA_VERSION = "4.0.0.a"
 

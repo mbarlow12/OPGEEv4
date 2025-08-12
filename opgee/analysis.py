@@ -6,14 +6,14 @@
 #
 import re
 
-from .config import getParamAsList
-from .container import Container
-from .common import elt_name, OpgeeObject
-from .emissions import Emissions
-from .error import OpgeeException
-from .field import Field
-from .log import getLogger
-from .utils import getBooleanXML
+from opgee.config import getParamAsList
+from .xml.container import Container
+from opgee.common import elt_name, OpgeeObject
+from .core.emissions import Emissions
+from .core.error import OpgeeException
+from .core.field import Field
+from .core.log import getLogger
+from opgee.utils import getBooleanXML
 
 _logger = getLogger(__name__)
 

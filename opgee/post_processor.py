@@ -7,9 +7,9 @@
 #
 import glob
 import os
-from .config import getParam
-from .common import OpgeeObject
-from .error import AbstractMethodError, McsUserError
+from opgee.config import getParam
+from opgee.common import OpgeeObject
+from opgee.core.error import AbstractMethodError, McsUserError
 
 class PostProcessor(OpgeeObject):
     """
@@ -118,7 +118,7 @@ class PostProcessor(OpgeeObject):
         """
         import inspect
         import os.path
-        from .utils import loadModuleFromPath
+        from opgee.utils import loadModuleFromPath
 
         if not os.path.exists(path):
             raise McsUserError(f"Path to plugin '{path}' does not exist.")

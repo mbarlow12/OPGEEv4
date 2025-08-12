@@ -16,7 +16,7 @@ from itertools import islice, product
 # import logging
 # logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
-from ..common import OpgeeObject, Timer
+from opgee.common import OpgeeObject, Timer
 from ..config import getParam, getParamAsInt, getParamAsBoolean
 from ..error import RemoteError, McsSystemError, TrialErrorWrapper
 from ..log  import getLogger, setLogFile

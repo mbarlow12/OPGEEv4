@@ -8,10 +8,10 @@
 #
 from collections import OrderedDict
 
-from .common import XmlInstantiable, elt_name, instantiate_subelts
-from .error import OpgeeException
-from .log import getLogger
-from .utils import getBooleanXML
+from opgee.common import XmlInstantiable, elt_name, instantiate_subelts
+from opgee.core.error import OpgeeException
+from opgee.core.log import getLogger
+from opgee.utils import getBooleanXML
 
 _logger = getLogger(__name__)
 

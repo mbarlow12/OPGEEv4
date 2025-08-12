@@ -6,14 +6,14 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-from .attributes import AttrDefs, AttributeMixin
-from .common import XmlInstantiable
-from .emissions import Emissions
-from .energy import Energy
-from .error import OpgeeException
-from .import_export import ImportExport
-from .log import getLogger
-from .units import ureg
+from opgee.xml.attributes import AttrDefs, AttributeMixin
+from opgee.common import XmlInstantiable
+from opgee.core.emissions import Emissions
+from opgee.core.energy import Energy
+from opgee.core.error import OpgeeException
+from opgee.core.import_export import ImportExport
+from opgee.core.log import getLogger
+from opgee.core.units import ureg
 
 _logger = getLogger(__name__)
 

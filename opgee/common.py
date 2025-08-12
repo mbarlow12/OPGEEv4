@@ -10,9 +10,9 @@ import pint
 import time
 import datetime
 
-from .units import ureg, validate_unit
-from .error import OpgeeException, AbstractMethodError, ModelValidationError
-from .utils import coercible, getBooleanXML
+from .core.units import ureg, validate_unit
+from .core.error import OpgeeException, AbstractMethodError, ModelValidationError
+from opgee.utils import coercible, getBooleanXML
 
 
 def name_of(obj):
@@ -20,10 +20,12 @@ def name_of(obj):
 
 
 def elt_name(elt):
-    return elt.attrib.get('name')
+    return elt.attrib.get("name")
 
-def instantiate_subelts(elt, cls, parent=None, as_dict=False, include_names=None,
-                        **cls_args):
+
+def instantiate_subelts(
+    elt, cls, parent=None, as_dict=False, include_names=None, **cls_args
+):
     """
     Return a list of instances of ``cls`` (or of its indicated subclass of ``Process``).
 
@@ -43,14 +45,18 @@ def instantiate_subelts(elt, cls, parent=None, as_dict=False, include_names=None
     tag = cls.__name__  # class name matches element name
 
     include = None if include_names is None else set(include_names)
-    objs = [cls.from_xml(e, parent=parent, **cls_args)
-            for e in elt.findall(tag) if include is None or e.attrib.get('name') in include]
+    objs = [
+        cls.from_xml(e, parent=parent, **cls_args)
+        for e in elt.findall(tag)
+        if include is None or e.attrib.get("name") in include
+    ]
 
     if as_dict:
         d = {obj.name: obj for obj in objs}
         return d
     else:
         return objs
+
 
 def dict_from_list(objs):
     """
@@ -66,14 +72,17 @@ def dict_from_list(objs):
         name = obj.name
         if d.get(name):
             classname = obj.__class__.__name__
-            raise OpgeeException(f"{classname} instances must have unique names: {name} is not unique.")
+            raise OpgeeException(
+                f"{classname} instances must have unique names: {name} is not unique."
+            )
 
         d[name] = obj
 
     return d
 
 
-CLASS_DELIMITER = '.'
+CLASS_DELIMITER = "."
+
 
 def split_attr_name(attr_name):
     splits = attr_name.split(CLASS_DELIMITER)
@@ -89,13 +98,15 @@ def split_attr_name(attr_name):
         class_name, attr_name = splits
 
     else:
-        raise OpgeeException(f"Attribute name '{attr_name}' has more than 2 dot-delimited parts")
+        raise OpgeeException(
+            f"Attribute name '{attr_name}' has more than 2 dot-delimited parts"
+        )
 
     return class_name, attr_name
 
 
 # Top of hierarchy, because it's useful to know which classes are "ours"
-class OpgeeObject():
+class OpgeeObject:
     @classmethod
     def clear(cls):
         # Clear state stored in class variables
@@ -113,6 +124,7 @@ class XmlInstantiable(OpgeeObject):
     4. Subclasses of Container and Process implement ``run(self)`` to perform any required operations.
 
     """
+
     def __init__(self, name, parent=None):
         super().__init__()
         self.name = name
@@ -124,12 +136,12 @@ class XmlInstantiable(OpgeeObject):
 
     @classmethod
     def from_xml(cls, elt, parent=None, **cls_args):
-        raise AbstractMethodError(cls, 'XmlInstantiable.from_xml')
+        raise AbstractMethodError(cls, "XmlInstantiable.from_xml")
 
     def __str__(self):
         type_str = type(self).__name__
-        name_str = f' name="{self.name}"' if self.name else ''
-        return f'<{type_str}{name_str} enabled={self.enabled}>'
+        name_str = f' name="{self.name}"' if self.name else ""
+        return f"<{type_str}{name_str} enabled={self.enabled}>"
 
     def print_in_context(self):
         """
@@ -139,7 +151,7 @@ class XmlInstantiable(OpgeeObject):
         """
         obj = self
         seq = [obj]
-        while ((obj := obj.parent) is not None):
+        while (obj := obj.parent) is not None:
             seq.insert(0, obj)
 
         indent = 0
@@ -169,10 +181,12 @@ class XmlInstantiable(OpgeeObject):
         dct = {}
 
         for obj in objs:
-            if (existing := dct.get(obj.name)):
+            if existing := dct.get(obj.name):
                 obj.print_in_context()
                 existing.print_in_context()
-                raise ModelValidationError(f"Tried to adopt {obj} which is a duplicate of {existing}.")
+                raise ModelValidationError(
+                    f"Tried to adopt {obj} which is a duplicate of {existing}."
+                )
             dct[obj.name] = obj
             obj.set_parent(self)
 
@@ -268,7 +282,8 @@ class TemperaturePressure(OpgeeObject):
     """
     Stores temperature and pressure together for convenience.
     """
-    __slots__ = ('T', 'P')      # keeps instances small and fast
+
+    __slots__ = ("T", "P")  # keeps instances small and fast
 
     def __init__(self, T, P):
         self.T = None
@@ -280,14 +295,18 @@ class TemperaturePressure(OpgeeObject):
 
     def set(self, T=None, P=None):
         if T is None and P is None:
-            #_logger.warning("Tried to set TemperaturePressure with both values None")
+            # _logger.warning("Tried to set TemperaturePressure with both values None")
             return
 
         if T is not None:
-            self.T = T if isinstance(T, pint.Quantity) else ureg.Quantity(float(T), "degF")
+            self.T = (
+                T if isinstance(T, pint.Quantity) else ureg.Quantity(float(T), "degF")
+            )
 
         if P is not None:
-            self.P = P if isinstance(P, pint.Quantity) else ureg.Quantity(float(P), "psia")
+            self.P = (
+                P if isinstance(P, pint.Quantity) else ureg.Quantity(float(P), "psia")
+            )
 
     def get(self):
         return (self.T, self.P)
@@ -295,16 +314,18 @@ class TemperaturePressure(OpgeeObject):
     def copy_from(self, tp):
         self.set(T=tp.T, P=tp.P)
 
+
 # Standard temperature and pressure
 std_temperature = ureg.Quantity(60.0, "degF")
-std_pressure    = ureg.Quantity(14.676, "psia")
+std_pressure = ureg.Quantity(14.676, "psia")
 STP = TemperaturePressure(std_temperature, std_pressure)
+
 
 class Timer:
     def __init__(self, feature_name, start=True):
         self.feature_name = feature_name
         self.start_time = None
-        self.stop_time  = None
+        self.stop_time = None
 
         if start:
             self.start()
@@ -331,4 +352,3 @@ class Timer:
             status = f"completed in {d}"
 
         return f"<Timer '{self.feature_name}' {status}>"
-

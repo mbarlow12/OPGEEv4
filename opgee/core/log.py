@@ -5,7 +5,7 @@
 .. Logging support.
    This module allows modules to register themselves for logging which is
    turned on after the app reads configuration information. Modules call
-   logger = opgee.log.getLogger(__name__) as a top-level statement, evaluated
+   logger = opgee.core.log.getLogger(__name__) as a top-level statement, evaluated
    at load time. This returns the logger, which may not yet be configured.
    When the configuration file has been read, all registered loggers are
    initialized, and all subsequently registered loggers are initialized
@@ -14,39 +14,43 @@
 .. Copyright (c) 2016-2022 Richard Plevin
    See the https://opensource.org/licenses/MIT for license details.
 """
+
 import logging
 import os
 
-from .config import getParam, getParamAsBoolean, configLoaded
+from ..config import getParam, getParamAsBoolean, configLoaded
 
-PKGNAME = __name__.split('.')[0]
+PKGNAME = __name__.split(".")[0]
 
-_Loggers    = {}      # loggers created herein, keyed by module or package name
-_LogLevels  = None    # log levels keyed by module or package name
-_verbose    = False   # whether _debug() msgs should print
+_Loggers = {}  # loggers created herein, keyed by module or package name
+_LogLevels = None  # log levels keyed by module or package name
+_verbose = False  # whether _debug() msgs should print
+
 
 # Can't use this module to debug itself
 def _debug(msg):
     if _verbose:
         print(msg)
 
+
 # Note: 'traitlets' library uses root logger, which we don't want to enable here
 def _createPkgLogger(dotspec):
-    pkgName = dotspec.split('.')[0]
+    pkgName = dotspec.split(".")[0]
 
     if pkgName and pkgName not in _Loggers:
         _debug('_createPkgLogger("%s") from %s' % (pkgName, dotspec))
         logger = getLogger(pkgName)
         logger.propagate = False
 
+
 def getLogger(name):
-    '''
+    """
     Register a logger, which will be set up after the configuration
     file is read.
 
     :param name: the name of the logger, conventionally passed as __name__.
     :return: a logging logger instance
-    '''
+    """
     _debug('getLogger("%s")' % name)
 
     try:
@@ -54,7 +58,7 @@ def getLogger(name):
 
     except KeyError:
         logger = logging.getLogger(name)
-        logger.propagate = True             # set to False for explicitly named modules
+        logger.propagate = True  # set to False for explicitly named modules
         _Loggers[name] = logger
 
     _configureLogger(name)
@@ -62,33 +66,35 @@ def getLogger(name):
 
     return logger
 
+
 def parseLevels(levelStr=None):
     """
     Get log levels for pygcam as a whole or for indicated modules individually.
     Modules starting with a '.' are interpreted to be in pygcam, i.e., ".config"
     is equivalent to "opgee.config".
-    Example: LogLevel = WARNING, .tool:DEBUG, .utils:INFO, .mcs.util:INFO, my_plugin:DEBUG
+    Example: LogLevel = WARNING, .tool:DEBUG, opgee.utils:INFO, .mcs.util:INFO, my_plugin:DEBUG
 
     :param levelStr: a comma-delimited string of module:logLevel values. If
         no ':' is present, the value is treated as the default logLevel for OPGEE.
         If levelStr is None, the value of the variable 'OPGEE.LogLevel' is used.
     :return: (dict) of log levels, keyed by module names
     """
+
     def splitAndStrip(s, delim):
         items = [item.strip() for item in s.split(delim)]
         return items
 
     result = {}
 
-    levelStr = levelStr or getParam('OPGEE.LogLevel')
+    levelStr = levelStr or getParam("OPGEE.LogLevel")
 
-    levels = splitAndStrip(levelStr, ',')
+    levels = splitAndStrip(levelStr, ",")
     for level in levels:
-        if ':' in level:
-            module, lvl = splitAndStrip(level, ':')
+        if ":" in level:
+            module, lvl = splitAndStrip(level, ":")
             # if '.' not in module or module[0] == '.':
             #     module = PKGNAME + '.' + (module[1:] if module[0] == '.' else module)
-            if module[0] == '.':
+            if module[0] == ".":
                 module = PKGNAME + module
         else:
             module = PKGNAME
@@ -97,6 +103,7 @@ def parseLevels(levelStr=None):
         result[module] = lvl.upper()
 
     return result
+
 
 #
 # Copied here from utils.py to avoid an import loop
@@ -113,14 +120,21 @@ def _mkdirs(newdir, mode=0o770):
         if e.errno != EEXIST:
             raise
 
+
 def _addHandler(logger, formatStr, logFile=None):
     if logFile:
         _mkdirs(os.path.dirname(logFile))
 
-    handler = logging.FileHandler(logFile, mode='a') if logFile else logging.StreamHandler()
+    handler = (
+        logging.FileHandler(logFile, mode="a") if logFile else logging.StreamHandler()
+    )
     handler.setFormatter(logging.Formatter(formatStr))
     logger.addHandler(handler)
-    _debug("Added %s log handler for '%s'" % ('file' if logFile else 'console', logger.name))
+    _debug(
+        "Added %s log handler for '%s'"
+        % ("file" if logFile else "console", logger.name)
+    )
+
 
 def _configureLogger(name, force=False):
     try:
@@ -136,7 +150,7 @@ def _configureLogger(name, force=False):
 
     global _LogLevels
     if not _LogLevels:
-        setLogLevels(getParam('OPGEE.LogLevel') or 'WARN')
+        setLogLevels(getParam("OPGEE.LogLevel") or "WARN")
 
     if name in _LogLevels:
         level = _LogLevels[name]
@@ -155,44 +169,48 @@ def _configureLogger(name, force=False):
 
     # flush and remove all handlers
     _debug("Flushing and removing all handlers for %s" % logger)
-    handlers = logger.handlers.copy() # avoid iterating over the list we're removing items from
+    handlers = (
+        logger.handlers.copy()
+    )  # avoid iterating over the list we're removing items from
     for handler in handlers:
         if not isinstance(handler, logging.NullHandler):
             handler.flush()
         logger.removeHandler(handler)
 
-    logConsole = getParamAsBoolean('OPGEE.LogConsole')
+    logConsole = getParamAsBoolean("OPGEE.LogConsole")
     if logConsole:
-        consoleFormat = getParam('OPGEE.LogConsoleFormat')
+        consoleFormat = getParam("OPGEE.LogConsoleFormat")
         _addHandler(logger, consoleFormat)
 
-    logFile = getParam('OPGEE.LogFile')
+    logFile = getParam("OPGEE.LogFile")
     if logFile:
-        fileFormat = getParam('OPGEE.LogFileFormat')
+        fileFormat = getParam("OPGEE.LogFileFormat")
         _addHandler(logger, fileFormat, logFile=logFile)
 
     if not logger.handlers:
         logger.addHandler(logging.NullHandler())
         _debug("Added NullHandler to root logger")
 
+
 def setLogFile(pathname, remove_old_file=False):
-    from .config import setParam
+    from opgee.config import setParam
+
     if remove_old_file and os.path.isfile(pathname):
         os.remove(pathname)
 
-    setParam('OPGEE.LogFile', pathname)
+    setParam("OPGEE.LogFile", pathname)
     configureLogs(force=True)
 
 
 def configureLogs(force=False):
-    '''
+    """
     Do basicConfig setup and configure package loggers based on the information
     in the config instance given. Unless force == True, loggers with handlers will
     not be reconfigured.
 
     :param force: (bool) if True, reconfigure the logs even if already configured.
     :return: none
-    '''
+    """
     if not configLoaded() or not _Loggers:
         return
 
@@ -207,15 +225,16 @@ def configureLogs(force=False):
         if name not in explicit:
             _configureLogger(name, force=force)
 
+
 def setLogLevels(levelStr):
-    '''
+    """
     Set the logging level string, which can define levels for packages and/or modules.
     Must call configureLogs(force=True) afterwards. Level string can be a single level,
     which is used as the default for all modules, or module-specific settings, e.g.,
-    "WARNING, .tool:DEBUG, .utils:INFO, .mcs.util:INFO, my_plugin:DEBUG"
+    "WARNING, .tool:DEBUG, opgee.utils:INFO, .mcs.util:INFO, my_plugin:DEBUG"
 
     :param levelStr: (str) comma-delimited module:LEVEL pairs, or just a single LEVEL
     :return: none
-    '''
+    """
     global _LogLevels
     _LogLevels = parseLevels(levelStr)

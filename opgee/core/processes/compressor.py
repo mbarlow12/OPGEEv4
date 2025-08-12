@@ -11,9 +11,9 @@ from typing import Optional, Sequence, Tuple
 from pint.facets.plain import PlainQuantity as Quantity
 
 from opgee.common import OpgeeObject, TemperaturePressure
-from opgee.processes.shared import get_energy_consumption
-from opgee.stream import Stream
-from opgee.units import ureg
+from opgee.core.processes.shared import get_energy_consumption
+from opgee.core.stream import Stream
+from opgee.core.units import ureg
 
 # type aliases
 Q_Float = Quantity[float]

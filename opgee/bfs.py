@@ -6,7 +6,7 @@
 # See LICENSE.txt for license details.
 #
 from collections import deque
-from .error import OpgeeException
+from opgee.core.error import OpgeeException
 
 
 def is_cyclic_until(successor, visited, rec_stack, successors):

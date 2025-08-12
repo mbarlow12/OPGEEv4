@@ -9,7 +9,7 @@
 import pandas as pd
 
 from ..units import ureg
-from ..common import STP, TemperaturePressure
+from opgee.common import STP, TemperaturePressure
 from ..emissions import EM_FUGITIVES
 from ..energy import EN_ELECTRICITY
 from ..log import getLogger

@@ -8,7 +8,7 @@
 #
 from .compressor import Compressor
 from .shared import get_energy_carrier
-from ..common import TemperaturePressure
+from opgee.common import TemperaturePressure
 from ..emissions import EM_FUGITIVES
 from ..log import getLogger
 from ..process import Process

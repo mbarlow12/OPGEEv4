@@ -3,8 +3,8 @@ from typing import Final, Optional
 import pint
 from pint.registry import ApplicationRegistry
 
-from opgee.error import OpgeeException
-from opgee.log import getLogger
+from opgee.core.error import OpgeeException
+from opgee.core.log import getLogger
 from opgee.pkg_utils import resourceStream
 
 _logger = getLogger(__name__)
@@ -15,7 +15,7 @@ _ureg: Optional[ApplicationRegistry] = None
 if _ureg is None:
     _ureg = pint.get_application_registry()
     del _ureg._units["bbl"]
-    stream = resourceStream("etc/units.txt")
+    stream = resourceStream("core/etc/units.txt")
     lines = [line.strip() for line in stream.readlines()]
     _ureg.load_definitions(lines)
 
@@ -25,6 +25,7 @@ del _ureg
 
 # to avoid redundantly reporting bad units
 _undefined_units = {}
+
 
 def validate_unit(unit):
     """

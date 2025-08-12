@@ -12,18 +12,18 @@ import pandas as pd
 import pint
 
 from .units import ureg, magnitude
-from .attributes import AttrDefs, AttributeMixin
+from opgee.xml.attributes import AttrDefs, AttributeMixin
 from .combine_streams import combine_streams
-from .config import getParamAsBoolean
-from .container import Container
-from .common import OpgeeObject, XmlInstantiable, elt_name, instantiate_subelts
+from opgee.config import getParamAsBoolean
+from opgee.xml.container import Container
+from opgee.common import OpgeeObject, XmlInstantiable, elt_name, instantiate_subelts
 from .emissions import Emissions, EM_COMBUSTION
 from .energy import EN_ELECTRICITY, Energy
-from .error import OpgeeException, AbstractMethodError, OpgeeIterationConverged, ModelValidationError
+from opgee.core.error import OpgeeException, AbstractMethodError, OpgeeIterationConverged, ModelValidationError
 from .import_export import ImportExport
-from .log import getLogger
+from opgee.core.log import getLogger
 from .stream import Stream
-from .utils import getBooleanXML
+from opgee.utils import getBooleanXML
 
 _logger = getLogger(__name__)
 

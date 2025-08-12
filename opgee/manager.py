@@ -19,15 +19,15 @@ from typing import Sequence
 
 
 from .audit import audit_required, audit_field
-from .common import OpgeeObject, Timer
-from .config import getParam, getParamAsInt, getParamAsBoolean, pathjoin
-from .constants import CLUSTER_NONE, SIMPLE_RESULT, DETAILED_RESULT, ERROR_RESULT
-from .error import McsSystemError, AbstractMethodError
+from opgee.common import OpgeeObject, Timer
+from opgee.config import getParam, getParamAsInt, getParamAsBoolean, pathjoin
+from opgee.constants import CLUSTER_NONE, SIMPLE_RESULT, DETAILED_RESULT, ERROR_RESULT
+from opgee.core.error import McsSystemError, AbstractMethodError
 from .field import FieldResult
-from .log import getLogger, setLogFile
+from opgee.core.log import getLogger, setLogFile
 from .model_file import extract_model
-from .post_processor import PostProcessor
-from .utils import flatten, pushd, mkdirs
+from opgee.post_processor import PostProcessor
+from opgee.utils import flatten, pushd, mkdirs
 from .mcs.simulation import Simulation, RESULTS_CSV, FAILURES_CSV
 
 # To debug dask, uncomment the following 2 lines
@@ -193,7 +193,7 @@ class TrialPacket(AbsPacket):
 
 class Manager(OpgeeObject):
     def __init__(self, cluster_type=None):
-        from .constants import CLUSTER_TYPES
+        from opgee.constants import CLUSTER_TYPES
         cluster_type = (cluster_type or getParam('OPGEE.ClusterType')).lower()
 
         if cluster_type not in CLUSTER_TYPES:

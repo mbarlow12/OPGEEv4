@@ -10,8 +10,8 @@ import pandas as pd
 import pint
 
 from .units import magnitude, ureg
-from .common import OpgeeObject
-from .error import OpgeeException
+from opgee.common import OpgeeObject
+from opgee.core.error import OpgeeException
 from .stream import Stream
 
 EM_COMBUSTION = 'Combustion'
