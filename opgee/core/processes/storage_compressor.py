@@ -6,10 +6,10 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-from ..emissions import EM_FUGITIVES
-from ..log import getLogger
-from ..process import Process
-from ..processes.compressor import Compressor
+from opgee.core.emissions import EM_FUGITIVES
+from opgee.core.log import getLogger
+from opgee.core.process import Process
+from opgee.core.processes.compressor import Compressor
 from ..stream import PHASE_GAS
 from .shared import get_energy_carrier
 

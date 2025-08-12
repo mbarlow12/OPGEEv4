@@ -14,10 +14,10 @@ import traceback
 from ..config import pathjoin
 from ..constants import SIMPLE_RESULT, ERROR_RESULT
 from opgee.common import OpgeeObject, split_attr_name
-from ..error import OpgeeException, McsSystemError, McsUserError, CommandlineError
-from ..field import FieldResult
-from ..log import getLogger
-from ..model_file import ModelFile
+from ..core.error import OpgeeException, McsSystemError, McsUserError, CommandlineError
+from opgee.core.field import FieldResult
+from opgee.core.log import getLogger
+from ..xml.model_file import ModelFile
 from ..pkg_utils import resourceStream
 from ..utils import mkdirs, removeTree
 

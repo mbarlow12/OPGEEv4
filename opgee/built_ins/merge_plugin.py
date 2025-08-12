@@ -8,7 +8,7 @@
 """
 from pathlib import Path
 from ..subcommand import SubcommandABC
-from ..log import getLogger
+from opgee.core.log import getLogger
 
 _logger = getLogger(__name__)
 
@@ -42,7 +42,7 @@ class MergeCommand(SubcommandABC):
 
     def run(self, args, tool):
         from ..error import CommandlineError
-        from ..model_file import ModelFile
+        from ..xml.model_file import ModelFile
 
         pathnames = args.pathnames
         if not pathnames:

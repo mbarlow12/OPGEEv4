@@ -1,7 +1,7 @@
 from dash import dcc, html
 
 from ..error import OpgeeException
-from ..log import getLogger
+from opgee.core.log import getLogger
 from ..units import magnitude
 
 _logger = getLogger(__name__)

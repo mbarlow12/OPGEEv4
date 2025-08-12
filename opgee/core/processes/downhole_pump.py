@@ -10,9 +10,9 @@ import numpy as np
 
 from ..units import ureg
 from opgee.common import TemperaturePressure
-from ..emissions import EM_FUGITIVES
-from ..log import getLogger
-from ..process import Process
+from opgee.core.emissions import EM_FUGITIVES
+from opgee.core.log import getLogger
+from opgee.core.process import Process
 from ..stream import Stream, PHASE_GAS
 from ..combine_streams import combine_streams
 from .shared import get_energy_carrier, get_energy_consumption_stages

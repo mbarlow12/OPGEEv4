@@ -11,10 +11,10 @@ from ..combine_streams import combine_streams
 from opgee.common import STP
 from opgee.common import TemperaturePressure
 from ..error import OpgeeException
-from ..energy import EN_NATURAL_GAS
-from ..import_export import N2, CO2_Flooding, NATURAL_GAS
-from ..log import getLogger
-from ..process import Process
+from opgee.core.energy import EN_NATURAL_GAS
+from opgee.core.import_export import N2, CO2_Flooding, NATURAL_GAS
+from opgee.core.log import getLogger
+from opgee.core.process import Process
 from ..stream import PHASE_GAS, Stream
 
 from .shared import get_init_lifting_stream

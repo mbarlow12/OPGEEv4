@@ -10,11 +10,11 @@ import pandas as pd
 
 from ..units import ureg
 from opgee.common import STP
-from ..emissions import EM_FLARING
-from ..energy import EN_NATURAL_GAS, EN_ELECTRICITY, EN_UPG_PROC_GAS, EN_PETCOKE
-from ..import_export import ELECTRICITY, H2
-from ..log import getLogger
-from ..process import Process
+from opgee.core.emissions import EM_FLARING
+from opgee.core.energy import EN_NATURAL_GAS, EN_ELECTRICITY, EN_UPG_PROC_GAS, EN_PETCOKE
+from opgee.core.import_export import ELECTRICITY, H2
+from opgee.core.log import getLogger
+from opgee.core.process import Process
 from ..stream import PHASE_GAS
 from ..stream import Stream
 

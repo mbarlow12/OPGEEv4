@@ -9,10 +9,10 @@
 import numpy as np
 
 from ..units import ureg
-from ..emissions import EM_LAND_USE
-from ..energy import EN_DIESEL
-from ..log import getLogger
-from ..process import Process
+from opgee.core.emissions import EM_LAND_USE
+from opgee.core.energy import EN_DIESEL
+from opgee.core.log import getLogger
+from opgee.core.process import Process
 from ..stream import Stream
 
 _logger = getLogger(__name__)

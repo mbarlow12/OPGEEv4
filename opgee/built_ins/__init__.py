@@ -1,6 +1,6 @@
 from .collect_plugin import CollectCommand
 from .compare_plugin import CompareCommand
-from opgee.config_plugin import ConfigCommand
+from .config_plugin import ConfigCommand
 from .graph_plugin import GraphCommand
 from .gui_plugin import GUICommand
 from .run_plugin import RunCommand

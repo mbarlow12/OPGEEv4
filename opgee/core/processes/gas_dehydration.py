@@ -9,12 +9,12 @@
 import numpy as np
 
 from ..units import ureg
-from ..emissions import EM_FUGITIVES
-from ..energy import EN_NATURAL_GAS, EN_ELECTRICITY
+from opgee.core.emissions import EM_FUGITIVES
+from opgee.core.energy import EN_NATURAL_GAS, EN_ELECTRICITY
 from ..error import OpgeeException
-from ..log import getLogger
-from ..process import Process
-from ..process import run_corr_eqns
+from opgee.core.log import getLogger
+from opgee.core.process import Process
+from opgee.core.process import run_corr_eqns
 from ..thermodynamics import ChemicalInfo
 from .shared import get_bounded_value, predict_blower_energy_use
 

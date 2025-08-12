@@ -17,8 +17,8 @@ import numpy as np
 
 from .shared import get_energy_carrier, get_energy_consumption
 from ..error import OpgeeException
-from ..log import getLogger
-from ..process import Process
+from opgee.core.log import getLogger
+from opgee.core.process import Process
 from ..units import ureg
 
 _logger = getLogger(__name__)

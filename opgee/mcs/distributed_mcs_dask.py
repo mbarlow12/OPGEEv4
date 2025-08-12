@@ -19,7 +19,7 @@ from itertools import islice, product
 from opgee.common import OpgeeObject, Timer
 from ..config import getParam, getParamAsInt, getParamAsBoolean
 from ..error import RemoteError, McsSystemError, TrialErrorWrapper
-from ..log  import getLogger, setLogFile
+from opgee.core.log  import getLogger, setLogFile
 from .simulation import Simulation, combine_results
 
 _logger = getLogger(__name__)

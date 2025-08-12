@@ -9,8 +9,8 @@
 from ..units import ureg
 from opgee.common import TemperaturePressure
 from ..error import OpgeeException
-from ..log import getLogger
-from ..process import Process
+from opgee.core.log import getLogger
+from opgee.core.process import Process
 from ..stream import PHASE_LIQUID
 from .shared import get_energy_carrier
 

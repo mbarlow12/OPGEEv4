@@ -10,11 +10,11 @@ import pandas as pd
 
 from ..units import ureg
 from opgee.common import STP, TemperaturePressure
-from ..emissions import EM_FUGITIVES
-from ..energy import EN_ELECTRICITY
-from ..log import getLogger
-from ..process import Process
-from ..process import run_corr_eqns
+from opgee.core.emissions import EM_FUGITIVES
+from opgee.core.energy import EN_ELECTRICITY
+from opgee.core.log import getLogger
+from opgee.core.process import Process
+from opgee.core.process import run_corr_eqns
 from ..stream import PHASE_GAS, Stream
 from .compressor import Compressor
 from .shared import get_energy_carrier, predict_blower_energy_use, get_bounded_value

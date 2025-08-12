@@ -7,9 +7,9 @@
 # See LICENSE.txt for license details.
 #
 from ..units import ureg
-from ..emissions import EM_FUGITIVES
-from ..log import getLogger
-from ..process import Process
+from opgee.core.emissions import EM_FUGITIVES
+from opgee.core.log import getLogger
+from opgee.core.process import Process
 from ..stream import PHASE_GAS
 from ..stream import Stream
 

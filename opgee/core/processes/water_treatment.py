@@ -8,11 +8,11 @@
 #
 from ..units import ureg
 from opgee.common import TemperaturePressure
-from ..energy import EN_ELECTRICITY
+from opgee.core.energy import EN_ELECTRICITY
 from ..error import OpgeeException
-from ..import_export import WATER
-from ..log import getLogger
-from ..process import Process
+from opgee.core.import_export import WATER
+from opgee.core.log import getLogger
+from opgee.core.process import Process
 
 _logger = getLogger(__name__)
 

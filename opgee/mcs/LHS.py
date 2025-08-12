@@ -18,7 +18,7 @@ import numpy as np
 from scipy import stats
 from pandas import DataFrame
 
-from ..log import getLogger
+from opgee.core.log import getLogger
 
 _logger = getLogger(__name__)
 

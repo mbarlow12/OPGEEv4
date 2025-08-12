@@ -1,10 +1,10 @@
 from ..config import getParam
 from opgee.common import OpgeeObject
-from ..error import McsSystemError
-from ..log import getLogger
+from ..core.error import McsSystemError
+from opgee.core.log import getLogger
 from ..pkg_utils import resourceStream
 from ..utils import getBooleanXML
-from ..XMLFile import XMLFile
+from ..xml.XMLFile import XMLFile
 from .distro import get_frozen_rv
 
 _logger = getLogger(__name__)

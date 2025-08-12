@@ -3,8 +3,8 @@
 import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output, State, ClientsideFunction
-from ..model_file import ModelFile
-from ..log import getLogger
+from ..xml.model_file import ModelFile
+from opgee.core.log import getLogger
 
 from .widgets import get_analysis_and_field, horiz_space, pulldown_style, label_style
 

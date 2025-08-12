@@ -6,8 +6,8 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-from ..log import getLogger
-from ..process import Process
+from opgee.core.log import getLogger
+from opgee.core.process import Process
 
 _logger = getLogger(__name__)
 

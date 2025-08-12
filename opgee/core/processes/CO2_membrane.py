@@ -7,9 +7,9 @@
 # See LICENSE.txt for license details.
 #
 from opgee.common import std_pressure
-from ..log import getLogger
-from ..process import Process
-from ..processes.compressor import Compressor
+from opgee.core.log import getLogger
+from opgee.core.process import Process
+from opgee.core.processes.compressor import Compressor
 from ..stream import PHASE_GAS
 from .shared import get_energy_carrier
 

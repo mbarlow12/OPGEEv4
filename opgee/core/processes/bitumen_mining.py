@@ -8,10 +8,10 @@
 #
 from ..units import ureg
 from opgee.common import TemperaturePressure
-from ..emissions import EM_FUGITIVES
-from ..energy import EN_NATURAL_GAS, EN_ELECTRICITY, EN_DIESEL
-from ..log import getLogger
-from ..process import Process
+from opgee.core.emissions import EM_FUGITIVES
+from opgee.core.energy import EN_NATURAL_GAS, EN_ELECTRICITY, EN_DIESEL
+from opgee.core.log import getLogger
+from opgee.core.process import Process
 from ..stream import Stream
 from ..error import OpgeeException
 

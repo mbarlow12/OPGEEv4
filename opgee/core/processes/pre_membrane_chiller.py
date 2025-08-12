@@ -7,10 +7,10 @@
 # See LICENSE.txt for license details.
 #
 from ..units import ureg
-from ..emissions import EM_FUGITIVES
-from ..energy import EN_ELECTRICITY
-from ..log import getLogger
-from ..process import Process
+from opgee.core.emissions import EM_FUGITIVES
+from opgee.core.energy import EN_ELECTRICITY
+from opgee.core.log import getLogger
+from opgee.core.process import Process
 
 _logger = getLogger(__name__)
 

@@ -7,7 +7,7 @@
 # See LICENSE.txt for license details.
 #
 from ..units import ureg
-from ..energy import EN_NATURAL_GAS, EN_ELECTRICITY, EN_DIESEL, EN_RESID
+from opgee.core.energy import EN_NATURAL_GAS, EN_ELECTRICITY, EN_DIESEL, EN_RESID
 from ..error import OpgeeException
 from ..stream import Stream, PHASE_GAS
 

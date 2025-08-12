@@ -23,9 +23,9 @@ from opgee.common import OpgeeObject, Timer
 from opgee.config import getParam, getParamAsInt, getParamAsBoolean, pathjoin
 from opgee.constants import CLUSTER_NONE, SIMPLE_RESULT, DETAILED_RESULT, ERROR_RESULT
 from opgee.core.error import McsSystemError, AbstractMethodError
-from .field import FieldResult
+from .core.field import FieldResult
 from opgee.core.log import getLogger, setLogFile
-from .model_file import extract_model
+from .xml.model_file import extract_model
 from opgee.post_processor import PostProcessor
 from opgee.utils import flatten, pushd, mkdirs
 from .mcs.simulation import Simulation, RESULTS_CSV, FAILURES_CSV
@@ -354,7 +354,7 @@ def _run_field(analysis_name, field_name, xml_string, result_type,
     :return: (FieldResult) results of ``result_type`` or ERROR_RESULT, if an error
         occurred.
     """
-    from .model_file import ModelFile
+    from .xml.model_file import ModelFile
 
     audit_level = getParam("OPGEE.AuditLevel", raiseError=False)
     mf = None

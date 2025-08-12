@@ -6,7 +6,7 @@
 """
 from pathlib import Path
 from ..subcommand import SubcommandABC
-from ..log import getLogger
+from opgee.core.log import getLogger
 
 _logger = getLogger(__name__)
 

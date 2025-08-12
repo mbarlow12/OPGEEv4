@@ -11,7 +11,7 @@ import pandas as pd
 from ..units import ureg
 from opgee.common import OpgeeObject
 from ..error import OpgeeException
-from ..energy import EN_DIESEL
+from opgee.core.energy import EN_DIESEL
 
 
 class TransportEnergy(OpgeeObject):

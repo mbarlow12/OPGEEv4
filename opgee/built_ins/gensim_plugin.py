@@ -8,7 +8,7 @@
 # Copyright (c) 2022-2023 the author and The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-from ..log import getLogger
+from opgee.core.log import getLogger
 from ..subcommand import SubcommandABC
 
 _logger = getLogger(__name__)
