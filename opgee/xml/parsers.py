@@ -17,6 +17,7 @@ from opgee.common import elt_name, TemperaturePressure
 from opgee.core.error import OpgeeException, ModelValidationError
 from opgee.core.log import getLogger
 from opgee.utils import getBooleanXML, coercible
+from opgee.xml.attributes import AttrDefs
 
 # Use TYPE_CHECKING to avoid circular imports
 if TYPE_CHECKING:
@@ -71,7 +72,16 @@ def parse_stream(elt, parent: Optional["Field"] = None) -> "Stream":
     # Create Stream object
     # Note: This constructor call will need to be updated when Stream class
     # is refactored to not inherit from AttributeMixin
-    obj = Stream(name, src, dst, tp, API, contents, parent=parent, impute=impute)
+    obj = Stream(
+        name=name,
+        src_name=src,
+        dst_name=dst,
+        tp=tp,
+        API=API,
+        contents=contents,
+        parent=parent,
+        impute=impute,
+    )
 
     # Handle exogenous component data
     if has_exogenous_data:
@@ -96,17 +106,64 @@ def parse_field(elt, parent=None) -> "Field":
     Replaces the Field.from_xml class method.
 
     :param elt: (etree.Element) representing a <Field> element
-    :param parent: Parent object (if any)
-    :return: (Field) instance of Field class
+    :param parent: (Analysis) the Analysis containing the new Field
+    :return: (Field) instance populated from XML
     """
     # Import here to avoid circular dependencies
     from opgee.core.field import Field
+    from opgee.common import instantiate_subelts
+    from opgee.aggregator import Aggregator
+    from opgee.core.process import Process
+    from opgee.core.stream import Stream
+    from opgee.xml.process_groups import ProcessChoice
+    from .adapters import extract_xml_element_attributes
 
-    # This is a placeholder - full implementation will be added in Phase 1.2
-    _logger.info("parse_field placeholder - implementation pending")
+    # Parse basic field properties
+    name = elt_name(elt)
+    attrib = extract_xml_element_attributes(elt)
 
-    # For now, delegate to existing from_xml method
-    return Field.from_xml(elt, parent)
+    # AttrDefs.load_attr_defs(elt=elt)
+
+    # Parse attributes using existing AttributeMixin system (for now)
+    # This will be replaced with parse_attributes_from_xml in Phase 1.3
+    attr_dict = Field.instantiate_attrs(elt)
+
+    # Parse group memberships
+    group_names = [node.text for node in elt.findall("Group")]
+
+    # Create Field instance
+    field = Field(name, attr_dict=attr_dict, parent=parent, group_names=group_names)
+
+    # Set XML-derived properties
+    field.set_enabled(attrib.get("enabled", "1"))
+    field.set_extend(attrib.get("extend", "0"))
+    field.set_modifies(
+        attrib.get("modified")
+    )  # "modified" attr is changed after merging
+
+    # Parse child elements using instantiate_subelts (existing system)
+    # This maintains full compatibility with current architecture
+    aggs = instantiate_subelts(elt, Aggregator, parent=field)
+    procs = instantiate_subelts(elt, Process, parent=field)
+    streams = instantiate_subelts(elt, Stream, parent=field)
+    choices = instantiate_subelts(elt, ProcessChoice)
+
+    # Build process choice dictionary (convert to lowercase to avoid lookup errors)
+    process_choice_dict = {choice.name.lower(): choice for choice in choices}
+
+    # Add all children to field
+    field.add_children(
+        aggs=aggs,
+        procs=procs,
+        streams=streams,
+        process_choice_dict=process_choice_dict,
+    )
+
+    # Post-processing: cache attributes for smart defaults
+    for proc in field.processes():
+        proc.cache_attributes()
+
+    return field
 
 
 def parse_process(elt, parent: Optional["Field"] = None) -> "Process":
@@ -163,4 +220,3 @@ def find_child_elements(elt, tag_name: str, required: bool = False):
         raise OpgeeException(f"Required child element <{tag_name}> not found")
 
     return children
-

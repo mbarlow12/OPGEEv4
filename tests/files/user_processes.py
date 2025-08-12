@@ -1,5 +1,5 @@
-from opgee.error import ModelValidationError
-from opgee.process import Process
+from opgee.core.error import ModelValidationError
+from opgee.core.process import Process
 
 class UserProcess1(Process):
     def run(self, analysis):

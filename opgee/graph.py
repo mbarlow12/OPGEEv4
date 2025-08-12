@@ -8,7 +8,7 @@
 #
 import pydot
 
-from opgee.field import Field
+from opgee.core.field import Field
 
 from opgee.common import OpgeeObject
 from opgee.core.log import getLogger

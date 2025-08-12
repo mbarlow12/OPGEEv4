@@ -3,8 +3,8 @@ import pytest
 
 from opgee.analysis import Analysis
 from opgee.constants import DETAILED_RESULT
-from opgee.error import AbstractMethodError, McsUserError
-from opgee.field import Field, FieldResult
+from opgee.core.error import AbstractMethodError, McsUserError
+from opgee.core.field import Field, FieldResult
 from opgee.post_processor import PostProcessor
 
 from .utils_for_tests import load_test_model, path_to_test_file, tempdir

@@ -1,5 +1,5 @@
-from opgee.units import ureg
-from opgee.import_export import ImportExport, ELECTRICITY, NATURAL_GAS
+from opgee.core.units import ureg
+from opgee.core.import_export import ImportExport, ELECTRICITY, NATURAL_GAS
 
 def test_import():
     obj = ImportExport()

@@ -1,6 +1,6 @@
 from opgee.analysis import Analysis
 from opgee.common import A
-from opgee.field import Field
+from opgee.core.field import Field
 from opgee.mcs.simulation import Simulation
 from opgee.smart_defaults import SmartDefault
 from opgee.mcs.simulation import Distribution

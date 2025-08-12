@@ -1,7 +1,7 @@
 import pytest
 
-from opgee.error import OpgeeException
-from opgee.model_file import ModelFile, extract_model, fields_for_analysis
+from opgee.core.error import OpgeeException
+from opgee.xml.model_file import ModelFile, extract_model, fields_for_analysis
 
 from .utils_for_tests import path_to_test_file
 

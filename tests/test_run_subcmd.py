@@ -2,7 +2,7 @@ from glob import glob
 import os
 import pytest
 from opgee.config import setParam, pathjoin
-from opgee.error import CommandlineError
+from opgee.core.error import CommandlineError
 from opgee.post_processor import PostProcessor
 from opgee.tool import opg
 from .utils_for_tests import path_to_test_file, tempdir

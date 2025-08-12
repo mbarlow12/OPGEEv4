@@ -1,8 +1,8 @@
 import pandas as pd
 import pytest
 from opgee.common import TemperaturePressure
-from opgee.stream import Stream, PHASE_GAS, PHASE_LIQUID
-from opgee.units import ureg
+from opgee.core.stream import Stream, PHASE_GAS, PHASE_LIQUID
+from opgee.core.units import ureg
 
 
 @pytest.fixture(scope="module")
@@ -388,7 +388,7 @@ def test_steam_enthalpy(water_instance):
 
 
 def test_check_balance(test_model):
-    from opgee.error import BalanceError
+    from opgee.core.error import BalanceError
 
     field = test_model.get_field("test")
     proc = field.find_process('SteamGeneration')

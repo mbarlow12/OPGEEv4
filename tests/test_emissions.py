@@ -1,8 +1,8 @@
 import pytest
 import pandas as pd
-from opgee.units import ureg
-from opgee.emissions import Emissions, EM_FUGITIVES, EM_FLARING, EM_LAND_USE, EmissionsError
-from opgee.error import OpgeeException
+from opgee.core.units import ureg
+from opgee.core.emissions import Emissions, EM_FUGITIVES, EM_FLARING, EM_LAND_USE, EmissionsError
+from opgee.core.error import OpgeeException
 
 
 def test_set_rate():

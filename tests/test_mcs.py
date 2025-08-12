@@ -2,7 +2,7 @@ from pathlib import Path
 import pytest
 from io import StringIO
 
-from opgee.error import McsUserError
+from opgee.core.error import McsUserError
 from opgee.mcs.simulation import read_distributions, Simulation, Distribution
 from opgee.mcs.parameter_list import ParameterList
 from opgee.tool import opg

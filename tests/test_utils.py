@@ -1,8 +1,8 @@
 import os
 import pytest
 
-from opgee.units import ureg
-from opgee.error import OpgeeException
+from opgee.core.units import ureg
+from opgee.core.error import OpgeeException
 from opgee.utils import (getBooleanXML, coercible, mkdirs, loadModuleFromPath,
                          removeTree, parseTrialString)
 from .utils_for_tests import tmpdir
