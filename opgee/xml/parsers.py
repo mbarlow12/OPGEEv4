@@ -10,22 +10,90 @@
 # See LICENSE.txt for license details.
 #
 
-from typing import Optional, TYPE_CHECKING
+from __future__ import annotations
+from functools import lru_cache
+from typing import (
+    Literal,
+    Optional,
+    TYPE_CHECKING,
+    Callable,
+    TypeGuard,
+    TypeVar,
+    TypeAlias,
+    overload,
+)
+
+# from lxml.etree import _Element as Element
+from lxml import etree
 
 # Import utilities needed for XML parsing
 from opgee.common import elt_name, TemperaturePressure
 from opgee.core.error import OpgeeException, ModelValidationError
 from opgee.core.log import getLogger
+from opgee.table_update import Cell, TableUpdate
 from opgee.utils import getBooleanXML, coercible
 from opgee.xml.attributes import AttrDefs
+from opgee.core.field import Field
+from opgee.core.process import Process
+from opgee.core.stream import Stream
 
 # Use TYPE_CHECKING to avoid circular imports
 if TYPE_CHECKING:
-    from opgee.core.field import Field
-    from opgee.core.process import Process
-    from opgee.core.stream import Stream
+    from opgee.core.model import Model
+    from typing_extensions import override
 
 _logger = getLogger(__name__)
+
+Element: TypeAlias = etree._Element
+Parsable = type[Field] | type[Stream] | type[Process] | type[TableUpdate]
+
+ParsableClassName = Literal[
+    Field.__name__, Process.__name__, Stream.__name__, TableUpdate.__name__
+]
+
+
+@lru_cache(maxsize=1)
+def _parser_map():
+    return {
+        Field.__name__: parse_field,
+        Stream.__name__: parse_stream,
+        Process.__name__: parse_process,
+        TableUpdate.__name__: parse_table_update,
+    }
+
+
+def is_parsable_class(klass) -> TypeGuard[Parsable]:
+    return isinstance(klass, (type(Field), type(Model), type(Stream)))
+
+
+@overload
+def get_parser_function(
+    klass: Literal["TableUpdate"] | type[TableUpdate],
+) -> Callable[[Element, Model | None], TableUpdate]: ...
+
+
+@overload
+def get_parser_function(
+    klass: Literal["Field"] | type[Field],
+) -> Callable[[Element, Model | None], Field]: ...
+
+
+@lru_cache(maxsize=10)
+def get_parser_function(
+    klass: str | Parsable,
+):
+    if not isinstance(klass, str):
+        klass = klass.__name__
+    return _parser_map()[klass]
+
+
+T = TypeVar("T")
+
+
+def parse_table_update(elt: Element, parent: Model | None):
+    sub_elts = elt.findall("Cell")
+    cells = [Cell(e.attrib["row"], e.attrib["col"], e.text) for e in sub_elts]
+    return TableUpdate(elt_name(elt), cells)
 
 
 def parse_stream(elt, parent: Optional["Field"] = None) -> "Stream":
@@ -99,7 +167,7 @@ def parse_stream(elt, parent: Optional["Field"] = None) -> "Stream":
     return obj
 
 
-def parse_field(elt, parent=None) -> "Field":
+def parse_field(elt, parent=None) -> Field:
     """
     Parse a Field XML element into a Field object.
 
