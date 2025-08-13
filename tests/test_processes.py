@@ -4,7 +4,8 @@ from opgee.core.units import ureg
 from opgee.core.energy import EN_NATURAL_GAS, EN_CRUDE_OIL
 from opgee.core.emissions import EM_FLARING
 from opgee.core.error import OpgeeException, ZeroEnergyFlowError
-from opgee.core.process import Process, _get_subclass, Reservoir
+from opgee.core.process import Process, _get_subclass
+from opgee.core.processes.reservoir import Reservoir
 
 
 class NotProcess(): pass

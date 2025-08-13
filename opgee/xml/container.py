@@ -162,6 +162,7 @@ class _Container(AttributeMixin):
     """
     def __init__(self, name, attr_dict=None):
         AttributeMixin.__init__(self, attr_dict=attr_dict)
+        self.name: str = name
 
         self.attr_defs = AttrDefs.get_instance()
 

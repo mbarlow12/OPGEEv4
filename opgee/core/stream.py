@@ -6,6 +6,7 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
+from __future__ import annotations
 import re
 from copy import copy
 
@@ -20,6 +21,10 @@ from opgee.core.error import OpgeeException, ModelValidationError
 from opgee.core.log import getLogger
 from .table_manager import TableManager
 from opgee.utils import getBooleanXML, coercible
+try:
+    from typing import TYPE_CHECKING
+except ImportError:
+    from typing_extensions import TYPE_CHECKING
 
 _logger = getLogger(__name__)
 
@@ -72,7 +77,7 @@ def carbon_to_molecule(c_name):
 #
 # Can streams have emissions (e.g., leakage) or is that attributed to a process?
 #
-class Stream(AttributeMixin, XmlInstantiable):
+class Stream(AttributeMixin):
     """
     The `Stream` class represent the flow rates of single substances or mingled combinations of co-flowing substances
     in any of the three states of matter (solid, liquid, or gas). Streams and stream components are specified in mass
@@ -151,7 +156,6 @@ class Stream(AttributeMixin, XmlInstantiable):
         self,
         name,
         tp,
-        parent=None,
         API=None,
         comp_matrix=None,
         src_name=None,
@@ -160,7 +164,9 @@ class Stream(AttributeMixin, XmlInstantiable):
         impute=True,
     ):
         AttributeMixin.__init__(self)  # no-op, but here for completeness
-        XmlInstantiable.__init__(self, name, parent=parent)
+
+        self.name: str = name
+        self.enabled: bool = True
 
         # TBD: rename this self.comp_matrix for clarity
         self.components = (
@@ -178,7 +184,6 @@ class Stream(AttributeMixin, XmlInstantiable):
 
         self.src_proc = None  # set in Field.connect_processes()
         self.dst_proc = None
-        self.field = None
         self.API = API
 
         self.contents = contents or []  # generic description of what the stream carries
@@ -192,7 +197,10 @@ class Stream(AttributeMixin, XmlInstantiable):
     def __str__(self):
         return f"<Stream '{self.name}' enabled={self.enabled}>"
 
-    def to_dataframe(self):
+    def set_enabled(self, enabled: bool=True):
+        self.enabled = enabled
+
+    def to_dataframe(self, field_name: str):
         """
         Converts the data for the stream, including stream name, temperature, pressure,
         and API to a long-format DataFrame for writing CSV files.
@@ -226,7 +234,7 @@ class Stream(AttributeMixin, XmlInstantiable):
         extras = pd.DataFrame(data=tuples, columns=columns)
         result = pd.concat([df, extras], axis='rows')
 
-        result['field'] = self.parent.name
+        result['field'] = field_name
         result['stream'] = self.name
         result['source'] = self.src_name
         result['destination'] = self.dst_name
@@ -672,7 +680,7 @@ class Stream(AttributeMixin, XmlInstantiable):
         Instantiate an instance from an XML element
 
         :param elt: (etree.Element) representing a <Stream> element
-        :param parent: (opgee.Field) the Field containing the new Stream
+        :param field: (opgee.Field) the Field containing the new Stream
         :return: (Stream) instance of class Stream
         """
         a = elt.attrib
@@ -732,7 +740,6 @@ class Stream(AttributeMixin, XmlInstantiable):
             name,
             tp,
             API=API,
-            parent=parent,
             comp_matrix=matrix,
             src_name=src,
             dst_name=dst,

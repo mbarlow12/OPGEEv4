@@ -7,7 +7,7 @@
 import re
 
 from opgee.config import getParamAsList
-from .xml.container import Container
+from .xml.container import _Container
 from opgee.common import elt_name, OpgeeObject
 from .core.emissions import Emissions
 from .core.error import OpgeeException
@@ -24,7 +24,7 @@ class Group(OpgeeObject):
         self.text = elt.text
 
 
-class Analysis(Container):
+class Analysis(_Container):
     """
     Describes a single `Analysis`, which can contain multiple `Fields`, including
     several attributes common to an analysis, including:
@@ -40,7 +40,8 @@ class Analysis(Container):
     See also :doc:`OPGEE XML documentation <opgee-xml>`
     """
     def __init__(self, name, parent=None, attr_dict=None, field_names=None, groups=None):
-        super().__init__(name, attr_dict=attr_dict, parent=parent)
+        super().__init__(name, attr_dict=attr_dict)
+        self.parent = parent
         self.check_attr_constraints(self.attr_dict)
 
         if not parent:
@@ -118,7 +119,7 @@ class Analysis(Container):
 
         :return: (iterator) of Field instances
         """
-        flds = [f for f in self.field_dict.values() if f.is_enabled()]  # N.B. returns an iterator
+        flds = [f for f in self.field_dict.values() if f.enabled]  # N.B. returns an iterator
         return flds
 
     def field_names(self, enabled_only=True):
@@ -190,7 +191,7 @@ class Analysis(Container):
 
     def run(self, compute_ci=True):
         """
-        Run all children and collect emissions and energy use for all Containers and Processes.
+        Run all children and collect emissions and energy use for all _Containers and Processes.
 
         :param compute_ci: (bool) whether to compute carbon intensity for each field that is run.
         :return: None

@@ -10,7 +10,7 @@ import pint
 
 from .units import ureg
 from opgee.analysis import Analysis
-from opgee.xml.container import Container
+from opgee.xml.container import _Container
 from opgee.common import elt_name, instantiate_subelts
 from opgee.core.error import OpgeeException, CommandlineError
 from .field import Field
@@ -22,10 +22,10 @@ DEFAULT_SCHEMA_VERSION = "4.0.0.a"
 
 _logger = getLogger(__name__)
 
-class Model(Container):
+class Model(_Container):
 
     def __init__(self, name, attr_dict=None, table_updates=None):
-        super().__init__(name, attr_dict=attr_dict, parent=None)
+        super().__init__(name, attr_dict=attr_dict)
 
         Model.instance = self
         self.schema_version = attr_dict.get('schema_version', DEFAULT_SCHEMA_VERSION)
@@ -155,12 +155,11 @@ class Model(Container):
         return self.analyses()  # N.B. returns an iterator
 
     @classmethod
-    def from_xml(cls, elt, parent=None, analysis_names=None, field_names=None):
+    def from_xml(cls, elt, analysis_names=None, field_names=None):
         """
         Instantiate an instance from an XML element
 
         :param elt: (etree.Element) representing a <Model> element
-        :param parent: (None) this argument should be ``None`` for Model instances.
         :param field_names: (list of str) the names of fields to include. Any other
           fields are ignored when building the model from the XML.
         :return: (Model) instance populated from XML
@@ -174,14 +173,14 @@ class Model(Container):
         if field_names and not fields:
             raise CommandlineError(f"Indicated field names {field_names} were not found in model")
 
-        model.field_dict = model.adopt(fields, asDict=True)
+        model.field_dict = {f.name: f for f in fields}
 
         analyses = instantiate_subelts(elt, Analysis, parent=model, include_names=analysis_names,
                                        field_names=field_names)
         if analysis_names and not analyses:
             raise CommandlineError(f"Specified analyses {analysis_names} not found in model")
 
-        model.analysis_dict = model.adopt(analyses, asDict=True)
+        model.analysis_dict = {analysis.name: analysis for analysis in analyses}
 
         # TBD: is this still required?
         if field_names:

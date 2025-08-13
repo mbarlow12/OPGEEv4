@@ -147,7 +147,7 @@ def parse_stream(elt, parent: Optional["Field"] = None) -> "Stream":
         tp=tp,
         API=API,
         contents=contents,
-        parent=parent,
+        field=parent,
         impute=impute,
     )
 
@@ -234,7 +234,7 @@ def parse_field(elt, parent=None) -> Field:
     return field
 
 
-def parse_process(elt, parent: Optional["Field"] = None) -> "Process":
+def parse_process(elt, field: Field | None = None) -> "Process":
     """
     Parse a Process XML element into a Process object.
 
@@ -245,13 +245,37 @@ def parse_process(elt, parent: Optional["Field"] = None) -> "Process":
     :return: (Process) instance of Process class or subclass
     """
     # Import here to avoid circular dependencies
-    from opgee.core.process import Process
+    from opgee.core.process import Process, _get_subclass
+    name = elt_name(elt)
 
-    # This is a placeholder - full implementation will be added in Phase 1.2
-    _logger.info("parse_process placeholder - implementation pending")
+    if name == "test_proc":
+        pass
 
-    # For now, delegate to existing from_xml method
-    return Process.from_xml(elt, parent)
+    a = elt.attrib
+    desc = a.get("desc")
+    impute_start = a.get("impute-start")
+    cycle_start = a.get("cycle-start")
+    boundary = a.get("boundary")  # optional
+
+    classname = a["class"]  # required by XML schema
+    subclass = _get_subclass(Process, classname)
+    attr_dict = subclass.instantiate_attrs(elt, is_process=True)
+
+    proc = subclass(
+        name,
+        attr_dict=attr_dict,
+        field=field,
+        desc=desc,
+        cycle_start=cycle_start,
+        impute_start=impute_start,
+        boundary=boundary,
+    )
+
+    proc.set_enabled(a.get("enabled", "1"))
+    proc.set_extend(a.get("extend", "0"))
+    proc.set_run_after(getBooleanXML(a.get("after", "0")))
+
+    return proc
 
 
 # Utility functions for common XML parsing operations

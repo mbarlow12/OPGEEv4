@@ -6,6 +6,7 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
+from __future__ import annotations
 import networkx as nx
 import pint
 import pandas as pd
@@ -13,7 +14,7 @@ import pandas as pd
 from .units import ureg
 from opgee.config import getParamAsList
 from opgee.constants import DETAILED_RESULT
-from opgee.xml.container import Container
+from opgee.xml.container import _Container
 from opgee.common import elt_name, instantiate_subelts, dict_from_list, STP
 from .energy import Energy
 from opgee.core.error import (
@@ -26,19 +27,24 @@ from opgee.core.error import (
 )
 from .import_export import ImportExport
 from opgee.core.log import getLogger
-from opgee.aggregator import Aggregator
 from opgee.post_processor import PostProcessor
-from .process import Process, Reservoir, decache_subclasses
 from opgee.xml.process_groups import ProcessChoice
 from .processes.steam_generator import SteamGenerator
 from .processes.transport_energy import TransportEnergy
 from opgee.smart_defaults import SmartDefault
-from .stream import Stream
 from .thermodynamics import Oil, Gas, Water
 from opgee.utils import getBooleanXML, roundup
 from .combine_streams import combine_streams
 from opgee.bfs import bfs
-from opgee.xml.parsers import parse_field
+from opgee.core.process import Process
+
+try:
+    from typing import TYPE_CHECKING
+except ImportError:
+    from typing_extensions import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from opgee.core.model import Model
 
 _logger = getLogger(__name__)
 
@@ -83,7 +89,7 @@ def total_emissions(proc, gwp):
     return total
 
 
-class Field(Container):
+class Field(_Container):
     """
     A `Field` contains all the `Process` instances associated with a single oil or
     gas field, and the `Stream` instances that connect them. It also holds an instance
@@ -97,11 +103,18 @@ class Field(Container):
     See also :doc:`OPGEE XML documentation <opgee-xml>`
     """
 
-    def __init__(self, name, attr_dict=None, parent=None, group_names=None):
-        super().__init__(name, attr_dict=attr_dict, parent=parent)
+    model: Model | None
 
-        self.model = model = self.find_container("Model")
+    def __init__(self, name, model: Model | None, attr_dict=None, group_names=None):
+        super().__init__(name, attr_dict=attr_dict)
+
+        if model is None:
+            raise ModelValidationError(f"Field {name} must have a valid model.")
+
+        self.model: Model = model
         self.group_names = group_names or []
+
+        self.enabled: bool = False
 
         self.stream_dict = None
         self.boundary_dict = {}
@@ -243,6 +256,11 @@ class Field(Container):
         # Cache attribute values and call initializers that depend on them
         self.cache_attributes()
 
+    def set_enabled(self, enabled: bool):
+        self.enabled = bool
+    def set_parent(self, parent: Model):
+        self.model = parent
+
     def cache_attributes(self):
         self.AGR_feedin_press = self.attr("AGR_feedin_press")
         self.API = self.attr("API")
@@ -330,6 +348,7 @@ class Field(Container):
     def add_children(
         self, aggs=None, procs=None, streams=None, process_choice_dict=None
     ):
+        from opgee.core.processes.reservoir import Reservoir
         # Note that `procs` include only Processes defined at the top-level of the field.
         # Other Processes maybe defined within the Aggregators in `aggs`.
         super().add_children(aggs=aggs, procs=procs)
@@ -369,7 +388,15 @@ class Field(Container):
         self.process_choice_dict = process_choice_dict
 
         all_procs = self.collect_processes()  # includes Reservoir
-        self.process_dict = self.adopt(all_procs, asDict=True)
+        def _check_exists(obj, dct):
+            if existing := dct.get(obj.name):
+                raise ModelValidationError(
+                    f"Tried to adopt {obj} which is a duplicate of {existing}."
+                )
+        self.process_dict = {}
+        for proc in all_procs:
+            _check_exists(proc, self.process_dict)
+            self.process_dict[proc.name] = proc
 
         self.agg_dict = {agg.name: agg for agg in self.descendant_aggs()}
 
@@ -500,7 +527,7 @@ class Field(Container):
         """
         from opgee.common import Timer
 
-        if self.is_enabled():
+        if self.enabled:
             timer = Timer("field.run")
 
             trial_str = f"trial {trial_num} of " if trial_num is not None else ""
@@ -532,6 +559,7 @@ class Field(Container):
             _logger.info(timer.stop())
 
     def reset(self):
+        from .process import decache_subclasses
         self.reset_streams()
         self.reset_processes()
         # TODO: self.process_data.clear()
@@ -548,6 +576,7 @@ class Field(Container):
         decache_subclasses()
 
     def reset_iteration(self):
+        from opgee.core.process import Process
         Process.clear_iterating_process_list()
         for proc in self.processes():
             proc.reset_iteration()
@@ -768,7 +797,7 @@ class Field(Container):
             else [("TOTAL", self.carbon_intensity)] + ci_tuples
         )
 
-        dfs = [s.to_dataframe() for s in self.streams()]
+        dfs = [s.to_dataframe(field_name=self.name) for s in self.streams()]
         streams_data = pd.concat(dfs)
 
         result = FieldResult(
@@ -1196,7 +1225,7 @@ class Field(Container):
         reported = set()
         for cycle in self.cycles:
             for proc in cycle:
-                if proc.is_enabled():
+                if proc.enabled:
                     procs_in_cycles.add(proc)
                 elif proc not in reported:
                     _logger.debug(f"Disabled proc {proc} is in one or more cycles")
@@ -1233,6 +1262,7 @@ class Field(Container):
             cycle_dependent,
             run_afters,
         ) = self._compute_graph_sections()
+        from opgee.core.processes.reservoir import Reservoir
 
         for proc in procs_in_cycles:
             proc.in_cycle = True
@@ -1329,12 +1359,12 @@ class Field(Container):
             s.src_proc = src = self.find_process(s.src_name)
             s.dst_proc = dst = self.find_process(s.dst_name)
 
-            if not (src.is_enabled() and dst.is_enabled()):
+            if not (src.enabled and dst.enabled):
                 disabled = []
-                if not src.is_enabled():
+                if not src.enabled:
                     disabled.append(src)
 
-                if not dst.is_enabled():
+                if not dst.enabled:
                     disabled.append(dst)
 
                 _logger.debug(f"{s} is connected to disabled processes: {disabled}")
@@ -1360,7 +1390,7 @@ class Field(Container):
 
         :return: (iterator of `Process` (subclasses) instances) in this `Field`
         """
-        procs = [proc for proc in self.all_processes() if proc.is_enabled()]
+        procs = [proc for proc in self.all_processes() if proc.enabled]
         return procs
 
     def all_processes(self):
@@ -1422,17 +1452,6 @@ class Field(Container):
 
     @classmethod
     def from_xml(cls, elt, parent=None, use_new=False):
-        if use_new:
-            return cls._from_xml_new(elt, parent)
-        else:
-            return cls._from_xml_orig( elt, parent)
-
-    @classmethod
-    def _from_xml_new(cls, elt, parent=None):
-        return parse_field(elt, parent)
-
-    @classmethod
-    def _from_xml_orig(cls, elt, parent=None):
         """
         Instantiate an instance from an XML element
 
@@ -1440,13 +1459,16 @@ class Field(Container):
         :param parent: (opgee.Analysis) the Analysis containing the new Field
         :return: (Field) instance populated from XML
         """
+        from opgee.aggregator import Aggregator
+        from opgee.core.process import Process
+        from opgee.core.stream import Stream
         name = elt_name(elt)
         attrib = elt.attrib
 
         attr_dict = cls.instantiate_attrs(elt)
         group_names = [node.text for node in elt.findall("Group")]
 
-        field = Field(name, attr_dict=attr_dict, parent=parent, group_names=group_names)
+        field = Field(name, attr_dict=attr_dict, model=parent, group_names=group_names)
 
         field.set_enabled(attrib.get("enabled", "1"))
         field.set_extend(attrib.get("extend", "0"))

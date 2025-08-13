@@ -10,25 +10,6 @@
 # See LICENSE.txt for license details.
 #
 
-# Main parsing functions - primary public API
-from .parsers import (
-    parse_stream,
-    parse_field, 
-    parse_process,
-    parse_xml_attributes,
-    find_child_elements
-)
-
-# Object construction functions for complex assembly
-from .builders import (
-    build_field_with_processes,
-    build_process_hierarchy,
-    build_stream_network,
-    merge_attributes,
-    apply_inheritance,
-    extract_xml_attributes,
-    parse_boolean_attr
-)
 
 # Attribute handling without AttributeMixin
 from .adapters import (
@@ -42,30 +23,8 @@ from .adapters import (
     SimpleAttributeContainer
 )
 
-# Re-export existing XML utilities for compatibility
-from .xml_utils import merge_elements, save_xml
-from .XMLFile import XMLFile
-
-# Re-export model file for main entry point
-from .model_file import ModelFile
 
 __all__ = [
-    # Primary parsing API
-    'parse_stream',
-    'parse_field', 
-    'parse_process',
-    'parse_xml_attributes',
-    'find_child_elements',
-    
-    # Object builders
-    'build_field_with_processes',
-    'build_process_hierarchy', 
-    'build_stream_network',
-    'merge_attributes',
-    'apply_inheritance',
-    'extract_xml_attributes',
-    'parse_boolean_attr',
-    
     # Attribute adapters
     'parse_attributes_from_xml',
     'create_attribute_from_def',
@@ -75,12 +34,6 @@ __all__ = [
     'parse_optional_attr',
     'Attribute',
     'SimpleAttributeContainer',
-    
-    # XML utilities
-    'merge_elements',
-    'save_xml',
-    'XMLFile',
-    'ModelFile',
 ]
 
 

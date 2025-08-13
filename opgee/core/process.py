@@ -6,16 +6,23 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
+from __future__ import annotations
 from typing import Union, Optional
+
+try:
+    from typing import TYPE_CHECKING
+except ImportError:
+    from typing_extensions import TYPE_CHECKING
 
 import pandas as pd
 import pint
 
+
 from .units import ureg, magnitude
-from opgee.xml.attributes import AttrDefs, AttributeMixin
-from .combine_streams import combine_streams
+from opgee.aggregator import Aggregator
 from opgee.config import getParamAsBoolean
 from opgee.common import OpgeeObject, XmlInstantiable, elt_name
+from opgee.xml.attributes import AttributeMixin, AttrDefs
 from .emissions import Emissions, EM_COMBUSTION
 from .energy import EN_ELECTRICITY, Energy
 from opgee.core.error import (
@@ -28,6 +35,12 @@ from .import_export import ImportExport
 from opgee.core.log import getLogger
 from .stream import Stream
 from opgee.utils import getBooleanXML
+
+if TYPE_CHECKING:
+    from opgee.core.model import Model
+    from opgee.core.field import Field
+
+
 
 _logger = getLogger(__name__)
 
@@ -174,7 +187,7 @@ def run_corr_eqns(x1, x2, x3, x4, x5, coef_df):
     return result
 
 
-class Process(AttributeMixin, XmlInstantiable):
+class Process(AttributeMixin):
     """
     The "leaf" node in the container/process hierarchy. ``Process`` is an abstract superclass: actual
     runnable Process instances must be of subclasses of ``Process``, defined either in `opgee/processes/*.py`
@@ -209,28 +222,34 @@ class Process(AttributeMixin, XmlInstantiable):
     _required_inputs = []
     _required_outputs = []
 
+
+    name: str
+    field: Field
+
     def __init__(
         self,
-        name,
+        name: str,
         attr_dict=None,
-        parent=None,
+        field: Field | Aggregator | None = None,
         desc=None,
         cycle_start=False,
         impute_start=False,
         boundary=None,
     ):
-        name = name or self.__class__.__name__
+        if field is None:
+            raise ModelValidationError(f"Empty field object passed to {name}.")
+        _field = field if hasattr(field, "model") else field.parent
+        self.name = name or self.__class__.__name__
 
         AttributeMixin.__init__(self, attr_dict=attr_dict)
-        XmlInstantiable.__init__(self, name, parent=parent)
 
-        self.model = self.find_container("Model")
-        self.field = field = self.find_container("Field")
+        self.field = _field
+        self.model: Model = _field.model
 
         # One or more of these are used by most processes
-        self.gas = field.gas
-        self.oil = field.oil
-        self.water = field.water
+        self.gas = _field.gas
+        self.oil = _field.oil
+        self.water = _field.water
 
         self.attr_defs = AttrDefs.get_instance()
 
@@ -252,7 +271,7 @@ class Process(AttributeMixin, XmlInstantiable):
 
         self.extend = False
 
-        self.inputs = []  # Stream instances, set in Field.connect_processes()
+        self.inputs = []  # Stream instances, set in field.connect_processes()
         self.outputs = []  # ditto
 
         self.energy = Energy()
@@ -268,6 +287,10 @@ class Process(AttributeMixin, XmlInstantiable):
         self.iteration_converged = False
         self.iteration_registered = False
         self.in_cycle = False
+        self.enabled: bool = True
+
+    def set_enabled(self, enabled: bool = True):
+        self.enabled = enabled
 
     def check_enabled(self):
         return
@@ -650,6 +673,7 @@ class Process(AttributeMixin, XmlInstantiable):
         :return: (Stream, list or dict of Streams) depends on various keyword args
         :raises: OpgeeException if no processes handling `stream_type` are found and `raiseError` is True
         """
+        from .combine_streams import combine_streams
         if combine and as_list:
             raise OpgeeException(
                 f"_find_streams_by_type: both 'combine' and 'as_list' cannot be True"
@@ -1055,7 +1079,7 @@ class Process(AttributeMixin, XmlInstantiable):
         return True
 
     @classmethod
-    def from_xml(cls, elt, parent=None):
+    def from_xml(cls, elt, parent: Field | None = None):
         """
         Instantiate an instance from an XML element
 
@@ -1081,7 +1105,7 @@ class Process(AttributeMixin, XmlInstantiable):
         proc = subclass(
             name,
             attr_dict=attr_dict,
-            parent=parent,
+            field=parent,
             desc=desc,
             cycle_start=cycle_start,
             impute_start=impute_start,
@@ -1125,6 +1149,7 @@ class Boundary(Process):
                 s.set_enabled(False)
 
     def run(self, analysis):
+        from .combine_streams import combine_streams
         is_chosen_boundary = self.is_chosen_boundary(analysis)
         # TODO:
         # There's a bug in the handling of the streams at boundaries. Basically, if we select the Distribution Boundary, there's no stream
@@ -1193,21 +1218,7 @@ class Boundary(Process):
                     self.field.save_process_data(is_chosen_boundary_processed=True)
 
 
-class Reservoir(Process):
-    """
-    Reservoir represents natural resources such as oil and gas reservoirs, and water sources
-    in the subsurface. Each Field object holds a single Reservoir instance.
-    """
-
-    def __init__(self, parent=None):
-        super().__init__("Reservoir", parent=parent, desc="The Reservoir")
-
-    def run(self, analysis):
-        self.print_running_msg()
-
-
 def reload_subclass_dict():
-    from opgee.aggregator import Aggregator
 
     global _Subclass_dict
 

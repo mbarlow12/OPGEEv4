@@ -60,7 +60,7 @@ def build_field_with_processes(field_obj: Field, field_element: Element) -> Fiel
             field_obj.add_aggregator(aggregator)
         elif child.tag == "Process":
             # Regular process element
-            process_obj = parse_process(child, parent=field_obj)
+            process_obj = parse_process(child, field=field_obj)
             field_obj.add_process(process_obj)
         elif child.tag == "ProcessChoice":
             # ProcessChoice element - handle mutually exclusive processes
