@@ -224,7 +224,7 @@ class RunCommand(SubcommandABC):
 
     def run(self, args, tool):
         from ..config import setParam
-        from ..error import CommandlineError
+        from ..core.error import CommandlineError
         from ..xml.model_file import model_analysis_names, fields_for_analysis
         from ..manager import Manager, save_results, TrialPacket, FieldPacket
         from ..utils import parseTrialString, mkdirs
