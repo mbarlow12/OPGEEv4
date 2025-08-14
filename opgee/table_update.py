@@ -21,14 +21,18 @@ class Cell(OpgeeObject):
         self.value = value
 
 
-class TableUpdate(XmlInstantiable):
+class TableUpdate(OpgeeObject):
     """
     Supports user-defined updates to built-in CSV data.
     """
 
     def __init__(self, name, cells):
-        super().__init__(name)
+        self.name: str = name
         self.cells = cells
+        self.enabled = True
+
+    def set_enabled(self, enabled: bool = True):
+        self.enabled = enabled
 
     @classmethod
     def from_xml(cls, elt, parent=None):
