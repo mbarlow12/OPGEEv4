@@ -256,8 +256,8 @@ class Field(_Container):
         # Cache attribute values and call initializers that depend on them
         self.cache_attributes()
 
-    def set_enabled(self, enabled: bool):
-        self.enabled = bool
+    def set_enabled(self, enabled: bool = True):
+        self.enabled = enabled
     def set_parent(self, parent: Model):
         self.model = parent
 
@@ -340,10 +340,8 @@ class Field(_Container):
         self.steam_generator = SteamGenerator(self)
 
     # Used by validate() to descend model hierarchy
-    def _children(self):
-        return (
-            super()._children()
-        )  # + self.streams() # Adding this caused several errors...
+    def _children(self, include_disabled: bool = False):
+        return [obj for obj in super()._children() if (include_disabled or obj.enabled)]
 
     def add_children(
         self, aggs=None, procs=None, streams=None, process_choice_dict=None

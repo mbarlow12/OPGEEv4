@@ -41,7 +41,7 @@ class MergeCommand(SubcommandABC):
         return parser
 
     def run(self, args, tool):
-        from ..error import CommandlineError
+        from ..core.error import CommandlineError
         from ..xml.model_file import ModelFile
 
         pathnames = args.pathnames

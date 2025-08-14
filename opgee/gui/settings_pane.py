@@ -3,7 +3,7 @@ from dash import dcc, html
 from dash.dependencies import Input, Output, State
 from pathlib import Path
 
-from ..attributes import AttrDefs
+from ..xml.attributes import AttrDefs
 from ..config import getParam
 from ..gui.widgets import attr_inputs
 from opgee.core.log import getLogger

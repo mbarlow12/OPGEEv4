@@ -64,7 +64,7 @@ def import_fields(csv_path, xml_path, analysis_name, count=0, skip_fields=None,
        opgee package and load the file from the internal package resource.
     :return:
     """
-    from ..xml_utils import attr_to_xml
+    from ..xml.xml_utils import attr_to_xml
 
     fields, dtypes = read_fields(csv_path,
                                  from_package=from_package,
@@ -127,7 +127,7 @@ class Csv2XmlCommand(SubcommandABC):
         return parser
 
     def run(self, args, tool):
-        from ..error import CommandlineError
+        from ..core.error import CommandlineError
 
         input_csv = args.inputCSV
         if input_csv is None:

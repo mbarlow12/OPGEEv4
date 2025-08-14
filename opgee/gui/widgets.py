@@ -1,6 +1,6 @@
 from dash import dcc, html
 
-from ..error import OpgeeException
+from ..core.error import OpgeeException
 from opgee.core.log import getLogger
 from ..units import magnitude
 
@@ -46,7 +46,7 @@ number_pattern = {'int': int_pattern, 'float': float_pattern}
 binary_options = [dict(label='Yes', value=1), dict(label='No', value=0)]
 
 def attr_inputs(class_name, direction='h'):
-    from ..attributes import AttrDefs
+    from ..xml.attributes import AttrDefs
 
     attr_defs = AttrDefs.get_instance()
     class_attrs = attr_defs.classes.get(class_name)

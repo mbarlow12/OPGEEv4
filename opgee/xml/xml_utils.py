@@ -51,7 +51,7 @@ def save_xml(path, root, backup=False, overwrite=False):
 
 def _load_opgee_template(template):
     from opgee.config import getParam
-    from .pkg_utils import resourceStream
+    from ..pkg_utils import resourceStream
     from .model_file import XMLFile
 
     opgee_xml = getParam("OPGEE.ModelFile")

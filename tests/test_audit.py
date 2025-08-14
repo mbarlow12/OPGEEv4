@@ -124,7 +124,6 @@ def test_audit_save_results(tmp_path: Path, audit_model_file: ModelFile, opgee_m
     assert not proc_graph_path.exists()
     assert audit_path.exists()
     audit_df = pd.read_csv(audit_path)
-    import pdb;pdb.set_trace()
     inputs = audit_df[audit_df['source'] == 'input']
     vals = inputs['value'].values
     assert len(vals == 2)

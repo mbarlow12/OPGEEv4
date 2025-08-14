@@ -55,7 +55,7 @@ class GraphCommand(SubcommandABC):
         return parser
 
     def run(self, args, tool):
-        from ..error import CommandlineError
+        from ..core.error import CommandlineError
         from ..graph import write_model_diagram, write_class_diagram, write_process_diagram
         from ..xml.model_file import ModelFile
 

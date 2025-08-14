@@ -147,7 +147,6 @@ def parse_stream(elt, parent: Optional["Field"] = None) -> "Stream":
         tp=tp,
         API=API,
         contents=contents,
-        field=parent,
         impute=impute,
     )
 
@@ -200,10 +199,10 @@ def parse_field(elt, parent=None) -> Field:
     group_names = [node.text for node in elt.findall("Group")]
 
     # Create Field instance
-    field = Field(name, attr_dict=attr_dict, parent=parent, group_names=group_names)
+    field = Field(name, attr_dict=attr_dict, model=parent, group_names=group_names)
 
     # Set XML-derived properties
-    field.set_enabled(attrib.get("enabled", "1"))
+    field.set_enabled(attrib.get("enabled", "1") == "1")
     field.set_extend(attrib.get("extend", "0"))
     field.set_modifies(
         attrib.get("modified")

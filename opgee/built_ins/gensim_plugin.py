@@ -58,7 +58,7 @@ class GensimCommand(SubcommandABC):
 
 
     def run(self, args, tool):
-        from ..error import McsUserError, CommandlineError
+        from ..core.error import McsUserError, CommandlineError
         from ..mcs.simulation import Simulation, read_distributions
         from ..mcs.parameter_list import ParameterList
 

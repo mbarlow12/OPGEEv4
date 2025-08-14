@@ -456,7 +456,7 @@ def getParamAsBoolean(name, section=None):
       defaults to the value used in the first call to ``getConfig``,
       ``readConfigFiles``, or any of the ``getParam`` variants.
     :return: (bool) the value of the variable
-    :raises: :py:exc:`opgee.error.ConfigFileError`
+    :raises: :py:exc:`opgee.core.error.ConfigFileError`
     """
     value = getParam(name, section=section)
     result = stringTrue(value, raiseError=False)

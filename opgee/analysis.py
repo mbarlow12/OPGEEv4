@@ -48,6 +48,7 @@ class Analysis(_Container):
             raise OpgeeException("Tried to create Analysis without specifying parent (Model)")
 
         self.model = model = parent
+        self.enabled = True
 
         # self.field_dict = None
         self._field_names = field_names     # may be extended in add_children()
@@ -86,6 +87,13 @@ class Analysis(_Container):
 
         # storing into dict eliminates duplicates
         self.field_dict = {field.name: field for field in fields}
+
+    def set_enabled(self, enabled: bool = True):
+        self.enabled = enabled
+
+    def validate(self):
+        for child in self.children():
+            child.validate()
 
     def restrict_fields(self, field_names):
         """

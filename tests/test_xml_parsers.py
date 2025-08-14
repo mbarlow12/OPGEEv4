@@ -80,7 +80,6 @@ class TestParseField:
         field = parse_field(element, parent=xml_test_model)
 
         assert field.name == "test_field"
-        assert field.parent == xml_test_model
         assert field.model == xml_test_model
         assert field.attr("country") == "USA"
         assert field.attr("well_diam").m == 2.89
@@ -108,10 +107,9 @@ class TestParseField:
         analysis = model.get_analysis("test_fugitive")
 
         element = ET.fromstring(simple_field_xml)
-        field = parse_field(element, parent=analysis)
+        field = parse_field(element, parent=model)
 
         assert field.name == "test_field"
-        assert field.parent == analysis
         assert field.model == analysis.model
 
     def test_parse_field_attributes_parsing(self, xml_test_model):
@@ -139,7 +137,7 @@ class TestParseField:
         field = parse_field(element, parent=xml_test_model)
 
         assert field.name == "test_field"
-        assert not field.is_enabled()  # enabled="0"
+        assert not field.enabled  # enabled="0"
         assert field.extend  # extend="1"
         assert field.modifies == "base_field"  # modified="base_field"
 
@@ -168,7 +166,8 @@ class TestParseField:
             # This is hard to test directly, but we can verify the process
             # has been properly initialized and cached
             assert proc is not None
-            assert proc.parent == field
+            assert proc.field == field
+            assert proc.model == field.model
 
     def test_parse_field_error_handling(self):
         """Test error handling for malformed XML."""
@@ -239,17 +238,6 @@ class TestParseStream:
         assert "oil" in stream.contents
         assert "gas" in stream.contents
 
-    def test_parse_stream_with_parent(self, xml_test_model):
-        """Test stream parsing with parent Field."""
-        # Create a simple field parent
-        field_element = ET.fromstring(simple_field_xml,)
-        field = parse_field(field_element, parent=xml_test_model)
-
-        stream_element = ET.fromstring(simple_stream_xml)
-        stream = parse_stream(stream_element, parent=field)
-
-        assert stream.name == "test_stream"
-        assert stream.parent == field
 
 
 def extract_field_xml_from_model(model_xml: str, field_name: str):

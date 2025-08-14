@@ -194,12 +194,16 @@ class _Container(AttributeMixin):
             check_dct[proc.name] = proc
             self.procs.append(proc)
 
-    def children(self):
+    def _children(self):
+        return [*self.aggs, *self.procs]
+
+    def children(self, include_disabled: bool = False):
         """
         Return a list of all children. External callers should use children() instead,
         as it respects the self.is_enabled() setting.
         """
-        return [*self.aggs, *self.procs]
+        objs = self._children()
+        return [o for o in objs if (include_disabled or o.enabled)]
 
     def descendant_procs(self, include_disabled=False):
         """

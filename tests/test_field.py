@@ -4,6 +4,7 @@ from opgee.core.units import ureg
 from .utils_for_tests import load_model_from_str
 from opgee.core.error import XmlFormatError
 from opgee.core.model import Model
+from opgee.xml.parsers import parse_field
 from .utils_for_tests import load_test_model
 from .test_processes import approx_equal
 
@@ -138,7 +139,6 @@ def test_new_parse_field_integration(test_field):
 
     # Test basic functionality
     assert parsed_field.name == "integration_test_field"
-    assert parsed_field.parent == test_field
     assert parsed_field.model == test_field
 
     # Test that field has processes and streams
@@ -206,13 +206,13 @@ def test_parse_field_performance_comparison(test_field):
     # Time new method
     start_time = time.time()
     for _ in range(10):
-        field = Field.from_xml(element, parent=test_field, use_new=True)
+        field = parse_field(element, parent=test_field)
     new_time = time.time() - start_time
 
     # Time old method
     start_time = time.time()
     for _ in range(10):
-        field = Field.from_xml(element, parent=analysis, use_new=False)
+        field = Field.from_xml(element, parent=test_field, use_new=False)
     old_time = time.time() - start_time
 
     # New method should be within reasonable performance bounds

@@ -29,6 +29,10 @@ class Aggregator(_Container):
     def set_enabled(self, enabled: bool=True):
         self.enabled = enabled
 
+    def validate(self):
+        for c in self.children():
+            c.validate()
+
     @classmethod
     def from_xml(cls, elt, parent=None):
         """
