@@ -11,6 +11,8 @@ import networkx as nx
 import pint
 import pandas as pd
 
+from opgee.aggregator import Aggregator
+
 from .units import ureg
 from opgee.config import getParamAsList
 from opgee.constants import DETAILED_RESULT
@@ -28,7 +30,6 @@ from opgee.core.error import (
 from .import_export import ImportExport
 from opgee.core.log import getLogger
 from opgee.post_processor import PostProcessor
-from opgee.xml.process_groups import ProcessChoice
 from .processes.steam_generator import SteamGenerator
 from .processes.transport_energy import TransportEnergy
 from opgee.smart_defaults import SmartDefault
@@ -118,7 +119,6 @@ class Field(_Container):
 
         self.stream_dict = None
         self.boundary_dict = {}
-        self.process_choice_dict = None
         self.process_dict = None
         self.agg_dict = None
 
@@ -258,6 +258,7 @@ class Field(_Container):
 
     def set_enabled(self, enabled: bool = True):
         self.enabled = enabled
+
     def set_parent(self, parent: Model):
         self.model = parent
 
@@ -343,20 +344,11 @@ class Field(_Container):
     def _children(self, include_disabled: bool = False):
         return [obj for obj in super()._children() if (include_disabled or obj.enabled)]
 
-    def add_children(
-        self, aggs=None, procs=None, streams=None, process_choice_dict=None
-    ):
+    def add_children(self, procs: list[Process], aggs: list[Aggregator], streams=None):
         from opgee.core.processes.reservoir import Reservoir
-        # Note that `procs` include only Processes defined at the top-level of the field.
-        # Other Processes maybe defined within the Aggregators in `aggs`.
-        super().add_children(aggs=aggs, procs=procs)
 
-        # Each Field has one of these built-in processes
         self.reservoir = Reservoir(parent=self)
-
-        # Additional builtin processes can be instantiated and added here if needed
-        self.builtin_procs = [self.reservoir]
-
+        procs.insert(0, self.reservoir)
         self.stream_dict = dict_from_list(streams)
 
         known_boundaries = self.known_boundaries
@@ -366,7 +358,7 @@ class Field(_Container):
         boundary_dict = self.boundary_dict
 
         # Save references to boundary processes by name; fail if duplicate definitions are found.
-        for proc in procs:
+        for proc in [Reservoir(parent=self), *procs]:
             boundary = proc.boundary
             if boundary:
                 if boundary not in known_boundaries:
@@ -383,16 +375,14 @@ class Field(_Container):
                 boundary_dict[boundary] = proc
                 # _logger.debug(f"{self}: {proc} defines boundary '{boundary}'")
 
-        self.process_choice_dict = process_choice_dict
-
-        all_procs = self.collect_processes()  # includes Reservoir
         def _check_exists(obj, dct):
             if existing := dct.get(obj.name):
                 raise ModelValidationError(
                     f"Tried to adopt {obj} which is a duplicate of {existing}."
                 )
+
         self.process_dict = {}
-        for proc in all_procs:
+        for proc in procs:
             _check_exists(proc, self.process_dict)
             self.process_dict[proc.name] = proc
 
@@ -422,8 +412,6 @@ class Field(_Container):
 
         # recache attributes to pick up changes made by smart defaults
         self.cache_attributes()
-
-        self.resolve_process_choices()  # allows smart defaults to set process choices
 
         # we use networkx to reason about the directed graph of Processes (nodes)
         # and Streams (edges).
@@ -558,6 +546,7 @@ class Field(_Container):
 
     def reset(self):
         from .process import decache_subclasses
+
         self.reset_streams()
         self.reset_processes()
         # TODO: self.process_data.clear()
@@ -575,6 +564,7 @@ class Field(_Container):
 
     def reset_iteration(self):
         from opgee.core.process import Process
+
         Process.clear_iterating_process_list()
         for proc in self.processes():
             proc.reset_iteration()
@@ -628,6 +618,7 @@ class Field(_Container):
         :param raiseError: (bool) whether to raise an error if the energy flow is zero at the boundary
         :return: (pint.Quantity) the energy flow at the boundary
         """
+        __import__("pdb").set_trace()
         boundary_proc = self.boundary_process(analysis)
         combined_stream = combine_streams(boundary_proc.inputs)
 
@@ -1101,8 +1092,8 @@ class Field(_Container):
         if self.model.attr("skip_validation"):
             _logger.warning(f"{self} skipping Process and Stream validation")
         else:
-            for child in self.children():
-                child.validate()
+            for proc in self.processes():
+                proc.validate()
 
         # Accumulate error msgs so user can correct them all at once.
         msgs = []
@@ -1448,52 +1439,6 @@ class Field(_Container):
     def set_modifies(self, modifies):
         self.modifies = modifies
 
-    @classmethod
-    def from_xml(cls, elt, parent=None, use_new=False):
-        """
-        Instantiate an instance from an XML element
-
-        :param elt: (etree.Element) representing a <Field> element
-        :param parent: (opgee.Analysis) the Analysis containing the new Field
-        :return: (Field) instance populated from XML
-        """
-        from opgee.aggregator import Aggregator
-        from opgee.core.process import Process
-        from opgee.core.stream import Stream
-        name = elt_name(elt)
-        attrib = elt.attrib
-
-        attr_dict = cls.instantiate_attrs(elt)
-        group_names = [node.text for node in elt.findall("Group")]
-
-        field = Field(name, attr_dict=attr_dict, model=parent, group_names=group_names)
-
-        field.set_enabled(attrib.get("enabled", "1"))
-        field.set_extend(attrib.get("extend", "0"))
-        field.set_modifies(
-            attrib.get("modified")
-        )  # "modified" attr is changed to "modified" after merging
-
-        aggs = instantiate_subelts(elt, Aggregator, parent=field)
-        procs = instantiate_subelts(elt, Process, parent=field)
-        streams = instantiate_subelts(elt, Stream, parent=field)
-
-        choices = instantiate_subelts(elt, ProcessChoice)
-        # Convert to lowercase to avoid simple lookup errors
-        process_choice_dict = {choice.name.lower(): choice for choice in choices}
-
-        field.add_children(
-            aggs=aggs,
-            procs=procs,
-            streams=streams,
-            process_choice_dict=process_choice_dict,
-        )
-
-        # need to recache process attributes to pick up smart defaults
-        for proc in field.processes():
-            proc.cache_attributes()
-        return field
-
     def collect_processes(self):
         """
         Recursively descend the Field's Aggregators to create a list of all
@@ -1543,55 +1488,6 @@ class Field(_Container):
                 raise OpgeeException(f"Process data dictionary does not include {name}")
             else:
                 return None
-
-    def resolve_process_choices(self, process_choice_dict=None):
-        """
-        Disable all processes referenced in a `ProcessChoice`, then enable only the processes
-        in the selected `ProcessGroup`. The name of each `ProcessChoice` must also identify a
-        field-level attribute, whose value indicates the user's choice of `ProcessGroup`.
-
-        :param process_choice_dict: (dict) optional dictionary for nested process choices. Used
-            in recursive calls only.
-        :return: None
-        """
-        attr_dict = self.attr_dict
-
-        if process_choice_dict is None:  # might be an empty dict, but that's ok
-            process_choice_dict = self.process_choice_dict
-
-        #
-        # Turn off all processes identified in groups, then turn on those in the selected groups.
-        #
-        to_enable = []
-        for choice_name, choice in process_choice_dict.items():
-            attr = attr_dict.get(choice_name)
-            if attr is None:
-                raise OpgeeException(
-                    f"ProcessChoice '{choice_name}' has no corresponding attribute in field '{self.name}'"
-                )
-
-            selected_group_name = attr.str_value().lower()
-
-            for group_name, group in choice.groups_dict.items():
-                procs, streams = group.processes_and_streams(self)
-
-                # remember the ones to enable
-                if group_name == selected_group_name:
-                    to_enable.extend(procs)
-                    to_enable.extend(streams)
-
-                    # Handle nested process groups in the enabled group
-                    self.resolve_process_choices(
-                        process_choice_dict=group.process_choice_dict
-                    )
-
-                # disable all objects in all groups
-                for obj in procs + streams:
-                    obj.set_enabled(False)
-
-        # enable the chosen procs and streams
-        for obj in to_enable:
-            obj.set_enabled(True)
 
     def sum_process_energy(self, processes_to_exclude=None) -> Energy:
         total = Energy()

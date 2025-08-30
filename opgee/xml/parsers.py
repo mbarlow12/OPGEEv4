@@ -166,6 +166,132 @@ def parse_stream(elt, parent: Optional["Field"] = None) -> "Stream":
     return obj
 
 
+def get_stream_identifier(stream_elt):
+    """
+    Get identifier for a stream element (name or src => dst pattern).
+
+    :param stream_elt: (etree.Element) representing a <Stream> element
+    :return: (str) stream identifier
+    """
+    name = stream_elt.get("name")
+    if name:
+        return name
+    src = stream_elt.get("src")
+    dst = stream_elt.get("dst")
+    return f"{src} => {dst}"
+
+
+def resolve_process_choices_for_field(field_elt, attr_dict):
+    """
+    Remove unselected processes/streams based on ProcessChoice selections.
+
+    Collects all ProcessRefs/StreamRefs from all ProcessGroups, then keeps only
+    those from the selected ProcessGroups, removing all others.
+
+    :param field_elt: (etree.Element) representing a <Field> element
+    :param attr_dict: (dict) field attributes containing ProcessChoice selections
+    :return: (tuple) filtered lists of (process_elements, stream_elements)
+    """
+    all_processes = field_elt.findall(".//Process")
+    all_streams = field_elt.findall(".//Stream")
+
+    # Use xpath to collect ALL ProcessRefs and StreamRefs from all ProcessGroups
+    all_process_refs = set()
+    all_stream_refs = set()
+
+    # Collect all ProcessRefs and StreamRefs from all ProcessChoices
+    for proc_ref in field_elt.xpath(".//ProcessChoice/ProcessGroup/ProcessRef"):
+        ref_name = proc_ref.get("name")
+        if ref_name:
+            all_process_refs.add(ref_name)
+
+    for stream_ref in field_elt.xpath(".//ProcessChoice/ProcessGroup/StreamRef"):
+        ref_name = stream_ref.get("name")
+        if ref_name:
+            all_stream_refs.add(ref_name)
+
+    # Collect ProcessRefs and StreamRefs from SELECTED ProcessGroups only
+    selected_process_refs = set()
+    selected_stream_refs = set()
+
+    for choice_elt in field_elt.findall("ProcessChoice"):
+        choice_name = choice_elt.get("name")
+
+        # Get selected group from field attributes
+        attr = attr_dict.get(choice_name)
+        if attr is None:
+            raise OpgeeException(
+                f"ProcessChoice '{choice_name}' has no corresponding attribute in field"
+            )
+        selected_group_name = attr.str_value()
+
+        # Find the selected ProcessGroup
+        selected_group = choice_elt.find(f'ProcessGroup[@name="{selected_group_name}"]')
+        if selected_group is None:
+            # Try case-insensitive search
+            for group in choice_elt.findall("ProcessGroup"):
+                if group.get("name", "").lower() == selected_group_name:
+                    selected_group = group
+                    break
+
+        if selected_group is None:
+            raise OpgeeException(
+                f"ProcessGroup '{selected_group_name}' not found in ProcessChoice '{choice_name}'"
+            )
+
+        # Add ProcessRefs and StreamRefs from selected group
+        for proc_ref in selected_group.findall("ProcessRef"):
+            ref_name = proc_ref.get("name")
+            if ref_name:
+                selected_process_refs.add(ref_name)
+
+        for stream_ref in selected_group.findall("StreamRef"):
+            ref_name = stream_ref.get("name")
+            if ref_name:
+                selected_stream_refs.add(ref_name)
+
+    # Calculate what to remove: everything referenced in ProcessChoices EXCEPT selected ones
+    processes_to_remove = all_process_refs - selected_process_refs
+    streams_to_remove = all_stream_refs - selected_stream_refs
+
+    _logger.debug(
+        f"ProcessChoice resolution: "
+        f"all_refs=({len(all_process_refs)} procs, {len(all_stream_refs)} streams), "
+        f"selected=({len(selected_process_refs)} procs, {len(selected_stream_refs)} streams), "
+        f"removing=({len(processes_to_remove)} procs, {len(streams_to_remove)} streams)"
+    )
+
+    # Handle stream dependencies - remove streams connected to removed processes
+    for stream_elt in all_streams:
+        src = stream_elt.get("src")
+        dst = stream_elt.get("dst")
+        if src in processes_to_remove or dst in processes_to_remove:
+            stream_identifier = get_stream_identifier(stream_elt)
+            streams_to_remove.add(stream_identifier)
+
+    # Filter elements - only keep those not marked for removal
+    filtered_processes = []
+    for proc_elt in all_processes:
+        # Process elements use 'class' attribute, but ProcessRef elements reference by name
+        # The process name is typically the same as the class name
+        proc_name = proc_elt.get("name") or proc_elt.get("class")
+        if proc_name not in processes_to_remove:
+            filtered_processes.append(proc_elt)
+
+    filtered_streams = []
+    for stream_elt in all_streams:
+        stream_identifier = get_stream_identifier(stream_elt)
+        if stream_identifier not in streams_to_remove:
+            filtered_streams.append(stream_elt)
+
+    _logger.debug(
+        f"ProcessChoice resolution: removed {len(all_processes) - len(filtered_processes)} processes, "
+        f"{len(all_streams) - len(filtered_streams)} streams"
+    )
+
+    return filtered_processes, filtered_streams
+
+
 def parse_field(elt, parent=None) -> Field:
     """
     Parse a Field XML element into a Field object.
@@ -208,22 +334,30 @@ def parse_field(elt, parent=None) -> Field:
         attrib.get("modified")
     )  # "modified" attr is changed after merging
 
-    # Parse child elements using instantiate_subelts (existing system)
-    # This maintains full compatibility with current architecture
+    # Resolve ProcessChoices and filter elements before instantiation
+    filtered_process_elts, filtered_stream_elts = resolve_process_choices_for_field(
+        elt, attr_dict
+    )
+
+    # Parse child elements using filtered lists
     aggs = instantiate_subelts(elt, Aggregator, parent=field)
-    procs = instantiate_subelts(elt, Process, parent=field)
-    streams = instantiate_subelts(elt, Stream, parent=field)
-    choices = instantiate_subelts(elt, ProcessChoice)
 
-    # Build process choice dictionary (convert to lowercase to avoid lookup errors)
-    process_choice_dict = {choice.name.lower(): choice for choice in choices}
+    # Instantiate only the filtered processes and streams
+    procs = []
+    for proc_elt in filtered_process_elts:
+        proc = parse_process(proc_elt, field)
+        procs.append(proc)
 
-    # Add all children to field
+    streams = []
+    for stream_elt in filtered_stream_elts:
+        stream = parse_stream(stream_elt, field)
+        streams.append(stream)
+
+    # Add children to field (no process_choice_dict needed)
     field.add_children(
         aggs=aggs,
         procs=procs,
         streams=streams,
-        process_choice_dict=process_choice_dict,
     )
 
     # Post-processing: cache attributes for smart defaults
@@ -245,6 +379,7 @@ def parse_process(elt, field: Field | None = None) -> "Process":
     """
     # Import here to avoid circular dependencies
     from opgee.core.process import Process, _get_subclass
+
     name = elt_name(elt)
 
     if name == "test_proc":

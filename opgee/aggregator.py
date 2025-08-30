@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 #
 class Aggregator(_Container):
     parent: Field
+
     def __init__(self, name, attr_dict=None, parent: Field | None = None):
         super().__init__(name, attr_dict=attr_dict)
         self.parent = parent
@@ -26,12 +27,8 @@ class Aggregator(_Container):
     def add_children(self, aggs=None, procs=None):
         super().add_children(aggs=aggs, procs=procs)
 
-    def set_enabled(self, enabled: bool=True):
+    def set_enabled(self, enabled: bool = True):
         self.enabled = enabled
-
-    def validate(self):
-        for c in self.children():
-            c.validate()
 
     @classmethod
     def from_xml(cls, elt, parent=None):
@@ -44,6 +41,7 @@ class Aggregator(_Container):
         :return: (Aggregator) instance populated from XML
         """
         from opgee.core.process import Process
+
         name = elt_name(elt)
         attr_dict = cls.instantiate_attrs(elt)
         obj = cls(name, attr_dict=attr_dict, parent=parent)

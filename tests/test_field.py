@@ -135,7 +135,8 @@ def test_new_parse_field_integration(test_field):
     element = ET.fromstring(field_xml)
 
     # Parse with new method
-    parsed_field = Field.from_xml(element, parent=test_field, use_new=True)
+    from opgee.xml.parsers import parse_field
+    parsed_field = parse_field(element, parent=test_field)
 
     # Test basic functionality
     assert parsed_field.name == "integration_test_field"
@@ -148,13 +149,13 @@ def test_new_parse_field_integration(test_field):
     assert len(streams) >= 1
 
 
-def test_parse_field_old_vs_new_equivalence(test_field):
-    """Test that new parser produces equivalent results to old method."""
+def test_parse_field_basic_functionality(test_field):
+    """Test that parse_field produces functional Field objects."""
     from xml.etree import ElementTree as ET
+    from opgee.xml.parsers import parse_field
 
     field_xml = """
-    <Model>
-    <Field name="equivalence_test_field" modifies="template">
+    <Field name="functionality_test_field">
         <A name="country">USA</A>
         <A name="well_diam">2.88</A>
         <A name="res_temp">200</A>
@@ -163,23 +164,22 @@ def test_parse_field_old_vs_new_equivalence(test_field):
         <Process class="CrudeOilDewatering"/>
         <Stream src="Separation" dst="CrudeOilDewatering"/>
     </Field>
-    </Model>
     """
 
     element = ET.fromstring(field_xml)
 
-    # Parse with old method
-    old_field = Field.from_xml(element, parent=test_field, use_new=False)
+    # Parse with new parser
+    parsed_field = parse_field(element, parent=test_field)
 
-    # Parse with new method
-    new_field = Field.from_xml(element, parent=test_field, use_new=True)
-
-    # Assert structural equivalence
-    assert old_field.name == new_field.name
-    assert old_field.attr_dict.keys() == new_field.attr_dict.keys()
-    assert len(list(old_field.processes())) == len(list(new_field.processes()))
-    assert len(list(old_field.streams())) == len(list(new_field.streams()))
-    assert old_field.group_names == new_field.group_names
+    # Test that field was parsed correctly
+    assert parsed_field.name == "functionality_test_field"
+    assert parsed_field.model == test_field
+    assert len(list(parsed_field.processes())) >= 2  # At least the processes we defined
+    assert len(list(parsed_field.streams())) >= 1    # At least the stream we defined
+    
+    # Test that attributes were parsed
+    assert "country" in parsed_field.attr_dict
+    assert parsed_field.attr_dict["country"].str_value() == "USA"
 
 
 def test_parse_field_performance_comparison(test_field):
@@ -204,19 +204,12 @@ def test_parse_field_performance_comparison(test_field):
     element = ET.fromstring(field_xml)
 
     # Time new method
+    from opgee.xml.parsers import parse_field
     start_time = time.time()
     for _ in range(10):
         field = parse_field(element, parent=test_field)
-    new_time = time.time() - start_time
+    parse_time = time.time() - start_time
 
-    # Time old method
-    start_time = time.time()
-    for _ in range(10):
-        field = Field.from_xml(element, parent=test_field, use_new=False)
-    old_time = time.time() - start_time
-
-    # New method should be within reasonable performance bounds
-    # Allow up to 15% performance difference as specified in requirements
-    assert new_time < old_time * 1.15, (
-        f"New method too slow: {new_time}s vs {old_time}s"
-    )
+    # Assert reasonable performance (should complete 10 parses in under 1 second)
+    assert parse_time < 1.0, f"Parse field method too slow: {parse_time}s for 10 iterations"
+    print(f"Parse field method: {parse_time:.4f}s for 10 iterations")

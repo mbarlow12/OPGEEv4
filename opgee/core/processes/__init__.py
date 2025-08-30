@@ -32,7 +32,8 @@ from .petrocoke_transport import PetrocokeTransport
 from .post_storage_compressor import PostStorageCompressor
 from .pre_membrane_chiller import PreMembraneChiller
 from .pre_membrane_compressor import PreMembraneCompressor
-from .reservoir_well_interface import *
+from .reservoir import Reservoir
+from .reservoir_well_interface import ReservoirWellInterface
 from .ryan_holmes import RyanHolmes
 from .separation import Separation
 from .sour_gas_compressor import SourGasCompressor
@@ -46,3 +47,53 @@ from .venting import Venting
 from .water_injection import WaterInjection
 from .water_treatment import WaterTreatment
 
+__all__ = [
+    "CO2InjectionWell",
+    "CO2Membrane",
+    "CO2ReinjectionCompressor",
+    "LNGLiquefaction",
+    "LNGRegasification",
+    "LNGTransport",
+    "VFPartition",
+    "VRUCompressor",
+    "AcidGasRemoval",
+    "BitumenMining",
+    "CrudeOilDewatering",
+    "CrudeOilStabilization",
+    "CrudeOilStorage",
+    "CrudeOilStorage",
+    "CrudeOilTransport",
+    "Demethanizer",
+    "DownholePump",
+    "Drilling",
+    "Exploration",
+    "Flaring",
+    "GasDehydration",
+    "GasDistribution",
+    "GasGathering",
+    "GasLiftingCompressor",
+    "GasPartition",
+    "GasReinjectionCompressor",
+    "GasReinjectionWell",
+    "HeavyOilDilution",
+    "HeavyOilUpgrading",
+    "NGL",
+    "PetrocokeTransport",
+    "PostStorageCompressor",
+    "PreMembraneChiller",
+    "PreMembraneCompressor",
+    "Reservoir",
+    "ReservoirWellInterface",
+    "RyanHolmes",
+    "Separation",
+    "SourGasCompressor",
+    "SourGasInjection",
+    "SteamGeneration",
+    "StorageCompressor",
+    "StorageSeparator",
+    "StorageWell",
+    "TransmissionCompressor",
+    "Venting",
+    "WaterInjection",
+    "WaterTreatment",
+]

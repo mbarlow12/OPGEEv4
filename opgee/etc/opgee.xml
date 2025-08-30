@@ -161,6 +161,8 @@
 
 		<ProcessChoice name="common_gas_process_choice">
 			<ProcessGroup name="All">
+				<ProcessRef name="CO2ReinjectionCompressor" />
+				<ProcessRef name="CO2InjectionWell" />
 				<ProcessRef name="GasLiftingCompressor" />
 				<ProcessRef name="GasReinjectionCompressor" />
 				<ProcessRef name="TransmissionCompressor" />
@@ -174,6 +176,7 @@
 				<ProcessRef name="StorageSeparator" />
 				<ProcessRef name="PostStorageCompressor" />
 				<StreamRef name="CO2Membrane => CO2ReinjectionCompressor" />
+				<StreamRef name="CO2ReinjectionCompressor => CO2InjectionWell" />
 				<StreamRef name="GasLiftingCompressor => DownholePump" />
 				<StreamRef name="GasReinjectionCompressor => GasReinjectionWell" />
 				<StreamRef name="transmission gas for storage" />

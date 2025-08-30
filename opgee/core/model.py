@@ -169,7 +169,12 @@ class Model(_Container):
 
         model = Model(elt_name(elt), attr_dict=attr_dict, table_updates=table_updates)
 
-        fields = instantiate_subelts(elt, Field, parent=model, include_names=field_names)
+        # Use new parse_field function that handles ProcessChoice resolution
+        from opgee.xml.parsers import parse_field
+        field_elts = elt.findall('Field')
+        if field_names:
+            field_elts = [fe for fe in field_elts if fe.get('name') in field_names]
+        fields = [parse_field(field_elt, model) for field_elt in field_elts]
         if field_names and not fields:
             raise CommandlineError(f"Indicated field names {field_names} were not found in model")
 
