@@ -959,46 +959,6 @@ class Process(AttributeMixin, XmlInstantiable):
 
         return True
 
-    @classmethod
-    def from_xml(cls, elt, parent=None):
-        """
-        Instantiate an instance from an XML element
-
-        :param elt: (etree.Element) representing a <Process> element
-        :param parent: (opgee.Analysis) the Analysis containing the new Process
-        :return: (Process) instance populated from XML
-        """
-        name = elt_name(elt)
-
-        if name == "test_proc":
-            pass
-
-        a = elt.attrib
-        desc = a.get("desc")
-        impute_start = a.get("impute-start")
-        cycle_start = a.get("cycle-start")
-        boundary = a.get("boundary")  # optional
-
-        classname = a["class"]  # required by XML schema
-        subclass = _get_subclass(Process, classname)
-        attr_dict = subclass.instantiate_attrs(elt, is_process=True)
-
-        proc = subclass(
-            name,
-            attr_dict=attr_dict,
-            parent=parent,
-            desc=desc,
-            cycle_start=cycle_start,
-            impute_start=impute_start,
-            boundary=boundary,
-        )
-
-        proc.set_enabled(a.get("enabled", "1"))
-        proc.set_extend(a.get("extend", "0"))
-        proc.set_run_after(getBooleanXML(a.get("after", "0")))
-
-        return proc
-
 
 class Boundary(Process):
     """
@@ -1112,31 +1072,6 @@ class Aggregator(Container):
 
     def add_children(self, aggs=None, procs=None):
         super().add_children(aggs=aggs, procs=procs)
-
-    @classmethod
-    def from_xml(cls, elt, parent=None):
-        """
-        Instantiate an instance from an XML element
-
-        :param elt: (etree.Element) representing a <Aggregator> element
-        :param parent: (XmlInstantiable) the parent in the Model object
-            hierarchy for the object created here
-        :return: (Aggregator) instance populated from XML
-        """
-        name = elt_name(elt)
-        attr_dict = cls.instantiate_attrs(elt)
-        obj = cls(name, attr_dict=attr_dict, parent=parent)
-
-        aggs = instantiate_subelts(elt, Aggregator, parent=obj)
-        procs = instantiate_subelts(elt, Process, parent=obj)
-
-        obj.add_children(aggs=aggs, procs=procs)
-
-        # Aggregators are disabled if they are empty or contain only disabled aggs & procs
-        enabled = not all([not child.is_enabled() for child in aggs + procs])
-        obj.set_enabled(enabled)
-
-        return obj
 
 
 def reload_subclass_dict():
