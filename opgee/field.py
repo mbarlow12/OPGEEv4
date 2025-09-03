@@ -6,6 +6,7 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
+from lxml.etree import _Element as Element
 import networkx as nx
 import pandas as pd
 import pint
@@ -1320,7 +1321,7 @@ class Field(Container):
         self.modifies = modifies
 
     @classmethod
-    def from_xml(cls, elt, parent=None):
+    def from_xml(cls, elt: Element, parent=None):
         """
         Instantiate an instance from an XML element
 
@@ -1328,6 +1329,9 @@ class Field(Container):
         :param parent: (opgee.Analysis) the Analysis containing the new Field
         :return: (Field) instance populated from XML
         """
+        from opgee.xml.adapters.aggregator import aggregator_from_xml
+        from opgee.xml.adapters.process import process_from_xml
+
         name = elt_name(elt)
         attrib = elt.attrib
 
@@ -1340,8 +1344,8 @@ class Field(Container):
         field.set_extend(attrib.get("extend", "0"))
         field.set_modifies(attrib.get("modified"))  # "modified" attr is changed to "modified" after merging
 
-        aggs = instantiate_subelts(elt, Aggregator, parent=field)
-        procs = instantiate_subelts(elt, Process, parent=field)
+        aggs = [aggregator_from_xml(elt=sub_elt, field=field) for sub_elt in elt.findall("Aggregator")]
+        procs = [process_from_xml(elt=sub_elt, parent=field) for sub_elt in elt.findall("Process")]
         streams = instantiate_subelts(elt, Stream, parent=field)
 
         choices = instantiate_subelts(elt, ProcessChoice)
