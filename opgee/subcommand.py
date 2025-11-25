@@ -28,7 +28,6 @@ class SubcommandABC(object):
     :param group: (str) the name of the GUI group to assign this plug-in to.
     :param label: (str) the label to use on the GUI to reference this plug-in.
        Defaults to the sub-command name, capitalized.
-    :param guiSuppress: (bool) if True, do not display this sub-command in the GUI.
     """
     __metaclass__ = ABCMeta
 
@@ -45,15 +44,13 @@ class SubcommandABC(object):
     #     obj = cls.getInstance(name)
     #     return obj.parser
 
-    def __init__(self, name, subparsers, kwargs, group=None, label=None,
-                 guiSuppress=False):
+    def __init__(self, name, subparsers, kwargs, group=None, label=None):
         self.name = name
         self.label = label or name.capitalize()  # label to display in GUI
         self.parser = parser = subparsers.add_parser(self.name, **kwargs)
         self.Instances[self.name] = self
 
         self.optionInfo = {}  # OptionInfo instances keyed by option name
-        self.guiSuppress = guiSuppress
 
         # For grouping commands in the GUI. Set this in subclass' addArgs().
         # Set to None if the command should not be presented in the GUI.
