@@ -28,7 +28,6 @@ from .log import getLogger, setLogFile
 from .model_file import extract_model
 from .post_processor import PostProcessor
 from .utils import flatten, pushd, mkdirs
-from .mcs.simulation import Simulation, RESULTS_CSV, FAILURES_CSV
 
 # To debug dask, uncomment the following 2 lines
 # import logging
@@ -139,56 +138,6 @@ class FieldPacket(AbsPacket):
 
         _logger.debug(f"FieldPacket.run({self}) returning {len(results)} results")
         return results
-
-
-class TrialPacket(AbsPacket):
-    def __init__(self, sim_dir: str, field_name: str, trial_nums: Sequence[int]):
-        super().__init__(trial_nums)
-        self.sim_dir = sim_dir
-        self.field_name = field_name
-
-    @classmethod
-    def packetize(cls,
-                  sim_dir: str,
-                  trial_nums: Sequence[int],
-                  field_names: Sequence[str],
-                  packet_size: int):
-        """
-        Packetizes over ``trial_nums`` for each name in ``field_names``.
-        Each resulting packet identifies a set of trials for one field.
-        """
-        packets = [TrialPacket(sim_dir, field_name, trial_batch)
-                   for field_name in field_names
-                   for trial_batch in _batched(trial_nums, packet_size)]
-        return packets
-
-    def run(self, result_type):
-        """
-        Run the trials in ``packet``, serially. In distributed mode,
-        this set of runs is performed on a single worker process.
-
-        :param result_type: (str) the type of results to return, i.e.
-          SIMPLE_RESULT or DETAILED_RESULT
-        :return: (list of FieldResult)
-        """
-        timer = Timer(f"TrialPacket.run({self})")
-
-        field_name = self.field_name
-
-        sim_dir = self.sim_dir
-        sim = Simulation(sim_dir, field_names=[field_name], save_to_path="")
-        field_dir = Simulation.field_dir_path(sim_dir, field_name)
-        log_file = f"{field_dir}/packet-{self.packet_num}.log"
-        setLogFile(log_file, remove_old_file=True)
-
-        _logger.info(f"Running MCS for field '{field_name}'")
-
-        results = sim.run_packet(self, result_type)
-        timer.stop()
-
-        _logger.debug(f"TrialPacket.run({self}) returning {len(results)} results")
-        return results
-
 
 
 class Manager(OpgeeObject):
@@ -575,51 +524,3 @@ def _combine_results(filenames, output_name, sort_by=None):
 results_pat  = re.compile(r'results-\d+\.csv$')
 failures_pat = re.compile(r'failures-\d+\.csv$')
 
-def combine_mcs_results(sim_dir, field_names, delete=False):
-    """
-    Combine CSV files containing partial results/failures from an MCS into two files,
-    results.csv and failures.csv.
-
-    :param sim_dir: (str) the simulation directory
-    :param field_names: (list of str) names of fields to combine results for
-    :param delete: (bool) whether to delete partial files after combining them
-    :return: nothing
-    """
-    with pushd(sim_dir):
-        for field_name in field_names:
-            # TBD: handle case that field directory isn't present
-            with pushd(field_name):
-                # use glob with its limited wildcard capability, then filter for the real pattern
-                result_files = [name for name in glob(r'results-*.csv') if re.match(results_pat, name)]
-                _combine_results(result_files, RESULTS_CSV, sort_by='trial_num')
-
-                failure_files = [name for name in glob(r'failures-*.csv') if re.match(failures_pat, name)]
-                _combine_results(failure_files, FAILURES_CSV, sort_by='trial_num')
-
-                if delete:
-                    for name in result_files + failure_files:
-                        os.remove(name)
-
-def combine_field_results(output_dir, field_names, delete=False):
-    """
-    Combine CSV files containing partial results/failures from an MCS into two files,
-    results.csv and failures.csv.
-
-    :param sim_dir: (str) the simulation directory
-    :param field_names: (list of str) names of fields to combine results for
-    :param delete: (bool) whether to delete partial files after combining them
-    :return: nothing
-    """
-    with pushd(output_dir):
-        for field_name in field_names:
-            with pushd(field_name):
-                # use glob with its limited wildcard capability, then filter for the real pattern
-                result_files = [name for name in glob(r'results-*.csv') if re.match(results_pat, name)]
-                _combine_results(result_files, RESULTS_CSV)
-
-                failure_files = [name for name in glob(r'failures-*.csv') if re.match(failures_pat, name)]
-                _combine_results(failure_files, FAILURES_CSV)
-
-                if delete:
-                    for name in result_files + failure_files:
-                        os.remove(name)

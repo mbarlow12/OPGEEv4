@@ -75,15 +75,6 @@ class RunCommand(SubcommandABC):
         )
 
         parser.add_argument(
-            "-C",
-            "--collect",
-            action="store_true",
-            help="""Whether to combine per-packet files into a single CSV when
-                            simulation is complete. Note that the "collect" subcommand can do
-                            this later if needed.""",
-        )
-
-        parser.add_argument(
             "-f",
             "--fields",
             action=ParseCommaList,
@@ -182,27 +173,12 @@ class RunCommand(SubcommandABC):
         )
 
         parser.add_argument(
-            "-s",
-            "--simulation-dir",
-            help='''The top-level directory to use for this simulation "package"''',
-        )
-
-        parser.add_argument(
             "-S",
             "--start-with",
             help="""The name of a field to start with. Use this to resume a run after a failure.
                             Can be combined with -n/--num-fields to run a large number of fields in smaller batches.""",
         )
 
-        parser.add_argument(
-            "-t",
-            "--trials",
-            default="all",
-            help="""The trials to run. Can be expressed as a string containing
-                            comma-delimited ranges and individual trail numbers, e.g. "1-20,22, 35, 42, 44-50").
-                            The special string "all" (the default) runs all defined trials. Ignored 
-                            unless -s/--simulation-dir is specified.""",
-        )
 
         parser.add_argument(
             "-T",
@@ -228,7 +204,6 @@ class RunCommand(SubcommandABC):
         from ..model_file import model_analysis_names, fields_for_analysis
         from ..manager import Manager, save_results, TrialPacket, FieldPacket
         from ..utils import parseTrialString, mkdirs
-        from ..mcs.simulation import Simulation, model_file_path
         from ..post_processor import PostProcessor
 
         analysis_names = args.analyses or []
@@ -246,7 +221,6 @@ class RunCommand(SubcommandABC):
         output_dir = args.output_dir
         packet_size = args.packet_size
         result_type = args.result_type or SIMPLE_RESULT
-        sim_dir = args.simulation_dir
         skip_fields = args.skip_fields
         start_with = args.start_with
         trial_nums = None
@@ -258,22 +232,6 @@ class RunCommand(SubcommandABC):
         #  constructing internal model structure and before expanding templates. That is,
         #  just merge the XML files first, then expand only when about to run the model?
         #  Or when caching it.
-
-        if sim_dir:
-            metadata = Simulation.read_metadata(sim_dir)
-            field_names = field_names or metadata["field_names"]
-            trial_nums = (
-                range(metadata["trials"]) if trials == "all" else parseTrialString(trials)
-            )
-            model_xml_file = model_xml_file or model_file_path(sim_dir)
-
-            output_dir = f"{sim_dir}/results"
-
-            # if not (num_tasks or num_fields or field_names):
-            #     raise OpgeeException(
-            #         f"Must specify field names (-f/--fields), number of fields "
-            #         f"(-N/--num-fields) or number of tasks (-n/--num_tasks)"
-            #     )
 
         if not output_dir:
             raise CommandlineError("Non-MCS runs must specify -o/--output-dir")
@@ -331,17 +289,9 @@ class RunCommand(SubcommandABC):
 
         mgr = Manager(cluster_type=args.cluster_type)
 
-        if sim_dir:
-            if num_tasks is None:
-                num_tasks = len(field_names)
-
-            packets = TrialPacket.packetize(
-                sim_dir, trial_nums, field_names, packet_size
-            )
-        else:
-            packets = FieldPacket.packetize(
-                model_xml_file, analysis_name, field_names, packet_size
-            )
+        packets = FieldPacket.packetize(
+            model_xml_file, analysis_name, field_names, packet_size
+        )
 
         results_list = []
         save_batches = batch_size is not None
