@@ -4,6 +4,7 @@
 .. Copyright (c) 2021 Richard Plevin and Stanford University
    See the https://opensource.org/licenses/MIT for license details.
 """
+
 from ..subcommand import SubcommandABC
 from opgee.constants import SIMPLE_RESULT
 from ..log import getLogger, setLogFile
@@ -34,7 +35,7 @@ class RunCommand(SubcommandABC):
 
         partition = getParam("SLURM.Partition")
         min_per_task = getParam("SLURM.MinutesPerTask")
-        packet_size = getParamAsInt("OPGEE.MaxTrialsPerPacket") # 10 default
+        packet_size = getParamAsInt("OPGEE.MaxTrialsPerPacket")  # 10 default
 
         # User can specify fields by name, or the number of fields to run MCS for, but not both.
         group = parser.add_mutually_exclusive_group()
@@ -150,15 +151,17 @@ class RunCommand(SubcommandABC):
                                 Ignored if --cluster-type=slurm is not specified.""",
         )
 
-        parser.add_argument(
-            "-P",
-            "--packet-size",
-            type=positive_int,
-            default=packet_size,
-            help=f"""Divide runs for a single field into groups of this size
+        (
+            parser.add_argument(
+                "-P",
+                "--packet-size",
+                type=positive_int,
+                default=packet_size,
+                help=f"""Divide runs for a single field into groups of this size
                             to run serially on a single worker. Default is the value of configuration 
                             file parameter "OPGEE.MaxTrialsPerPacket", currently {packet_size}.""",
-        ),
+            ),
+        )
 
         parser.add_argument(
             "-r",
@@ -178,7 +181,6 @@ class RunCommand(SubcommandABC):
             help="""The name of a field to start with. Use this to resume a run after a failure.
                             Can be combined with -n/--num-fields to run a large number of fields in smaller batches.""",
         )
-
 
         parser.add_argument(
             "-T",
@@ -202,14 +204,13 @@ class RunCommand(SubcommandABC):
         from ..config import setParam
         from ..error import CommandlineError
         from ..model_file import model_analysis_names, fields_for_analysis
-        from ..manager import Manager, save_results, TrialPacket, FieldPacket
+        from ..manager import Manager, save_results, FieldPacket
         from ..utils import parseTrialString, mkdirs
         from ..post_processor import PostProcessor
 
         analysis_names = args.analyses or []
         batch_size = args.batch_size
         batch_start = args.batch_start
-        collect = args.collect
         field_names = args.fields or []
         minutes_per_task = args.minutes
         model_files = args.model_file  # all specified model files
@@ -223,9 +224,9 @@ class RunCommand(SubcommandABC):
         result_type = args.result_type or SIMPLE_RESULT
         skip_fields = args.skip_fields
         start_with = args.start_with
-        trial_nums = None
-        trials = args.trials
-        use_default_model = not args.no_default_model if args.no_default_model is not None else None
+        use_default_model = (
+            not args.no_default_model if args.no_default_model is not None else None
+        )
 
         # TBD: conceptual problem: XML model merging doesn't happen until after we look for
         #  analyses and fields in the model XML. Might want to do XML-level merging before
@@ -236,7 +237,7 @@ class RunCommand(SubcommandABC):
         if not output_dir:
             raise CommandlineError("Non-MCS runs must specify -o/--output-dir")
 
-        setParam("OPGEE.output_dir", output_dir )
+        setParam("OPGEE.output_dir", output_dir)
         mkdirs(output_dir)
 
         if not (field_names or analysis_names):
@@ -303,7 +304,6 @@ class RunCommand(SubcommandABC):
             num_engines=num_tasks,
             minutes_per_task=minutes_per_task,
         ):
-
             # Save to disk, optionally in batches.
             results_list.append(results)
             if save_batches:
@@ -316,7 +316,3 @@ class RunCommand(SubcommandABC):
             save_results(
                 results_list, output_dir, batch_num=batch_num if batch_size else None
             )
-
-        if collect and save_batches:
-            # Combine partial result files into one
-            pass
