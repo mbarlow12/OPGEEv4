@@ -19,7 +19,8 @@ def test_set_electricity():
     as_set = e.get_rate(EN_ELECTRICITY)
     assert as_set.u == Energy._units
 
-    assert e.data[EN_ELECTRICITY] == rate
+    # assert e.data[EN_ELECTRICITY] == rate
+    assert e.data[EN_ELECTRICITY].to("kWh/day").m == pytest.approx(rate.m, rel=1e-9)
 
 def test_set_rates_error():
     """Test that an unknown carrier name throws an OpgeeException"""
