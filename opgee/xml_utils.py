@@ -74,7 +74,7 @@ def attr_to_xml(fields, dtypes, xml_path, analysis_name, modifies='default'):
             try:
                 if np.isnan(value):
                     continue
-            except:
+            except Exception:
                 pass  # np.isnan() fails for non-numeric types; ignore it
 
             if value == '' or value is None:

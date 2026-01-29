@@ -70,7 +70,7 @@ class Aggregator:
     """
     Lightweight grouping of processes for results reporting purposes.
 
-    This is NOT a Container subclass - it simply holds references to process names
+    This is not part of the Field/Process hierarchy - it simply holds references to process names
     that should be grouped together when calculating and reporting carbon intensity.
     """
     def __init__(self, name: str, process_refs: list[str]):

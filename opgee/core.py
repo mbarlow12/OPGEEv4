@@ -110,7 +110,7 @@ class XmlInstantiable(OpgeeObject):
     1. They subclass from XmlInstantiable or its subclasses
     2. They define ``__init__(self, name, **kwargs)`` and call ``super().__init__(name)``
     3. They define ``@classmethod from_xml(cls, element, parent=None)`` to create an instance from XML.
-    4. Subclasses of Container and Process implement ``run(self)`` to perform any required operations.
+    4. Model, Analysis, Field, and Process classes implement ``run(self)`` to perform any required operations.
 
     """
     def __init__(self, name, parent=None):

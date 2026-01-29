@@ -11,7 +11,8 @@ def test_unixpath():
 
 def test_expanduser():
     if os.environ.get('CI') == 'true':
-        home = os.environ['HOME']           # don't use OPGEE_HOME for this test
+        # don't use OPGEE_HOME for this test; Windows uses USERPROFILE instead of HOME
+        home = os.environ.get('HOME') or os.environ.get('USERPROFILE')
     else:
         home = getHomeDir()
 

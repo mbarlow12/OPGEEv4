@@ -6,9 +6,9 @@
 #
 import re
 
+from .attributes import AttributeMixin
 from .config import getParamAsList
-from .container import Container
-from .core import elt_name, OpgeeObject
+from .core import XmlInstantiable, elt_name, OpgeeObject
 from .emissions import Emissions
 from .error import OpgeeException
 from .field import Field
@@ -24,7 +24,7 @@ class Group(OpgeeObject):
         self.text = elt.text
 
 
-class Analysis(Container):
+class Analysis(AttributeMixin, XmlInstantiable):
     """
     Describes a single `Analysis`, which can contain multiple `Fields`, including
     several attributes common to an analysis, including:
@@ -40,7 +40,8 @@ class Analysis(Container):
     See also :doc:`OPGEE XML documentation <opgee-xml>`
     """
     def __init__(self, name, parent=None, attr_dict=None, field_names=None, groups=None):
-        super().__init__(name, attr_dict=attr_dict, parent=parent)
+        AttributeMixin.__init__(self, attr_dict=attr_dict)
+        XmlInstantiable.__init__(self, name, parent=parent)
         self.check_attr_constraints(self.attr_dict)
 
         if not parent:
@@ -131,12 +132,9 @@ class Analysis(Container):
     def first_field(self):
         return self.get_field(self._field_names[0])
 
-    def _children(self):
-        """
-        Return an iterator of all children Fields. External callers should use children() instead,
-        as it respects the self.is_enabled() setting.
-        """
-        return self.fields()
+    def validate(self):
+        for field in self.fields():
+            field.validate()
 
     def use_GWP(self, gwp_horizon, gwp_version):
         """
@@ -190,7 +188,7 @@ class Analysis(Container):
 
     def run(self, compute_ci=True):
         """
-        Run all children and collect emissions and energy use for all Containers and Processes.
+        Run all children fields and collect emissions and energy use.
 
         :param compute_ci: (bool) whether to compute carbon intensity for each field that is run.
         :return: None

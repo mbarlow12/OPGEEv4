@@ -1,3 +1,4 @@
+import os
 import pytest
 from opgee.config import getConfig
 from opgee.log import setLogLevels, configureLogs

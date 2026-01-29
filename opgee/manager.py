@@ -9,9 +9,7 @@
 import asyncio
 import dask
 from dask_jobqueue import SLURMCluster
-from dask.distributed import Client, SubprocessCluster, as_completed, TimeoutError
-from glob import glob
-import os
+from dask.distributed import Client, SubprocessCluster, as_completed
 import pandas as pd
 import pint
 import re
@@ -24,10 +22,10 @@ from .config import getParam, getParamAsInt, getParamAsBoolean, pathjoin
 from .constants import CLUSTER_NONE, SIMPLE_RESULT, DETAILED_RESULT, ERROR_RESULT
 from .error import McsSystemError, AbstractMethodError
 from .results import FieldResult, get_field_result, parse_aggregators
-from .log import getLogger, setLogFile
+from .log import getLogger
 from .model_file import extract_model
 from .post_processor import PostProcessor
-from .utils import flatten, pushd, mkdirs
+from .utils import flatten, mkdirs
 
 # To debug dask, uncomment the following 2 lines
 # import logging
@@ -225,7 +223,7 @@ class Manager(OpgeeObject):
                 # print('.', sep='', end='')
                 client.wait_for_workers(1, 15) # wait for 1 worker with 15 sec timeout
                 break
-            except (dask.distributed.TimeoutError, asyncio.exceptions.TimeoutError) as e:
+            except (dask.distributed.TimeoutError, asyncio.exceptions.TimeoutError):
                 pass
                 #print(e) # prints "Only 0/1 workers arrived after 15"
 
