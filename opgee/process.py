@@ -422,7 +422,7 @@ class Process(AttributeMixin, XmlInstantiable):
         choice of GWP values in the Analysis containing this process.
 
         :param procs_to_exclude: ignored here, but provided for API consistency with
-            Container class method of same name
+            Field class method of same name
         :return: ((pandas.Series, float)) a tuple containing the emissions Series
             and the GHG value computed using the model's current GWP settings.
         """

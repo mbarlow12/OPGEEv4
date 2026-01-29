@@ -206,7 +206,7 @@ class AttrDefs(OpgeeObject):
 
 class AttributeMixin():
     """
-    Consolidates attribute-related code shared by ``Container`` and ``Process`` classes.
+    Consolidates attribute-related code shared by ``Model``, ``Analysis``, ``Field``, and ``Process`` classes.
     Note: must be mixed into classes that have both ``self.attr_dict`` and
     ``self.attr_defs``.
     """

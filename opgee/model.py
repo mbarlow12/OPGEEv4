@@ -10,8 +10,8 @@ import pint
 
 from .units import ureg
 from .analysis import Analysis
-from .container import Container
-from .core import elt_name, instantiate_subelts
+from .attributes import AttributeMixin
+from .core import XmlInstantiable, elt_name, instantiate_subelts
 from .error import OpgeeException, CommandlineError
 from .field import Field
 from .log import getLogger
@@ -22,10 +22,11 @@ DEFAULT_SCHEMA_VERSION = "4.0.0.a"
 
 _logger = getLogger(__name__)
 
-class Model(Container):
+class Model(AttributeMixin, XmlInstantiable):
 
     def __init__(self, name, attr_dict=None, table_updates=None):
-        super().__init__(name, attr_dict=attr_dict, parent=None)
+        AttributeMixin.__init__(self, attr_dict=attr_dict)
+        XmlInstantiable.__init__(self, name, parent=None)
 
         Model.instance = self
         self.schema_version = attr_dict.get('schema_version', DEFAULT_SCHEMA_VERSION)
@@ -144,15 +145,8 @@ class Model(Container):
             raise OpgeeException(f"No known constant with name '{name}'")
 
     def validate(self):
-        for child in self.children():
-            child.validate()
-
-    def _children(self, include_disabled=False):
-        """
-        Return a list of all children objects. External callers should use children()
-        instead, as it respects the self.is_enabled() setting.
-        """
-        return self.analyses()  # N.B. returns an iterator
+        for analysis in self.analyses():
+            analysis.validate()
 
     @classmethod
     def from_xml(cls, elt, parent=None, analysis_names=None, field_names=None):

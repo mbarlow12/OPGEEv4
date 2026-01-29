@@ -11,9 +11,10 @@ import pint
 import pandas as pd
 
 from .units import ureg
+from .attributes import AttributeMixin
 from .config import getParamAsList
-from .container import Container
-from .core import elt_name, instantiate_subelts, dict_from_list, STP
+from .core import XmlInstantiable, elt_name, instantiate_subelts, dict_from_list, STP
+from .emissions import Emissions
 from .energy import Energy
 from .error import (
     OpgeeException,
@@ -47,7 +48,7 @@ def total_emissions(proc, gwp):
     return total
 
 
-class Field(Container):
+class Field(AttributeMixin, XmlInstantiable):
     """
     A `Field` contains all the `Process` instances associated with a single oil or
     gas field, and the `Stream` instances that connect them. It also holds an instance
@@ -62,7 +63,8 @@ class Field(Container):
     """
 
     def __init__(self, name, attr_dict=None, parent=None, group_names=None):
-        super().__init__(name, attr_dict=attr_dict, parent=parent)
+        AttributeMixin.__init__(self, attr_dict=attr_dict)
+        XmlInstantiable.__init__(self, name, parent=parent)
 
         self.model = model = self.find_container("Model")
         self.group_names = group_names or []
@@ -78,9 +80,6 @@ class Field(Container):
 
         # Each Field has one of these built-in processes
         self.reservoir = None  # set in add_children()
-
-        # Additional builtin processes can be instantiated and added here if needed
-        self.builtin_procs = None  # set in add_children()
 
         self.extend = False
 
@@ -112,6 +111,9 @@ class Field(Container):
         self.component_fugitive_table = None
         self.loss_mat_gas_ave_df = None
 
+        # Data objects for aggregated results
+        self.emissions = Emissions()
+        self.energy = Energy()
         self.import_export = ImportExport()
 
         self.oil = Oil(self)
@@ -284,22 +286,17 @@ class Field(Container):
         self.transport_energy = TransportEnergy(self)  # N.B. accesses field.SOR
         self.steam_generator = SteamGenerator(self)
 
-    # Used by validate() to descend model hierarchy
-    def _children(self):
-        return (
-            super()._children()
-        )  # + self.streams() # Adding this caused several errors...
-
     def add_children(self, procs=None, streams=None, process_choice_dict=None):
         # Note: Aggregators are no longer part of the process hierarchy.
         # They are parsed from XML purely for results grouping (see opgee.results module).
-        super().add_children(procs=procs)
 
-        # Each Field has one of these built-in processes
+        # Each Field has one built-in process: Reservoir
         self.reservoir = Reservoir(parent=self)
 
-        # Additional builtin processes can be instantiated and added here if needed
-        self.builtin_procs = [self.reservoir]
+        # Build process_dict directly with Reservoir and all XML-defined processes
+        # Call adopt first to catch duplicate process names before other checks
+        all_procs = [self.reservoir] + (procs or [])
+        self.process_dict = self.adopt(all_procs, asDict=True)
 
         self.stream_dict = dict_from_list(streams)
 
@@ -328,9 +325,6 @@ class Field(Container):
                 # _logger.debug(f"{self}: {proc} defines boundary '{boundary}'")
 
         self.process_choice_dict = process_choice_dict
-
-        all_procs = self.collect_processes()  # includes Reservoir
-        self.process_dict = self.adopt(all_procs, asDict=True)
 
         self.check_attr_constraints(self.attr_dict)
 
@@ -528,6 +522,55 @@ class Field(Container):
         for p in self.processes():
             p.check_balances()
 
+    def get_energy_rates(self):
+        """
+        Return the energy consumption rates by summing those of our child processes
+        and storing the result at the field level.
+        """
+        self.energy.reset()
+        data = self.energy.data
+
+        for proc in self.processes():
+            child_data = proc.get_energy_rates()
+            data += child_data
+
+        return data
+
+    def get_emission_rates(self, analysis, procs_to_exclude=None):
+        """
+        Return the emission rates (Series) including the calculated GHG values
+        based on the current choice of GWP values in the enclosing Model.
+
+        :param analysis: (Analysis) the analysis containing GWP settings
+        :param procs_to_exclude: (list of Process or None) processes to exclude from totals
+        :return: (pandas.Series) the emissions Series.
+        """
+        data = self.emissions.data
+        data[data.columns] = ureg.Quantity(0.0, "t/d")
+
+        for proc in self.processes():
+            if not procs_to_exclude or proc not in procs_to_exclude:
+                child_data = proc.get_emission_rates(analysis, procs_to_exclude=procs_to_exclude)
+                data += child_data
+
+        # compute CO2eq using chosen GWP values
+        data = self.emissions.rates(analysis.gwp)
+        return data
+
+    def get_net_imported_product(self):
+        """
+        Return a energy rate (water is mass rate) of net imported product.
+        The positive value means the amount needs imported, while the negative value mean the amount needs exported
+        """
+        imp_exp = self.import_export.imports_exports()
+        data = imp_exp[ImportExport.NET_IMPORTS]
+
+        for proc in self.processes():
+            child_data = proc.get_net_imported_product()
+            data += child_data
+
+        return data
+
     def boundary_processes(self):
         boundary_procs = [proc for proc in self.processes() if proc.boundary]
         return boundary_procs
@@ -623,7 +666,7 @@ class Field(Container):
         calculation.
 
         :param analysis: (opgee.Analysis)
-        :param nodes: (list of Processes and/or Containers)
+        :param nodes: (list of Processes)
         :return: A list of tuples of (item_name, partial_CI)
         """
         from .error import ZeroEnergyFlowError
@@ -982,8 +1025,8 @@ class Field(Container):
         if self.model.attr("skip_validation"):
             _logger.warning(f"{self} skipping Process and Stream validation")
         else:
-            for child in self.children():
-                child.validate()
+            for proc in self.processes():
+                proc.validate()
 
         # Accumulate error msgs so user can correct them all at once.
         msgs = []
@@ -1352,25 +1395,6 @@ class Field(Container):
         for proc in field.processes():
             proc.cache_attributes()
         return field
-
-    def collect_processes(self):
-        """
-        Collect all processes defined for this field, including builtin processes.
-
-        Note: Since Aggregators are no longer part of the process hierarchy,
-        this method simply collects the direct children processes.
-
-        :return: (list of instances of Process subclasses) the processes
-           defined for this field
-        """
-        # Start with builtin processes (e.g., Reservoir)
-        processes = self.builtin_procs.copy() if self.builtin_procs else []
-
-        # Add direct child processes
-        if self.procs:
-            processes.extend(self.procs)
-
-        return processes
 
     def save_process_data(self, **kwargs):
         """

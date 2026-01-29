@@ -50,5 +50,9 @@ def test_const(test_model2):
     test_model2.const('std-temperature')
 
 
-def test_model_children(test_model2):
-    assert set(test_model2.children()) == set(test_model2.analyses())
+def test_model_analyses(test_model2):
+    """Test that Model provides access to its analyses via analyses() method."""
+    analyses = list(test_model2.analyses())
+    assert len(analyses) > 0
+    # Verify we can iterate multiple times
+    assert list(test_model2.analyses()) == analyses

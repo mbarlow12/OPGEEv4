@@ -69,24 +69,24 @@ def write_model_diagram(model, pathname, levels=0):
         obj_name = obj.name
         return f"{class_name}({obj_name})" if obj_name else class_name
 
-    def add_tree(graph, obj, level):
-        name = name_of(obj)
-        _logger.debug(f"Adding node '{name}'")
-        graph.add_node(pydot.Node(name, shape='box'))
+    def add_tree(graph, field, level):
+        """Add a field and its processes to the graph."""
+        field_name = name_of(field)
+        _logger.debug(f"Adding node '{field_name}'")
+        graph.add_node(pydot.Node(field_name, shape='box'))
 
         if levels == 0 or level < levels:
             level += 1
-            for child in obj.children():
-                add_tree(graph, child, level)
-                _logger.debug(f"Adding edge('{name}', '{name_of(child)}')")
-                graph.add_edge(pydot.Edge(name, name_of(child), color='black'))
+            for proc in field.processes():
+                proc_name = name_of(proc)
+                _logger.debug(f"Adding node '{proc_name}'")
+                graph.add_node(pydot.Node(proc_name, shape='box'))
+                _logger.debug(f"Adding edge('{field_name}', '{proc_name}')")
+                graph.add_edge(pydot.Edge(field_name, proc_name, color='black'))
 
     graph = pydot.Dot('model', graph_type='graph', bgcolor='white')
-    for obj in model.fields():
-        add_tree(graph, obj, 1)
-
-    for obj in model.fields():
-        add_tree(graph, obj, 1)
+    for field in model.fields():
+        add_tree(graph, field, 1)
 
     _logger.info(f"Writing {pathname}")
     graph.write_png(pathname)
