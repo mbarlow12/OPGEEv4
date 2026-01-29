@@ -1080,46 +1080,15 @@ class Reservoir(Process):
     def run(self, analysis):
         self.print_running_msg()
 
-#
-# This class is defined here rather than in container.py to avoid import loops and to
-# allow the reference to Aggregator above.
-#
-class Aggregator(Container):
-    def __init__(self, name, attr_dict=None, parent=None):
-        super().__init__(name, attr_dict=attr_dict, parent=parent)
 
-    def add_children(self, aggs=None, procs=None):
-        super().add_children(aggs=aggs, procs=procs)
+# Note: The old Aggregator class has been removed. Aggregators are now handled
+# in the results module (opgee.results) as lightweight groupings for results
+# purposes only, not as part of the process hierarchy.
 
-    @classmethod
-    def from_xml(cls, elt, parent=None):
-        """
-        Instantiate an instance from an XML element
-
-        :param elt: (etree.Element) representing a <Aggregator> element
-        :param parent: (XmlInstantiable) the parent in the Model object
-            hierarchy for the object created here
-        :return: (Aggregator) instance populated from XML
-        """
-        name = elt_name(elt)
-        attr_dict = cls.instantiate_attrs(elt)
-        obj = cls(name, attr_dict=attr_dict, parent=parent)
-
-        aggs = instantiate_subelts(elt, Aggregator, parent=obj)
-        procs = instantiate_subelts(elt, Process, parent=obj)
-
-        obj.add_children(aggs=aggs, procs=procs)
-
-        # Aggregators are disabled if they are empty or contain only disabled aggs & procs
-        enabled = not all([not child.is_enabled() for child in aggs + procs])
-        obj.set_enabled(enabled)
-
-        return obj
 
 def reload_subclass_dict():
     global _Subclass_dict
 
     _Subclass_dict = {
-        Aggregator: _subclass_dict(Aggregator),
         Process: _subclass_dict(Process)
     }

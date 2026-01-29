@@ -163,6 +163,7 @@
 			<xs:element name="Aggregator" type="AggregatorType"/>
 			<xs:element minOccurs='0' ref='A'/>
 			<xs:element minOccurs='0' ref='Process'/>
+			<xs:element minOccurs='0' ref='ProcessRef'/>
 			<xs:element minOccurs='0' ref='ProcessChoice'/>
 		</xs:choice>
 		<xs:attribute name='name' type='xs:string'/>
@@ -269,7 +270,8 @@
     <xs:complexType>
       <xs:simpleContent>
         <xs:extension base='xs:string'>
-          <xs:attribute name='name' use='required' type='xs:string'/>
+          <xs:attribute name='name' type='xs:string'/>
+          <xs:attribute name='class' type='xs:string'/>
           <xs:attribute name='delete' type='xs:boolean'/>
         </xs:extension>
       </xs:simpleContent>
