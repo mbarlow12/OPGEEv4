@@ -746,7 +746,7 @@ class Process(AttributeMixin, XmlInstantiable):
             return is_converged
 
         if prior_value is not None:
-            if prior_value is not value:
+            if type(prior_value) is not type(value):
                 raise OpgeeException(f"Type of iterator value changed; was: {type(prior_value)} is: {type(value)}")
 
             # TODO: we expect the series to have no units
