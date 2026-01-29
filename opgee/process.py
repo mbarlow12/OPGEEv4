@@ -15,8 +15,7 @@ from .units import ureg, magnitude
 from .attributes import AttrDefs, AttributeMixin
 from .combine_streams import combine_streams
 from .config import getParamAsBoolean
-from .container import Container
-from .core import OpgeeObject, XmlInstantiable, elt_name, instantiate_subelts
+from .core import OpgeeObject, XmlInstantiable, elt_name
 from .emissions import Emissions, EM_COMBUSTION
 from .energy import EN_ELECTRICITY, Energy
 from .error import OpgeeException, AbstractMethodError, OpgeeIterationConverged, ModelValidationError
@@ -580,7 +579,7 @@ class Process(AttributeMixin, XmlInstantiable):
         :raises: OpgeeException if no processes handling `stream_type` are found and `raiseError` is True
         """
         if combine and as_list:
-            raise OpgeeException(f"_find_streams_by_type: both 'combine' and 'as_list' cannot be True")
+            raise OpgeeException("_find_streams_by_type: both 'combine' and 'as_list' cannot be True")
 
         assert direction in {self.INPUT, self.OUTPUT}
         stream_list = self.inputs if direction == self.INPUT else self.outputs
@@ -747,7 +746,7 @@ class Process(AttributeMixin, XmlInstantiable):
             return is_converged
 
         if prior_value is not None:
-            if type(prior_value) != type(value):
+            if prior_value is not value:
                 raise OpgeeException(f"Type of iterator value changed; was: {type(prior_value)} is: {type(value)}")
 
             # TODO: we expect the series to have no units
@@ -787,7 +786,7 @@ class Process(AttributeMixin, XmlInstantiable):
         :raises OpgeeIterationConverged: if all processes have converged.
         """
         if all([proc.iteration_converged for proc in cls.iterating_processes]):
-            raise OpgeeIterationConverged(f"Change <= maximum_change in all iterating processes")
+            raise OpgeeIterationConverged("Change <= maximum_change in all iterating processes")
 
     @classmethod
     def reset_all_iteration(cls):
@@ -863,7 +862,7 @@ class Process(AttributeMixin, XmlInstantiable):
 
     def venting_fugitive_rate(self):
 
-        loss_rate = self.field.component_fugitive_table
+        # loss_rate = self.field.component_fugitive_table
         # Get loss rate for downhole pump
         # if self.name == "DownholePump":
 
@@ -990,7 +989,7 @@ class Boundary(Process):
     def __init__(self, *args, **kwargs):
         boundary = kwargs.get("boundary")
         if not boundary:
-            raise OpgeeException(f"XML elements of class 'Boundary' must define a 'boundary' attribute")
+            raise OpgeeException("XML elements of class 'Boundary' must define a 'boundary' attribute")
 
         name = f"{boundary}Boundary"        # e.g., "ProductionBoundary"
         super().__init__(name, **kwargs)
