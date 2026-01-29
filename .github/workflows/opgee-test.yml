@@ -25,6 +25,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install graphviz (Ubuntu)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y graphviz
+
+      - name: Install graphviz (macOS)
+        if: runner.os == 'macOS'
+        run: brew install graphviz
+
+      - name: Install graphviz (Windows)
+        if: runner.os == 'Windows'
+        run: choco install graphviz -y
+
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
         with:
