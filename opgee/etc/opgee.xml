@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version="1.0" encoding="UTF-8"?>
 <!-- Working draft of XML file format -->
 <!-- This file contains the standard OPGEEv4 LCA model. The metadata describing fields, options,
      and default values is found in attributes.xml. When creating a new model, the user can start
@@ -25,44 +25,44 @@
         <ProcessRef name="SteamGeneration"/>
         <ProcessRef name="WaterInjection"/>
         <ProcessRef name="Drilling"/>
-        <StreamRef name="Reservoir =&gt; ReservoirWellInterface"/>
-        <StreamRef name="ReservoirWellInterface =&gt; DownholePump"/>
-        <StreamRef name="DownholePump =&gt; Separation"/>
-        <StreamRef name="Separation =&gt; CrudeOilDewatering"/>
-        <StreamRef name="Separation =&gt; WaterTreatment"/>
-        <StreamRef name="Separation =&gt; VFPartition"/>
-        <StreamRef name="CrudeOilDewatering =&gt; CrudeOilStabilization"/>
-        <StreamRef name="CrudeOilDewatering =&gt; CrudeOilStorage"/>
-        <StreamRef name="CrudeOilDewatering =&gt; HeavyOilUpgrading"/>
-        <StreamRef name="CrudeOilDewatering =&gt; HeavyOilDilution"/>
-        <StreamRef name="WaterTreatment =&gt; ProductionBoundary"/>
+        <StreamRef name="Reservoir => ReservoirWellInterface"/>
+        <StreamRef name="ReservoirWellInterface => DownholePump"/>
+        <StreamRef name="DownholePump => Separation"/>
+        <StreamRef name="Separation => CrudeOilDewatering"/>
+        <StreamRef name="Separation => WaterTreatment"/>
+        <StreamRef name="Separation => VFPartition"/>
+        <StreamRef name="CrudeOilDewatering => CrudeOilStabilization"/>
+        <StreamRef name="CrudeOilDewatering => CrudeOilStorage"/>
+        <StreamRef name="CrudeOilDewatering => HeavyOilUpgrading"/>
+        <StreamRef name="CrudeOilDewatering => HeavyOilDilution"/>
+        <StreamRef name="WaterTreatment => ProductionBoundary"/>
         <StreamRef name="produced water treatment"/>
         <StreamRef name="makeup water treatment"/>
-        <StreamRef name="WaterTreatment =&gt; WaterInjection"/>
+        <StreamRef name="WaterTreatment => WaterInjection"/>
       </ProcessGroup>
       <ProcessGroup name="Integrated with upgrader">
         <ProcessRef name="BitumenMining"/>
-        <StreamRef name="BitumenMining =&gt; HeavyOilUpgrading"/>
+        <StreamRef name="BitumenMining => HeavyOilUpgrading"/>
       </ProcessGroup>
       <ProcessGroup name="Integrated with diluent">
         <ProcessRef name="BitumenMining"/>
-        <StreamRef name="BitumenMining =&gt; HeavyOilDilution"/>
+        <StreamRef name="BitumenMining => HeavyOilDilution"/>
       </ProcessGroup>
       <ProcessGroup name="Integrated with both">
         <ProcessRef name="BitumenMining"/>
-        <StreamRef name="BitumenMining =&gt; HeavyOilDilution"/>
+        <StreamRef name="BitumenMining => HeavyOilDilution"/>
       </ProcessGroup>
     </ProcessChoice>
     <ProcessChoice name="gas_processing_path">
       <ProcessGroup name="None">
         <ProcessRef name="GasGathering"/>
-        <StreamRef name="GasGathering =&gt; GasPartition"/>
+        <StreamRef name="GasGathering => GasPartition"/>
       </ProcessGroup>
       <ProcessGroup name="Minimal">
         <ProcessRef name="GasGathering"/>
         <ProcessRef name="GasDehydration"/>
-        <StreamRef name="GasGathering =&gt; GasDehydration"/>
-        <StreamRef name="GasDehydration =&gt; GasPartition"/>
+        <StreamRef name="GasGathering => GasDehydration"/>
+        <StreamRef name="GasDehydration => GasPartition"/>
       </ProcessGroup>
       <ProcessGroup name="Acid Wet Gas">
         <ProcessRef name="GasGathering"/>
@@ -70,29 +70,29 @@
         <ProcessRef name="AcidGasRemoval"/>
         <ProcessRef name="Demethanizer"/>
         <ProcessRef name="NGL"/>
-        <StreamRef name="GasGathering =&gt; GasDehydration"/>
-        <StreamRef name="GasDehydration =&gt; AcidGasRemoval"/>
-        <StreamRef name="AcidGasRemoval =&gt; Demethanizer"/>
-        <StreamRef name="Demethanizer =&gt; GasPartition"/>
-        <StreamRef name="Demethanizer =&gt; NGL"/>
+        <StreamRef name="GasGathering => GasDehydration"/>
+        <StreamRef name="GasDehydration => AcidGasRemoval"/>
+        <StreamRef name="AcidGasRemoval => Demethanizer"/>
+        <StreamRef name="Demethanizer => GasPartition"/>
+        <StreamRef name="Demethanizer => NGL"/>
       </ProcessGroup>
       <ProcessGroup name="Acid Gas">
         <ProcessRef name="GasGathering"/>
         <ProcessRef name="GasDehydration"/>
         <ProcessRef name="AcidGasRemoval"/>
-        <StreamRef name="GasGathering =&gt; GasDehydration"/>
-        <StreamRef name="GasDehydration =&gt; AcidGasRemoval"/>
-        <StreamRef name="AcidGasRemoval =&gt; GasPartition"/>
+        <StreamRef name="GasGathering => GasDehydration"/>
+        <StreamRef name="GasDehydration => AcidGasRemoval"/>
+        <StreamRef name="AcidGasRemoval => GasPartition"/>
       </ProcessGroup>
       <ProcessGroup name="Wet Gas">
         <ProcessRef name="GasGathering"/>
         <ProcessRef name="GasDehydration"/>
         <ProcessRef name="Demethanizer"/>
         <ProcessRef name="NGL"/>
-        <StreamRef name="GasGathering =&gt; GasDehydration"/>
-        <StreamRef name="GasDehydration =&gt; Demethanizer"/>
-        <StreamRef name="Demethanizer =&gt; GasPartition"/>
-        <StreamRef name="Demethanizer =&gt; NGL"/>
+        <StreamRef name="GasGathering => GasDehydration"/>
+        <StreamRef name="GasDehydration => Demethanizer"/>
+        <StreamRef name="Demethanizer => GasPartition"/>
+        <StreamRef name="Demethanizer => NGL"/>
       </ProcessGroup>
       <ProcessGroup name="CO2-EOR Ryan Holmes">
         <ProcessRef name="GasGathering"/>
@@ -101,22 +101,22 @@
         <ProcessRef name="CO2ReinjectionCompressor"/>
         <ProcessRef name="CO2InjectionWell"/>
         <ProcessRef name="NGL"/>
-        <StreamRef name="GasGathering =&gt; GasDehydration"/>
-        <StreamRef name="GasDehydration =&gt; RyanHolmes"/>
-        <StreamRef name="RyanHolmes =&gt; CO2ReinjectionCompressor"/>
-        <StreamRef name="RyanHolmes =&gt; GasPartition"/>
-        <StreamRef name="RyanHolmes =&gt; NGL"/>
-        <StreamRef name="CO2ReinjectionCompressor =&gt; CO2InjectionWell"/>
-        <StreamRef name="CO2InjectionWell =&gt; ReservoirWellInterface"/>
+        <StreamRef name="GasGathering => GasDehydration"/>
+        <StreamRef name="GasDehydration => RyanHolmes"/>
+        <StreamRef name="RyanHolmes => CO2ReinjectionCompressor"/>
+        <StreamRef name="RyanHolmes => GasPartition"/>
+        <StreamRef name="RyanHolmes => NGL"/>
+        <StreamRef name="CO2ReinjectionCompressor => CO2InjectionWell"/>
+        <StreamRef name="CO2InjectionWell => ReservoirWellInterface"/>
       </ProcessGroup>
       <ProcessGroup name="Sour Gas Reinjection">
         <ProcessRef name="GasGathering"/>
         <ProcessRef name="GasDehydration"/>
         <ProcessRef name="SourGasCompressor"/>
         <ProcessRef name="SourGasInjection"/>
-        <StreamRef name="GasGathering =&gt; GasDehydration"/>
-        <StreamRef name="GasDehydration =&gt; SourGasCompressor"/>
-        <StreamRef name="SourGasCompressor =&gt; SourGasInjection"/>
+        <StreamRef name="GasGathering => GasDehydration"/>
+        <StreamRef name="GasDehydration => SourGasCompressor"/>
+        <StreamRef name="SourGasCompressor => SourGasInjection"/>
       </ProcessGroup>
       <ProcessGroup name="CO2-EOR Membrane">
         <ProcessRef name="GasGathering"/>
@@ -129,17 +129,17 @@
         <ProcessRef name="CO2InjectionWell"/>
         <ProcessRef name="Demethanizer"/>
         <ProcessRef name="NGL"/>
-        <StreamRef name="GasGathering =&gt; GasDehydration"/>
-        <StreamRef name="GasDehydration =&gt; PreMembraneChiller"/>
-        <StreamRef name="PreMembraneChiller =&gt; PreMembraneCompressor"/>
-        <StreamRef name="PreMembraneCompressor =&gt; CO2Membrane"/>
-        <StreamRef name="CO2Membrane =&gt; AcidGasRemoval"/>
-        <StreamRef name="CO2Membrane =&gt; CO2ReinjectionCompressor"/>
-        <StreamRef name="CO2ReinjectionCompressor =&gt; CO2InjectionWell"/>
-        <StreamRef name="CO2InjectionWell =&gt; ReservoirWellInterface"/>
-        <StreamRef name="AcidGasRemoval =&gt; Demethanizer"/>
-        <StreamRef name="Demethanizer =&gt; GasPartition"/>
-        <StreamRef name="Demethanizer =&gt; NGL"/>
+        <StreamRef name="GasGathering => GasDehydration"/>
+        <StreamRef name="GasDehydration => PreMembraneChiller"/>
+        <StreamRef name="PreMembraneChiller => PreMembraneCompressor"/>
+        <StreamRef name="PreMembraneCompressor => CO2Membrane"/>
+        <StreamRef name="CO2Membrane => AcidGasRemoval"/>
+        <StreamRef name="CO2Membrane => CO2ReinjectionCompressor"/>
+        <StreamRef name="CO2ReinjectionCompressor => CO2InjectionWell"/>
+        <StreamRef name="CO2InjectionWell => ReservoirWellInterface"/>
+        <StreamRef name="AcidGasRemoval => Demethanizer"/>
+        <StreamRef name="Demethanizer => GasPartition"/>
+        <StreamRef name="Demethanizer => NGL"/>
       </ProcessGroup>
     </ProcessChoice>
     <ProcessChoice name="common_gas_process_choice">
@@ -156,9 +156,9 @@
         <ProcessRef name="StorageWell"/>
         <ProcessRef name="StorageSeparator"/>
         <ProcessRef name="PostStorageCompressor"/>
-        <StreamRef name="CO2Membrane =&gt; CO2ReinjectionCompressor"/>
-        <StreamRef name="GasLiftingCompressor =&gt; DownholePump"/>
-        <StreamRef name="GasReinjectionCompressor =&gt; GasReinjectionWell"/>
+        <StreamRef name="CO2Membrane => CO2ReinjectionCompressor"/>
+        <StreamRef name="GasLiftingCompressor => DownholePump"/>
+        <StreamRef name="GasReinjectionCompressor => GasReinjectionWell"/>
         <StreamRef name="transmission gas for storage"/>
         <StreamRef name="transmission gas for LNG"/>
         <StreamRef name="transmission gas for distribution"/>
@@ -169,43 +169,43 @@
         <ProcessRef name="CrudeOilStabilization"/>
         <ProcessRef name="CrudeOilStorage"/>
         <ProcessRef name="CrudeOilTransport"/>
-        <StreamRef name="CrudeOilStorage =&gt; CrudeOilTransport"/>
-        <StreamRef name="CrudeOilStabilization =&gt; CrudeOilStorage"/>
-        <StreamRef name="CrudeOilDewatering =&gt; CrudeOilStabilization"/>
+        <StreamRef name="CrudeOilStorage => CrudeOilTransport"/>
+        <StreamRef name="CrudeOilStabilization => CrudeOilStorage"/>
+        <StreamRef name="CrudeOilDewatering => CrudeOilStabilization"/>
       </ProcessGroup>
       <ProcessGroup name="Storage">
         <ProcessRef name="CrudeOilStorage"/>
         <ProcessRef name="CrudeOilTransport"/>
-        <StreamRef name="CrudeOilStorage =&gt; CrudeOilTransport"/>
-        <StreamRef name="CrudeOilDewatering =&gt; CrudeOilStorage"/>
+        <StreamRef name="CrudeOilStorage => CrudeOilTransport"/>
+        <StreamRef name="CrudeOilDewatering => CrudeOilStorage"/>
       </ProcessGroup>
       <ProcessGroup name="Upgrading">
         <ProcessRef name="HeavyOilUpgrading"/>
         <ProcessRef name="CrudeOilStorage"/>
         <ProcessRef name="CrudeOilTransport"/>
         <ProcessRef name="PetrocokeTransport"/>
-        <StreamRef name="CrudeOilStorage =&gt; CrudeOilTransport"/>
-        <StreamRef name="HeavyOilUpgrading =&gt; CrudeOilStorage"/>
-        <StreamRef name="HeavyOilUpgrading =&gt; PetrocokeTransport"/>
-        <StreamRef name="CrudeOilDewatering =&gt; HeavyOilUpgrading"/>
+        <StreamRef name="CrudeOilStorage => CrudeOilTransport"/>
+        <StreamRef name="HeavyOilUpgrading => CrudeOilStorage"/>
+        <StreamRef name="HeavyOilUpgrading => PetrocokeTransport"/>
+        <StreamRef name="CrudeOilDewatering => HeavyOilUpgrading"/>
       </ProcessGroup>
       <ProcessGroup name="Dilution">
         <ProcessRef name="HeavyOilDilution"/>
         <ProcessRef name="CrudeOilStorage"/>
         <ProcessRef name="CrudeOilTransport"/>
-        <StreamRef name="CrudeOilStorage =&gt; CrudeOilTransport"/>
-        <StreamRef name="HeavyOilDilution =&gt; CrudeOilStorage"/>
-        <StreamRef name="CrudeOilDewatering =&gt; HeavyOilDilution"/>
+        <StreamRef name="CrudeOilStorage => CrudeOilTransport"/>
+        <StreamRef name="HeavyOilDilution => CrudeOilStorage"/>
+        <StreamRef name="CrudeOilDewatering => HeavyOilDilution"/>
       </ProcessGroup>
       <ProcessGroup name="Dilution and Upgrading">
         <ProcessRef name="HeavyOilDilution"/>
         <ProcessRef name="HeavyOilUpgrading"/>
         <ProcessRef name="CrudeOilStorage"/>
         <ProcessRef name="CrudeOilTransport"/>
-        <StreamRef name="CrudeOilStorage =&gt; CrudeOilTransport"/>
-        <StreamRef name="HeavyOilDilution =&gt; HeavyOilUpgrading"/>
-        <StreamRef name="HeavyOilUpgrading =&gt; CrudeOilStorage"/>
-        <StreamRef name="CrudeOilDewatering =&gt; HeavyOilDilution"/>
+        <StreamRef name="CrudeOilStorage => CrudeOilTransport"/>
+        <StreamRef name="HeavyOilDilution => HeavyOilUpgrading"/>
+        <StreamRef name="HeavyOilUpgrading => CrudeOilStorage"/>
+        <StreamRef name="CrudeOilDewatering => HeavyOilDilution"/>
       </ProcessGroup>
     </ProcessChoice>
     <Process class="Exploration" after="true"/>
