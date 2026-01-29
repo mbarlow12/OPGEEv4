@@ -5,6 +5,7 @@ on:
       - master
       - main
       - dev
+      - refactor-v5
 
 jobs:
   test:
