@@ -23,7 +23,7 @@ from .core import OpgeeObject, Timer
 from .config import getParam, getParamAsInt, getParamAsBoolean, pathjoin
 from .constants import CLUSTER_NONE, SIMPLE_RESULT, DETAILED_RESULT, ERROR_RESULT
 from .error import McsSystemError, AbstractMethodError
-from .field import FieldResult
+from .results import FieldResult, get_field_result, parse_aggregators
 from .log import getLogger, setLogFile
 from .model_file import extract_model
 from .post_processor import PostProcessor
@@ -318,7 +318,14 @@ def _run_field(analysis_name, field_name, xml_string, result_type,
         analysis = mf.model.get_analysis(analysis_name)
         field = analysis.get_field(field_name)
         field.run(analysis)
-        result = field.get_result(analysis, result_type)
+
+        # Parse aggregators from XML and generate results
+        field_elt = mf.root.find(f"Field[@name='{field_name}']")
+        aggregators = parse_aggregators(field_elt) if field_elt is not None else {}
+        result = get_field_result(field, analysis, result_type, aggregators)
+
+        # Run post-processors (moved outside get_field_result for separation of concerns)
+        PostProcessor.run_post_processors(analysis, field, result)
 
     except Exception as e:
         result = FieldResult(analysis_name, field_name, ERROR_RESULT, error=str(e))

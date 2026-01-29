@@ -45,27 +45,6 @@ def save_xml(path, root, backup=False, overwrite=False):
         # for debugging only
         ET.dump(root, pretty_print=True) # pragma: no cover
 
-def _load_opgee_template(template):
-    from .config import getParam
-    from .pkg_utils import resourceStream
-    from .model_file import XMLFile
-
-    opgee_xml = getParam('OPGEE.ModelFile')
-    base_stream = resourceStream(opgee_xml, stream_type='bytes', decode=None)
-    xmlfile = XMLFile(base_stream, schemaPath='etc/opgee.xsd')
-    model = xmlfile.getRoot()
-
-    field = model.find(f"Field[@name='{template}']")
-    return field
-
-def _find_proc_in_agg(process_name, aggs):
-    for agg in aggs:
-        if agg.xpath(f'./Process[@class="{process_name}"]'):
-            name = agg.attrib['name']
-            return name
-
-    return None
-
 def attr_to_xml(fields, dtypes, xml_path, analysis_name, modifies='default'):
     from lxml import etree as ET
     import numpy as np
@@ -79,10 +58,6 @@ def attr_to_xml(fields, dtypes, xml_path, analysis_name, modifies='default'):
     group = ET.SubElement(analysis, "Group")
     group.text = "all"
 
-    # we use this to look up enclosing <Aggregator> nodes for <Process> nodes
-    template_field = _load_opgee_template(modifies)
-    aggregators = template_field.findall("Aggregator")
-
     # Convert fields to xml
     for field_name, col in fields.items():
         field = ET.SubElement(model, 'Field',
@@ -93,7 +68,6 @@ def attr_to_xml(fields, dtypes, xml_path, analysis_name, modifies='default'):
         group.text = 'all'
 
         proc_dict = {}  # remember process elements created for attributes within each field
-        agg_dict = {}   # same for aggregators we create
 
         for attr, value in col.items():
             # don't include unspecified attributes
@@ -114,21 +88,8 @@ def attr_to_xml(fields, dtypes, xml_path, analysis_name, modifies='default'):
             if count == 2:
                 process_name, attr_name = parts
                 if not (attr_parent := proc_dict.get(process_name)):
-                    # If the Process is defined within an <Aggregator>, add that
-                    # node so XML merging works properly
-                    if (agg_name := _find_proc_in_agg(process_name, aggregators)):
-
-                        if not (agg := agg_dict.get(agg_name)):
-                            agg = ET.SubElement(field, 'Aggregator', attrib={'name': agg_name})
-                            agg_dict[agg_name] = agg
-
-                        proc_parent = agg
-
-                    else:
-                        proc_parent = field
-
-                    # Create the element on demand, unless we've found it in the proc_dict
-                    proc_dict[process_name] = attr_parent = ET.SubElement(proc_parent, 'Process', attrib={'class': process_name})
+                    # Processes are now at Field level (not inside Aggregators)
+                    proc_dict[process_name] = attr_parent = ET.SubElement(field, 'Process', attrib={'class': process_name})
 
             else:
                 attr_parent = field

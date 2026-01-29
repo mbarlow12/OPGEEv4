@@ -1,28 +1,39 @@
 #
-# OPGEE Container and Aggregator classes
+# OPGEE Container class
 #
 # Author: Richard Plevin
 #
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from .attributes import AttrDefs, AttributeMixin
 from .core import XmlInstantiable
 from .emissions import Emissions
 from .energy import Energy
-from .error import OpgeeException
 from .import_export import ImportExport
 from .log import getLogger
 from .units import ureg
 
+if TYPE_CHECKING:
+    from .analysis import Analysis
+    from .process import Process
+
 _logger = getLogger(__name__)
+
 
 class Container(AttributeMixin, XmlInstantiable):
     """
-    Generic hierarchical node element, has a name and contains other Containers and/or
-    Processes (and subclasses thereof).
+    Generic hierarchical node element that contains Processes.
+
+    Note: Aggregators are no longer part of the Container hierarchy.
+    They are handled separately in the results module for grouping purposes.
     """
-    def __init__(self, name, attr_dict=None, parent=None):
+
+    def __init__(self, name: str, attr_dict: dict | None = None, parent=None):
         AttributeMixin.__init__(self, attr_dict=attr_dict)
         XmlInstantiable.__init__(self, name, parent=parent)
 
@@ -32,30 +43,30 @@ class Container(AttributeMixin, XmlInstantiable):
         self.energy = Energy()
         self.import_export = ImportExport()
 
-        # N.B. These are the Process and Container instances directly inside
-        # the present Container, not including those held by sub-Containers.
-        self.procs = None
-        self.aggs = None
+        # Process instances directly inside this Container
+        self.procs: list[Process] | None = None
 
-    def add_children(self, aggs=None, procs=None, **kwargs):
-        self.aggs  = self.adopt(aggs)
+    def add_children(self, procs: list[Process] | None = None, **kwargs):
+        """
+        Add child processes to this container.
+
+        :param procs: List of Process instances to add as children
+        """
         self.procs = self.adopt(procs)
 
-    def _children(self):
+    def _children(self) -> list[Process]:
         """
         Return a list of all children. External callers should use children() instead,
         as it respects the self.is_enabled() setting.
         """
-        objs = self.aggs + self.procs
-        return objs
+        return self.procs if self.procs else []
 
-    def children(self, include_disabled=False):
+    def children(self, include_disabled: bool = False) -> list[Process]:
         """
-        Return all directly contained `Process` and `Container` objects below this
-        `Container`. See also `self.descendant_procs()` and`self.descendant_aggs()`.
+        Return all directly contained Process objects below this Container.
 
         :param include_disabled: (bool) whether to include disabled nodes.
-        :return: (list of Containers and/or Processes)
+        :return: (list of Processes)
         """
         objs = self._children()
         return [obj for obj in objs if (include_disabled or obj.is_enabled())]
@@ -64,43 +75,20 @@ class Container(AttributeMixin, XmlInstantiable):
         for child in self.children():
             child.validate()
 
-    def descendant_procs(self, include_disabled=False):
+    def descendant_procs(self, include_disabled: bool = False) -> list[Process]:
         """
-        Return all Processes contained in the current Container or its sub-Containers.
+        Return all Processes contained in the current Container.
 
         :param include_disabled: (bool) whether to include disabled nodes.
         :return: (list of Processes)
         """
         procs = []
 
-        def _add_children(container, include_disabled=False):
-            for obj in container.children():
-                if isinstance(obj, Container):
-                    _add_children(obj, include_disabled=include_disabled)
-                elif (include_disabled or obj.is_enabled()):
-                    procs.append(obj)
+        for obj in self.children():
+            if include_disabled or obj.is_enabled():
+                procs.append(obj)
 
-        _add_children(self)
         return procs
-
-    def descendant_aggs(self):
-        """
-        Return a list of all descendent `Container` instances.
-
-        :return: (list of opgee.Container)
-        """
-        aggs = self.aggs if self.aggs else []
-
-        for agg in self.aggs:  # loop over original since we're extending the copy
-            aggs.extend(agg.descendant_aggs())
-
-        return aggs
-
-    def find_agg(self, name):
-        try:
-            return self.aggs[name]
-        except KeyError:
-            raise OpgeeException(f"{self} doesn't have Aggregator[{name}]")
 
     def print_running_msg(self):
         _logger.debug(f"Running {type(self)} name='{self.name}'")
@@ -115,12 +103,12 @@ class Container(AttributeMixin, XmlInstantiable):
         data = self.energy.data
 
         for child in self.children():
-                child_data = child.get_energy_rates()
-                data += child_data
+            child_data = child.get_energy_rates()
+            data += child_data
 
         return data
 
-    def get_emission_rates(self, analysis, procs_to_exclude=None):
+    def get_emission_rates(self, analysis: Analysis, procs_to_exclude=None):
         """
         Return the emission rates (Series) including the calculated GHG values
         based on the current choice of GWP values in the enclosing Model.
@@ -132,8 +120,8 @@ class Container(AttributeMixin, XmlInstantiable):
 
         for child in self.children():
             if not procs_to_exclude or child not in procs_to_exclude:
-                    child_data = child.get_emission_rates(analysis, procs_to_exclude=procs_to_exclude)
-                    data += child_data
+                child_data = child.get_emission_rates(analysis, procs_to_exclude=procs_to_exclude)
+                data += child_data
 
         # compute CO2eq using chosen GWP values
         data = self.emissions.rates(analysis.gwp)
@@ -153,5 +141,3 @@ class Container(AttributeMixin, XmlInstantiable):
             data += child_data
 
         return data
-
-
