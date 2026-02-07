@@ -19,8 +19,8 @@ class TestSmartDefaults:
     def test_explicit_not_overwritten(self):
         """Explicit attributes should not be modified by smart defaults."""
         xml = model_with_field(E_a("country", "US"), E_a("SOR", "99.0"))
-        apply_static_defaults(xml)
-        apply_smart_defaults(xml)
+        xml = apply_static_defaults(xml)
+        xml = apply_smart_defaults(xml)
 
         field = xml.find("Field")
         sor_value = read_attr_value(field, "SOR", "Field")
@@ -30,8 +30,8 @@ class TestSmartDefaults:
     def test_non_explicit_computed(self):
         """Non-explicit attributes should be computed from dependencies."""
         xml = model_with_field(E_a("country", "US"), E_a("steam_flooding", "1"))
-        apply_static_defaults(xml)
-        apply_smart_defaults(xml)
+        xml = apply_static_defaults(xml)
+        xml = apply_smart_defaults(xml)
 
         field = xml.find("Field")
         sor_value = read_attr_value(field, "SOR", "Field")
@@ -41,8 +41,8 @@ class TestSmartDefaults:
     def test_dependency_chain_resolves(self):
         """SOR -> WOR -> WIR chain should resolve in correct order."""
         xml = model_with_field(E_a("country", "US"), E_a("steam_flooding", "0"))
-        apply_static_defaults(xml)
-        apply_smart_defaults(xml)
+        xml = apply_static_defaults(xml)
+        xml = apply_smart_defaults(xml)
 
         field = xml.find("Field")
         sor_value = read_attr_value(field, "SOR", "Field")
@@ -61,8 +61,8 @@ class TestSmartDefaults:
             E_a("API", "15"),
             E_process("CrudeOilDewatering"),
         )
-        apply_static_defaults(xml)
-        apply_smart_defaults(xml)
+        xml = apply_static_defaults(xml)
+        xml = apply_smart_defaults(xml)
 
         # Find the Process element
         proc = xml.find(".//Process[@class='CrudeOilDewatering']")
@@ -75,8 +75,8 @@ class TestSmartDefaults:
     def test_common_gas_process_choice_default(self):
         """common_gas_process_choice should be 'All' when oil_sands_mine is 'None'."""
         xml = model_with_field(E_a("country", "US"))
-        apply_static_defaults(xml)
-        apply_smart_defaults(xml)
+        xml = apply_static_defaults(xml)
+        xml = apply_smart_defaults(xml)
 
         field = xml.find("Field")
         value = read_attr_value(field, "common_gas_process_choice", "Field")
@@ -86,8 +86,8 @@ class TestSmartDefaults:
     def test_offshore_defaults(self):
         """Offshore=1 should trigger fraction_elec_onsite=1.0, etc."""
         xml = model_with_field(E_a("country", "US"), E_a("offshore", "1"))
-        apply_static_defaults(xml)
-        apply_smart_defaults(xml)
+        xml = apply_static_defaults(xml)
+        xml = apply_smart_defaults(xml)
 
         field = xml.find("Field")
         frac = read_attr_value(field, "fraction_elec_onsite", "Field")

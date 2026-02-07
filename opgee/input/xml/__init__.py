@@ -9,15 +9,16 @@ Transforms raw lxml Elements through a series of pure-functional stages:
   4. Build Objects — construct lightweight model objects from clean XML
 """
 
-from .builders import BuiltModel
+from lxml import etree
+
+from .builders import BuiltModel, build_model
 from .loader import load_attr_defs
 from .static_defaults import apply_static_defaults
 from .smart_defaults import apply_smart_defaults
 from .process_choices import resolve_process_choices
-from .builders import build_model
 
 
-def process_field_xml(model_elt, attr_defs_elt) -> BuiltModel:
+def process_field_xml(model_elt: etree.Element, attr_defs_elt: etree.Element) -> BuiltModel:
     """
     Run the full XML processing pipeline.
 
@@ -26,7 +27,7 @@ def process_field_xml(model_elt, attr_defs_elt) -> BuiltModel:
     :return: BuiltModel with typed attribute dicts and process/stream lists
     """
     load_attr_defs(attr_defs_elt)
-    apply_static_defaults(model_elt)
-    apply_smart_defaults(model_elt)
-    resolve_process_choices(model_elt)
+    model_elt = apply_static_defaults(model_elt)
+    model_elt = apply_smart_defaults(model_elt)
+    model_elt = resolve_process_choices(model_elt)
     return build_model(model_elt)

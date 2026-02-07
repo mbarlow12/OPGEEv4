@@ -113,7 +113,7 @@ class TestPipelineEndToEnd:
         assert len(model.field.attr_dict) > 10
 
     def test_pipeline_no_process_choice_elements(self):
-        """After pipeline, no ProcessChoice elements should remain."""
+        """After pipeline, no ProcessChoice-related classes should remain."""
         xml = model_with_field(
             E_a("country", "US"),
             E_a("gas_path", "All"),
@@ -127,9 +127,9 @@ class TestPipelineEndToEnd:
         )
         attr_defs_elt = self._load_attr_defs_elt()
 
-        process_field_xml(xml, attr_defs_elt)
+        model = process_field_xml(xml, attr_defs_elt)
 
-        # Verify the XML tree is clean
-        field = xml.find("Field")
-        assert field.findall("ProcessChoice") == []
-        assert field.findall("Aggregator") == []
+        # Verify via BuiltModel that no ProcessChoice artifacts remain
+        assert "GasGathering" in model.field.process_names
+        for name in model.field.process_names:
+            assert "ProcessChoice" not in name

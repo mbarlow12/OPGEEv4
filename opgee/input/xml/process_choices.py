@@ -1,5 +1,7 @@
 """Stage 3: Resolve ProcessChoice elements — remove disabled processes and streams."""
 
+from copy import deepcopy
+
 from lxml import etree
 
 from opgee.error import OpgeeException
@@ -15,8 +17,9 @@ def resolve_process_choices(root: etree.Element) -> etree.Element:
     elements from the output.
 
     :param root: <Model> lxml Element
-    :return: the same Element (mutated in place) with choices resolved
+    :return: a new Element with choices resolved (input is not modified)
     """
+    root = deepcopy(root)
     field_elt = root.find("Field")
     if field_elt is None:
         return root

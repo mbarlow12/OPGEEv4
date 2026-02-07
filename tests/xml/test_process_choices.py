@@ -38,9 +38,9 @@ class TestResolveProcessChoices:
         """Selected processes remain; non-selected processes are removed."""
         xml = _choice_model(selection)
 
-        resolve_process_choices(xml)
+        result = resolve_process_choices(xml)
 
-        field = xml.find("Field")
+        field = result.find("Field")
         proc_classes = [p.get("class") for p in field.findall("Process")]
         for name in expected_present:
             assert name in proc_classes
@@ -66,9 +66,9 @@ class TestResolveProcessChoices:
             E_stream("Reservoir", "GasGathering"),
         )
 
-        resolve_process_choices(xml)
+        result = resolve_process_choices(xml)
 
-        field = xml.find("Field")
+        field = result.find("Field")
         proc_classes = [p.get("class") for p in field.findall("Process")]
         assert "GasGathering" in proc_classes
         assert "GasDehydration" in proc_classes
@@ -94,9 +94,9 @@ class TestResolveProcessChoices:
             E_stream("Reservoir", "GasGathering"),
         )
 
-        resolve_process_choices(xml)
+        result = resolve_process_choices(xml)
 
-        field = xml.find("Field")
+        field = result.find("Field")
         stream_names = []
         for s in field.findall("Stream"):
             name = s.get("name") or f"{s.get('src')} => {s.get('dst')}"
@@ -135,9 +135,9 @@ class TestResolveProcessChoices:
             E_stream("Reservoir", "GasGathering"),
         )
 
-        resolve_process_choices(xml)
+        result = resolve_process_choices(xml)
 
-        field = xml.find("Field")
+        field = result.find("Field")
         assert field.findall("ProcessChoice") == []
         assert field.findall("ProcessGroup") == []
         assert field.findall("ProcessRef") == []
@@ -169,9 +169,9 @@ class TestResolveProcessChoices:
             E_stream("Reservoir", "ProcA"),
         )
 
-        resolve_process_choices(xml)
+        result = resolve_process_choices(xml)
 
-        field = xml.find("Field")
+        field = result.find("Field")
         proc_names = [p.get("name") or p.get("class") for p in field.findall("Process")]
         assert "ProcA" in proc_names  # selected in outer
         assert "ProcB" in proc_names  # selected in inner
@@ -187,9 +187,9 @@ class TestResolveProcessChoices:
             E_stream("Reservoir", "Separation"),
         )
 
-        resolve_process_choices(xml)
+        result = resolve_process_choices(xml)
 
-        field = xml.find("Field")
+        field = result.find("Field")
         assert field.findall("Aggregator") == []
 
     def test_validates_against_core_schema(self, core_schema):
@@ -209,6 +209,6 @@ class TestResolveProcessChoices:
             ),
         )
 
-        resolve_process_choices(xml)
+        result = resolve_process_choices(xml)
 
-        assert core_schema.validate(xml), core_schema.error_log
+        assert core_schema.validate(result), core_schema.error_log

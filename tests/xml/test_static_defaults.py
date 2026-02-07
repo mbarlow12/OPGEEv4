@@ -10,9 +10,9 @@ class TestApplyStaticDefaults:
         """Field missing an attribute with a default should get <A> added."""
         xml = model_with_field(E_a("country", "US"))
 
-        apply_static_defaults(xml)
+        result = apply_static_defaults(xml)
 
-        field = xml.find("Field")
+        field = result.find("Field")
         a_names = {a.get("name") for a in field.findall("A")}
         # 'age' should be added as a default from AttrDefs
         assert "age" in a_names
@@ -21,9 +21,9 @@ class TestApplyStaticDefaults:
         """Existing <A> elements should be marked explicit='true'."""
         xml = model_with_field(E_a("country", "US"))
 
-        apply_static_defaults(xml)
+        result = apply_static_defaults(xml)
 
-        field = xml.find("Field")
+        field = result.find("Field")
         country_a = None
         for a in field.findall("A"):
             if a.get("name") == "country":
@@ -37,9 +37,9 @@ class TestApplyStaticDefaults:
         """New default <A> elements should be marked explicit='false'."""
         xml = model_with_field(E_a("country", "US"))
 
-        apply_static_defaults(xml)
+        result = apply_static_defaults(xml)
 
-        field = xml.find("Field")
+        field = result.find("Field")
         age_a = None
         for a in field.findall("A"):
             if a.get("name") == "age":
@@ -53,9 +53,9 @@ class TestApplyStaticDefaults:
         """Process elements should get both base Process attrs and subclass attrs."""
         xml = model_with_field(E_a("country", "US"), E_process("Separation"))
 
-        apply_static_defaults(xml)
+        result = apply_static_defaults(xml)
 
-        proc = xml.find(".//Process[@class='Separation']")
+        proc = result.find(".//Process[@class='Separation']")
         a_names = {a.get("name") for a in proc.findall("A")}
 
         # Should have base Process attributes
@@ -70,9 +70,9 @@ class TestApplyStaticDefaults:
         """Attributes with no default should not get <A> elements."""
         xml = model_with_field(E_a("country", "US"))
 
-        apply_static_defaults(xml)
+        result = apply_static_defaults(xml)
 
-        field = xml.find("Field")
+        field = result.find("Field")
         a_names = {a.get("name") for a in field.findall("A")}
 
         # Check that no attr with None default was added
@@ -89,9 +89,9 @@ class TestApplyStaticDefaults:
         """Analysis element should also get static defaults."""
         xml = model_with_field(E_a("country", "US"))
 
-        apply_static_defaults(xml)
+        result = apply_static_defaults(xml)
 
-        analysis = xml.find("Analysis")
+        analysis = result.find("Analysis")
         a_names = {a.get("name") for a in analysis.findall("A")}
 
         # Should have GWP_horizon or similar analysis defaults
@@ -106,10 +106,10 @@ class TestApplyStaticDefaults:
         """Running apply_static_defaults twice should not duplicate <A> elements."""
         xml = model_with_field(E_a("country", "US"))
 
-        apply_static_defaults(xml)
-        count_1 = len(xml.find("Field").findall("A"))
+        result = apply_static_defaults(xml)
+        count_1 = len(result.find("Field").findall("A"))
 
-        apply_static_defaults(xml)
-        count_2 = len(xml.find("Field").findall("A"))
+        result = apply_static_defaults(result)
+        count_2 = len(result.find("Field").findall("A"))
 
         assert count_1 == count_2

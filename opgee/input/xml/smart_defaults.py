@@ -5,7 +5,8 @@ SmartDefault class during coexistence.
 """
 
 from collections.abc import Callable
-from typing import Any
+from copy import deepcopy
+from typing import Any, ParamSpec, TypeVar
 
 import networkx as nx
 from lxml import etree
@@ -18,13 +19,14 @@ from .value_resolution import read_attr_value, write_attr_value
 
 _logger = getLogger(__name__)
 
-DefaultFunc = Callable[..., Any]
+P = ParamSpec("P")
+R = TypeVar("R")
 
-_registry: dict[str, tuple[DefaultFunc, list[str]]] = {}
+_registry: dict[str, tuple[Callable[..., Any], list[str]]] = {}
 _run_order: list[str] | None = None
 
 
-def register(attr_name: str, dependencies: list[str]) -> Callable[[DefaultFunc], DefaultFunc]:
+def register(attr_name: str, dependencies: list[str]) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Decorator to register a smart default function.
 
     :param attr_name: target attribute name (may be "ClassName.attr_name")
@@ -32,7 +34,7 @@ def register(attr_name: str, dependencies: list[str]) -> Callable[[DefaultFunc],
     """
     global _run_order
 
-    def decorator(func: DefaultFunc) -> DefaultFunc:
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
         _registry[attr_name] = (func, dependencies)
         _run_order = None  # invalidate cache
         return func
@@ -60,7 +62,7 @@ def run_order() -> list[str]:
     return _run_order
 
 
-def apply_smart_defaults(root: etree.Element) -> None:
+def apply_smart_defaults(root: etree.Element) -> etree.Element:
     """
     Apply all registered smart defaults to the lxml tree.
 
@@ -72,7 +74,9 @@ def apply_smart_defaults(root: etree.Element) -> None:
     - Write the result back
 
     :param root: <Model> lxml Element
+    :return: a new Element with smart defaults applied (input is not modified)
     """
+    root = deepcopy(root)
     # Import defaults module to trigger registrations
     from . import defaults as _  # noqa: F401
 
@@ -119,6 +123,8 @@ def apply_smart_defaults(root: etree.Element) -> None:
             ) from e
 
         write_attr_value(target_elt, target_attr, result, explicit=False)
+
+    return root
 
 
 def _find_element(root: etree.Element, field_elt: etree.Element | None,

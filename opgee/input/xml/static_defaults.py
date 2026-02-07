@@ -1,5 +1,8 @@
 """Stage 1: Apply static defaults — insert missing <A> elements with default values."""
 
+from copy import deepcopy
+from typing import Any
+
 import pint
 from lxml import etree
 
@@ -15,8 +18,9 @@ def apply_static_defaults(root: etree.Element) -> etree.Element:
     are marked explicit="false".
 
     :param root: <Model> lxml Element
-    :return: the same Element (mutated in place) with all defaults applied
+    :return: a new Element with all defaults applied (input is not modified)
     """
+    root = deepcopy(root)
     attr_defs = AttrDefs.get_instance()
 
     field_elt = root.find("Field")
@@ -56,7 +60,7 @@ def _apply_defaults_to_element(elt: etree.Element, class_name: str,
                 a_elt.set("explicit", "true")
 
     # Build combined attr dict: Process base + subclass for processes
-    combined_dict: dict = {}
+    combined_dict: dict[str, Any] = {}
 
     if is_process:
         process_attrs = attr_defs.class_attrs("Process", raiseError=False)
@@ -75,7 +79,7 @@ def _apply_defaults_to_element(elt: etree.Element, class_name: str,
             a_elt.text = default_str
 
 
-def _default_to_str(default) -> str:
+def _default_to_str(default: Any) -> str:
     """Convert a default value to string, extracting magnitude from pint Quantities."""
     if isinstance(default, pint.Quantity):
         return str(default.magnitude)
