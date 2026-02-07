@@ -2,57 +2,69 @@
 
 import pytest
 
-from opgee.input.xml.process_choices import resolve_process_choices
 from opgee.error import OpgeeException
-from tests.xml.conftest import make_model_xml
+from opgee.input.xml.process_choices import resolve_process_choices
+from tests.xml.conftest import (
+    E_a,
+    E_aggregator,
+    E_analysis,
+    E_field,
+    E_model,
+    E_process,
+    E_process_choice,
+    E_process_group,
+    E_process_ref,
+    E_stream,
+    E_stream_ref,
+)
+from tests.xml.fixture_data import (
+    PROCESS_CHOICE_SCENARIOS,
+    _choice_model,
+    model_with_field,
+)
 
 
 class TestResolveProcessChoices:
-
-    def test_disabled_processes_removed(self):
-        """Processes not in the selected group should be removed."""
-        xml = make_model_xml(field_body="""
-            <A name="gas_path">Minimal</A>
-            <ProcessChoice name="gas_path">
-                <ProcessGroup name="None">
-                    <ProcessRef name="GasGathering"/>
-                </ProcessGroup>
-                <ProcessGroup name="Minimal">
-                    <ProcessRef name="GasGathering"/>
-                    <ProcessRef name="GasDehydration"/>
-                </ProcessGroup>
-            </ProcessChoice>
-            <Process class="GasGathering"/>
-            <Process class="GasDehydration"/>
-            <Process class="Separation"/>
-            <Stream src="Reservoir" dst="Separation"/>
-        """)
+    @pytest.mark.parametrize(
+        "selection, expected_present, expected_absent",
+        [
+            pytest.param(sel, present, absent, id=tid)
+            for tid, sel, present, absent in PROCESS_CHOICE_SCENARIOS
+        ],
+    )
+    def test_process_choice_scenarios(
+        self, selection, expected_present, expected_absent
+    ):
+        """Selected processes remain; non-selected processes are removed."""
+        xml = _choice_model(selection)
 
         resolve_process_choices(xml)
 
         field = xml.find("Field")
         proc_classes = [p.get("class") for p in field.findall("Process")]
-        # GasGathering and GasDehydration should remain (selected)
-        assert "GasGathering" in proc_classes
-        assert "GasDehydration" in proc_classes
-        # Separation not in any choice, should remain
-        assert "Separation" in proc_classes
+        for name in expected_present:
+            assert name in proc_classes
+        for name in expected_absent:
+            assert name not in proc_classes
 
     def test_enabled_processes_remain(self):
         """Processes in the selected group should remain."""
-        xml = make_model_xml(field_body="""
-            <A name="gas_path">All</A>
-            <ProcessChoice name="gas_path">
-                <ProcessGroup name="All">
-                    <ProcessRef name="GasGathering"/>
-                    <ProcessRef name="GasDehydration"/>
-                </ProcessGroup>
-                <ProcessGroup name="None"/>
-            </ProcessChoice>
-            <Process class="GasGathering"/>
-            <Process class="GasDehydration"/>
-            <Stream src="Reservoir" dst="GasGathering"/>
-        """)
+        xml = model_with_field(
+            E_a("country", "US"),
+            E_a("gas_path", "All"),
+            E_process_choice(
+                "gas_path",
+                E_process_group(
+                    "All",
+                    E_process_ref("GasGathering"),
+                    E_process_ref("GasDehydration"),
+                ),
+                E_process_group("None"),
+            ),
+            E_process("GasGathering"),
+            E_process("GasDehydration"),
+            E_stream("Reservoir", "GasGathering"),
+        )
 
         resolve_process_choices(xml)
 
@@ -61,52 +73,26 @@ class TestResolveProcessChoices:
         assert "GasGathering" in proc_classes
         assert "GasDehydration" in proc_classes
 
-    def test_disabled_processes_actually_removed(self):
-        """Processes not in the selected group should be physically removed."""
-        xml = make_model_xml(field_body="""
-            <A name="gas_path">None</A>
-            <ProcessChoice name="gas_path">
-                <ProcessGroup name="None">
-                    <ProcessRef name="GasGathering"/>
-                </ProcessGroup>
-                <ProcessGroup name="Minimal">
-                    <ProcessRef name="GasGathering"/>
-                    <ProcessRef name="GasDehydration"/>
-                </ProcessGroup>
-            </ProcessChoice>
-            <Process class="GasGathering"/>
-            <Process class="GasDehydration"/>
-            <Stream src="Reservoir" dst="GasGathering"/>
-        """)
-
-        resolve_process_choices(xml)
-
-        field = xml.find("Field")
-        proc_classes = [p.get("class") for p in field.findall("Process")]
-        # GasDehydration only in Minimal, should be removed when None selected
-        assert "GasDehydration" not in proc_classes
-        # GasGathering is in both groups, selected group is "None" which has it
-        assert "GasGathering" in proc_classes
-
     def test_stream_disabled_with_process(self):
         """Streams referenced by non-selected group should be removed."""
-        xml = make_model_xml(field_body="""
-            <A name="gas_path">None</A>
-            <ProcessChoice name="gas_path">
-                <ProcessGroup name="None">
-                    <ProcessRef name="GasGathering"/>
-                </ProcessGroup>
-                <ProcessGroup name="Minimal">
-                    <ProcessRef name="GasGathering"/>
-                    <ProcessRef name="GasDehydration"/>
-                    <StreamRef name="GasGathering => GasDehydration"/>
-                </ProcessGroup>
-            </ProcessChoice>
-            <Process class="GasGathering"/>
-            <Process class="GasDehydration"/>
-            <Stream src="GasGathering" dst="GasDehydration"/>
-            <Stream src="Reservoir" dst="GasGathering"/>
-        """)
+        xml = model_with_field(
+            E_a("country", "US"),
+            E_a("gas_path", "None"),
+            E_process_choice(
+                "gas_path",
+                E_process_group("None", E_process_ref("GasGathering")),
+                E_process_group(
+                    "Minimal",
+                    E_process_ref("GasGathering"),
+                    E_process_ref("GasDehydration"),
+                    E_stream_ref("GasGathering => GasDehydration"),
+                ),
+            ),
+            E_process("GasGathering"),
+            E_process("GasDehydration"),
+            E_stream("GasGathering", "GasDehydration"),
+            E_stream("Reservoir", "GasGathering"),
+        )
 
         resolve_process_choices(xml)
 
@@ -120,34 +106,34 @@ class TestResolveProcessChoices:
 
     def test_error_on_enabled_stream_referencing_disabled_process(self):
         """Should raise error if enabled stream references a disabled process."""
-        xml = make_model_xml(field_body="""
-            <A name="gas_path">None</A>
-            <ProcessChoice name="gas_path">
-                <ProcessGroup name="None"/>
-                <ProcessGroup name="All">
-                    <ProcessRef name="GasDehydration"/>
-                </ProcessGroup>
-            </ProcessChoice>
-            <Process class="GasDehydration"/>
-            <Stream src="GasDehydration" dst="Separation"/>
-            <Process class="Separation"/>
-        """)
+        xml = model_with_field(
+            E_a("country", "US"),
+            E_a("gas_path", "None"),
+            E_process_choice(
+                "gas_path",
+                E_process_group("None"),
+                E_process_group("All", E_process_ref("GasDehydration")),
+            ),
+            E_process("GasDehydration"),
+            E_stream("GasDehydration", "Separation"),
+            E_process("Separation"),
+        )
 
         with pytest.raises(OpgeeException, match="disabled"):
             resolve_process_choices(xml)
 
     def test_no_process_choice_in_output(self):
         """Output should not contain ProcessChoice/ProcessGroup elements."""
-        xml = make_model_xml(field_body="""
-            <A name="gas_path">All</A>
-            <ProcessChoice name="gas_path">
-                <ProcessGroup name="All">
-                    <ProcessRef name="GasGathering"/>
-                </ProcessGroup>
-            </ProcessChoice>
-            <Process class="GasGathering"/>
-            <Stream src="Reservoir" dst="GasGathering"/>
-        """)
+        xml = model_with_field(
+            E_a("country", "US"),
+            E_a("gas_path", "All"),
+            E_process_choice(
+                "gas_path",
+                E_process_group("All", E_process_ref("GasGathering")),
+            ),
+            E_process("GasGathering"),
+            E_stream("Reservoir", "GasGathering"),
+        )
 
         resolve_process_choices(xml)
 
@@ -159,31 +145,29 @@ class TestResolveProcessChoices:
 
     def test_nested_process_choice(self):
         """Nested ProcessChoice within selected group should be resolved."""
-        xml = make_model_xml(field_body="""
-            <A name="outer_choice">GroupA</A>
-            <A name="inner_choice">Inner1</A>
-            <ProcessChoice name="outer_choice">
-                <ProcessGroup name="GroupA">
-                    <ProcessRef name="ProcA"/>
-                    <ProcessChoice name="inner_choice">
-                        <ProcessGroup name="Inner1">
-                            <ProcessRef name="ProcB"/>
-                        </ProcessGroup>
-                        <ProcessGroup name="Inner2">
-                            <ProcessRef name="ProcC"/>
-                        </ProcessGroup>
-                    </ProcessChoice>
-                </ProcessGroup>
-                <ProcessGroup name="GroupB">
-                    <ProcessRef name="ProcD"/>
-                </ProcessGroup>
-            </ProcessChoice>
-            <Process class="ProcA" name="ProcA"/>
-            <Process class="ProcB" name="ProcB"/>
-            <Process class="ProcC" name="ProcC"/>
-            <Process class="ProcD" name="ProcD"/>
-            <Stream src="Reservoir" dst="ProcA"/>
-        """)
+        xml = model_with_field(
+            E_a("country", "US"),
+            E_a("outer_choice", "GroupA"),
+            E_a("inner_choice", "Inner1"),
+            E_process_choice(
+                "outer_choice",
+                E_process_group(
+                    "GroupA",
+                    E_process_ref("ProcA"),
+                    E_process_choice(
+                        "inner_choice",
+                        E_process_group("Inner1", E_process_ref("ProcB")),
+                        E_process_group("Inner2", E_process_ref("ProcC")),
+                    ),
+                ),
+                E_process_group("GroupB", E_process_ref("ProcD")),
+            ),
+            E_process("ProcA", name="ProcA"),
+            E_process("ProcB", name="ProcB"),
+            E_process("ProcC", name="ProcC"),
+            E_process("ProcD", name="ProcD"),
+            E_stream("Reservoir", "ProcA"),
+        )
 
         resolve_process_choices(xml)
 
@@ -196,14 +180,12 @@ class TestResolveProcessChoices:
 
     def test_aggregator_stripped(self):
         """Aggregator elements should be removed from output."""
-        xml = make_model_xml(field_body="""
-            <A name="country">US</A>
-            <Aggregator name="Upstream">
-                <Process class="Drilling"/>
-            </Aggregator>
-            <Process class="Separation"/>
-            <Stream src="Reservoir" dst="Separation"/>
-        """)
+        xml = model_with_field(
+            E_a("country", "US"),
+            E_aggregator("Upstream", E_process("Drilling")),
+            E_process("Separation"),
+            E_stream("Reservoir", "Separation"),
+        )
 
         resolve_process_choices(xml)
 
@@ -212,19 +194,19 @@ class TestResolveProcessChoices:
 
     def test_validates_against_core_schema(self, core_schema):
         """Output should validate against opgee_core.xsd."""
-        xml = make_model_xml(
-            analysis_body='<A name="functional_unit">oil</A>',
-            field_body="""
-                <A name="gas_path">All</A>
-                <ProcessChoice name="gas_path">
-                    <ProcessGroup name="All">
-                        <ProcessRef name="GasGathering"/>
-                    </ProcessGroup>
-                </ProcessChoice>
-                <Process class="GasGathering"/>
-                <Process class="Separation"/>
-                <Stream src="Reservoir" dst="Separation"/>
-            """,
+        xml = E_model(
+            E_analysis(E_a("functional_unit", "oil")),
+            E_field(
+                E_a("country", "US"),
+                E_a("gas_path", "All"),
+                E_process_choice(
+                    "gas_path",
+                    E_process_group("All", E_process_ref("GasGathering")),
+                ),
+                E_process("GasGathering"),
+                E_process("Separation"),
+                E_stream("Reservoir", "Separation"),
+            ),
         )
 
         resolve_process_choices(xml)

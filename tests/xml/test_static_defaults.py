@@ -1,18 +1,14 @@
 """Tests for Stage 1: Static defaults."""
 
-
 from opgee.input.xml.static_defaults import apply_static_defaults
-from tests.xml.conftest import make_model_xml
+from tests.xml.fixture_data import model_with_field
+from tests.xml.conftest import E_a, E_process
 
 
 class TestApplyStaticDefaults:
-
     def test_adds_missing_defaults(self, loaded_attr_defs):
         """Field missing an attribute with a default should get <A> added."""
-        xml = make_model_xml(
-            analysis_body='<A name="functional_unit">oil</A>',
-            field_body='<A name="country">US</A>',
-        )
+        xml = model_with_field(E_a("country", "US"))
 
         apply_static_defaults(xml)
 
@@ -23,10 +19,7 @@ class TestApplyStaticDefaults:
 
     def test_explicit_attrs_marked_true(self, loaded_attr_defs):
         """Existing <A> elements should be marked explicit='true'."""
-        xml = make_model_xml(
-            analysis_body='<A name="functional_unit">oil</A>',
-            field_body='<A name="country">US</A>',
-        )
+        xml = model_with_field(E_a("country", "US"))
 
         apply_static_defaults(xml)
 
@@ -42,10 +35,7 @@ class TestApplyStaticDefaults:
 
     def test_default_attrs_marked_false(self, loaded_attr_defs):
         """New default <A> elements should be marked explicit='false'."""
-        xml = make_model_xml(
-            analysis_body='<A name="functional_unit">oil</A>',
-            field_body='<A name="country">US</A>',
-        )
+        xml = model_with_field(E_a("country", "US"))
 
         apply_static_defaults(xml)
 
@@ -61,13 +51,7 @@ class TestApplyStaticDefaults:
 
     def test_process_gets_base_and_subclass_attrs(self, loaded_attr_defs):
         """Process elements should get both base Process attrs and subclass attrs."""
-        xml = make_model_xml(
-            analysis_body='<A name="functional_unit">oil</A>',
-            field_body="""
-                <A name="country">US</A>
-                <Process class="Separation"/>
-            """,
-        )
+        xml = model_with_field(E_a("country", "US"), E_process("Separation"))
 
         apply_static_defaults(xml)
 
@@ -84,10 +68,7 @@ class TestApplyStaticDefaults:
 
     def test_no_attr_added_when_no_default(self, loaded_attr_defs):
         """Attributes with no default should not get <A> elements."""
-        xml = make_model_xml(
-            analysis_body='<A name="functional_unit">oil</A>',
-            field_body='<A name="country">US</A>',
-        )
+        xml = model_with_field(E_a("country", "US"))
 
         apply_static_defaults(xml)
 
@@ -100,14 +81,13 @@ class TestApplyStaticDefaults:
         if field_attrs:
             for name, attr_def in field_attrs.attr_dict.items():
                 if attr_def.default is None and name != "country":
-                    assert name not in a_names, f"Attr '{name}' has no default but was added"
+                    assert name not in a_names, (
+                        f"Attr '{name}' has no default but was added"
+                    )
 
     def test_analysis_gets_defaults(self, loaded_attr_defs):
         """Analysis element should also get static defaults."""
-        xml = make_model_xml(
-            analysis_body='<A name="functional_unit">oil</A>',
-            field_body='<A name="country">US</A>',
-        )
+        xml = model_with_field(E_a("country", "US"))
 
         apply_static_defaults(xml)
 
@@ -124,10 +104,7 @@ class TestApplyStaticDefaults:
 
     def test_idempotent(self, loaded_attr_defs):
         """Running apply_static_defaults twice should not duplicate <A> elements."""
-        xml = make_model_xml(
-            analysis_body='<A name="functional_unit">oil</A>',
-            field_body='<A name="country">US</A>',
-        )
+        xml = model_with_field(E_a("country", "US"))
 
         apply_static_defaults(xml)
         count_1 = len(xml.find("Field").findall("A"))

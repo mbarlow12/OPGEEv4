@@ -5,7 +5,8 @@ import pytest
 from opgee.input.xml.static_defaults import apply_static_defaults
 from opgee.input.xml.smart_defaults import apply_smart_defaults
 from opgee.input.xml.value_resolution import read_attr_value
-from tests.xml.conftest import make_model_xml
+from tests.xml.fixture_data import model_with_field
+from tests.xml.conftest import E_a, E_process
 
 
 @pytest.fixture(autouse=True)
@@ -15,16 +16,9 @@ def _ensure_attr_defs(loaded_attr_defs):
 
 
 class TestSmartDefaults:
-
     def test_explicit_not_overwritten(self):
         """Explicit attributes should not be modified by smart defaults."""
-        xml = make_model_xml(
-            analysis_body='<A name="functional_unit">oil</A>',
-            field_body="""
-                <A name="country">US</A>
-                <A name="SOR">99.0</A>
-            """,
-        )
+        xml = model_with_field(E_a("country", "US"), E_a("SOR", "99.0"))
         apply_static_defaults(xml)
         apply_smart_defaults(xml)
 
@@ -35,13 +29,7 @@ class TestSmartDefaults:
 
     def test_non_explicit_computed(self):
         """Non-explicit attributes should be computed from dependencies."""
-        xml = make_model_xml(
-            analysis_body='<A name="functional_unit">oil</A>',
-            field_body="""
-                <A name="country">US</A>
-                <A name="steam_flooding">1</A>
-            """,
-        )
+        xml = model_with_field(E_a("country", "US"), E_a("steam_flooding", "1"))
         apply_static_defaults(xml)
         apply_smart_defaults(xml)
 
@@ -52,13 +40,7 @@ class TestSmartDefaults:
 
     def test_dependency_chain_resolves(self):
         """SOR -> WOR -> WIR chain should resolve in correct order."""
-        xml = make_model_xml(
-            analysis_body='<A name="functional_unit">oil</A>',
-            field_body="""
-                <A name="country">US</A>
-                <A name="steam_flooding">0</A>
-            """,
-        )
+        xml = model_with_field(E_a("country", "US"), E_a("steam_flooding", "0"))
         apply_static_defaults(xml)
         apply_smart_defaults(xml)
 
@@ -74,13 +56,10 @@ class TestSmartDefaults:
 
     def test_process_scoped_default(self):
         """CrudeOilDewatering.heater_treater should resolve on the correct Process."""
-        xml = make_model_xml(
-            analysis_body='<A name="functional_unit">oil</A>',
-            field_body="""
-                <A name="country">US</A>
-                <A name="API">15</A>
-                <Process class="CrudeOilDewatering"/>
-            """,
+        xml = model_with_field(
+            E_a("country", "US"),
+            E_a("API", "15"),
+            E_process("CrudeOilDewatering"),
         )
         apply_static_defaults(xml)
         apply_smart_defaults(xml)
@@ -95,10 +74,7 @@ class TestSmartDefaults:
 
     def test_common_gas_process_choice_default(self):
         """common_gas_process_choice should be 'All' when oil_sands_mine is 'None'."""
-        xml = make_model_xml(
-            analysis_body='<A name="functional_unit">oil</A>',
-            field_body='<A name="country">US</A>',
-        )
+        xml = model_with_field(E_a("country", "US"))
         apply_static_defaults(xml)
         apply_smart_defaults(xml)
 
@@ -109,13 +85,7 @@ class TestSmartDefaults:
 
     def test_offshore_defaults(self):
         """Offshore=1 should trigger fraction_elec_onsite=1.0, etc."""
-        xml = make_model_xml(
-            analysis_body='<A name="functional_unit">oil</A>',
-            field_body="""
-                <A name="country">US</A>
-                <A name="offshore">1</A>
-            """,
-        )
+        xml = model_with_field(E_a("country", "US"), E_a("offshore", "1"))
         apply_static_defaults(xml)
         apply_smart_defaults(xml)
 
@@ -128,7 +98,6 @@ class TestSmartDefaults:
 
 
 class TestRunOrder:
-
     def test_dependencies_before_dependents(self):
         """In the run order, SOR should appear before WOR."""
         from opgee.input.xml.smart_defaults import run_order

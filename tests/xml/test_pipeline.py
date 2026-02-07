@@ -6,7 +6,16 @@ from lxml import etree
 from opgee.input.xml import process_field_xml
 from opgee.input.xml.builders import BuiltModel
 from opgee.attributes import AttrDefs
-from tests.xml.conftest import make_model_xml, OPGEE_ETC
+from tests.xml.conftest import (
+    OPGEE_ETC,
+    E_a,
+    E_process,
+    E_process_choice,
+    E_process_group,
+    E_process_ref,
+    E_stream,
+)
+from tests.xml.fixture_data import model_with_field
 
 
 @pytest.fixture(autouse=True)
@@ -18,7 +27,6 @@ def _cleanup_attr_defs():
 
 
 class TestPipelineEndToEnd:
-
     def _load_attr_defs_elt(self) -> etree.Element:
         """Load the real <AttrDefs> element from attributes.xml."""
         tree = etree.parse(str(OPGEE_ETC / "attributes.xml"))
@@ -26,13 +34,10 @@ class TestPipelineEndToEnd:
 
     def test_minimal_pipeline(self):
         """Pipeline produces a valid BuiltModel from minimal input."""
-        xml = make_model_xml(
-            analysis_body='<A name="functional_unit">oil</A>',
-            field_body="""
-                <A name="country">US</A>
-                <Process class="Separation"/>
-                <Stream src="Reservoir" dst="Separation"/>
-            """,
+        xml = model_with_field(
+            E_a("country", "US"),
+            E_process("Separation"),
+            E_stream("Reservoir", "Separation"),
         )
         attr_defs_elt = self._load_attr_defs_elt()
 
@@ -45,25 +50,22 @@ class TestPipelineEndToEnd:
 
     def test_pipeline_with_process_choices(self):
         """Pipeline correctly resolves process choices."""
-        xml = make_model_xml(
-            analysis_body='<A name="functional_unit">oil</A>',
-            field_body="""
-                <A name="country">US</A>
-                <A name="gas_path">All</A>
-                <ProcessChoice name="gas_path">
-                    <ProcessGroup name="All">
-                        <ProcessRef name="GasGathering"/>
-                        <ProcessRef name="GasDehydration"/>
-                    </ProcessGroup>
-                    <ProcessGroup name="None">
-                        <ProcessRef name="GasGathering"/>
-                    </ProcessGroup>
-                </ProcessChoice>
-                <Process class="GasGathering"/>
-                <Process class="GasDehydration"/>
-                <Process class="Separation"/>
-                <Stream src="Reservoir" dst="Separation"/>
-            """,
+        xml = model_with_field(
+            E_a("country", "US"),
+            E_a("gas_path", "All"),
+            E_process_choice(
+                "gas_path",
+                E_process_group(
+                    "All",
+                    E_process_ref("GasGathering"),
+                    E_process_ref("GasDehydration"),
+                ),
+                E_process_group("None", E_process_ref("GasGathering")),
+            ),
+            E_process("GasGathering"),
+            E_process("GasDehydration"),
+            E_process("Separation"),
+            E_stream("Reservoir", "Separation"),
         )
         attr_defs_elt = self._load_attr_defs_elt()
 
@@ -75,14 +77,11 @@ class TestPipelineEndToEnd:
 
     def test_pipeline_smart_defaults_applied(self):
         """Pipeline should compute smart defaults."""
-        xml = make_model_xml(
-            analysis_body='<A name="functional_unit">oil</A>',
-            field_body="""
-                <A name="country">US</A>
-                <A name="steam_flooding">1</A>
-                <Process class="Separation"/>
-                <Stream src="Reservoir" dst="Separation"/>
-            """,
+        xml = model_with_field(
+            E_a("country", "US"),
+            E_a("steam_flooding", "1"),
+            E_process("Separation"),
+            E_stream("Reservoir", "Separation"),
         )
         attr_defs_elt = self._load_attr_defs_elt()
 
@@ -93,6 +92,7 @@ class TestPipelineEndToEnd:
         sor = model.field.attr_dict["SOR"]
         # SOR has a unit, so check magnitude
         import pint
+
         if isinstance(sor, pint.Quantity):
             assert sor.magnitude == 3.0
         else:
@@ -100,13 +100,10 @@ class TestPipelineEndToEnd:
 
     def test_pipeline_field_attrs_populated(self):
         """After pipeline, field should have many attributes from defaults."""
-        xml = make_model_xml(
-            analysis_body='<A name="functional_unit">oil</A>',
-            field_body="""
-                <A name="country">US</A>
-                <Process class="Separation"/>
-                <Stream src="Reservoir" dst="Separation"/>
-            """,
+        xml = model_with_field(
+            E_a("country", "US"),
+            E_process("Separation"),
+            E_stream("Reservoir", "Separation"),
         )
         attr_defs_elt = self._load_attr_defs_elt()
 
@@ -117,20 +114,16 @@ class TestPipelineEndToEnd:
 
     def test_pipeline_no_process_choice_elements(self):
         """After pipeline, no ProcessChoice elements should remain."""
-        xml = make_model_xml(
-            analysis_body='<A name="functional_unit">oil</A>',
-            field_body="""
-                <A name="country">US</A>
-                <A name="gas_path">All</A>
-                <ProcessChoice name="gas_path">
-                    <ProcessGroup name="All">
-                        <ProcessRef name="GasGathering"/>
-                    </ProcessGroup>
-                </ProcessChoice>
-                <Process class="GasGathering"/>
-                <Process class="Separation"/>
-                <Stream src="Reservoir" dst="Separation"/>
-            """,
+        xml = model_with_field(
+            E_a("country", "US"),
+            E_a("gas_path", "All"),
+            E_process_choice(
+                "gas_path",
+                E_process_group("All", E_process_ref("GasGathering")),
+            ),
+            E_process("GasGathering"),
+            E_process("Separation"),
+            E_stream("Reservoir", "Separation"),
         )
         attr_defs_elt = self._load_attr_defs_elt()
 

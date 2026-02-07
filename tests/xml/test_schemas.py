@@ -1,5 +1,6 @@
 """Test XSD schema validation for pre-pipeline and post-pipeline XML."""
 
+import pytest
 from lxml import etree
 
 from tests.xml.conftest import (
@@ -23,11 +24,20 @@ from tests.xml.conftest import (
     E_process_ref,
     E_stream,
     E_stream_ref,
-    make_model_xml,
+)
+from tests.xml.fixture_data import (
+    ATTRDEF_CONSTRAINTS,
+    ATTRDEF_SINGLE_ATTRS,
+    COMPONENT_PHASES,
+    FIELD_OPTIONAL_ATTRS,
+    PROCESS_CHOICE_ATTRS,
+    PROCESS_OPTIONAL_ATTRS,
+    STREAM_OPTIONAL_ATTRS,
 )
 
 
 # ── helpers ────────────────────────────────────────────────────
+
 
 def _valid_field(*extra_children: etree._Element, **kw) -> etree._Element:
     """Field with the minimum children to be valid in both schemas."""
@@ -40,9 +50,11 @@ def _valid_field(*extra_children: etree._Element, **kw) -> etree._Element:
     )
 
 
-def _core_model(*extra_field_children: etree._Element,
-                field_kw: dict | None = None,
-                extra_model_children: tuple = ()) -> etree._Element:
+def _core_model(
+    *extra_field_children: etree._Element,
+    field_kw: dict | None = None,
+    extra_model_children: tuple = (),
+) -> etree._Element:
     """Minimal Model valid against core schema, with optional extras."""
     fkw = field_kw or {}
     return E_model(
@@ -56,6 +68,7 @@ def _core_model(*extra_field_children: etree._Element,
 # Core schema (opgee_core.xsd)
 # =====================================================================
 
+
 class TestCoreSchema:
     """Tests for opgee_core.xsd (post-pipeline output, no ProcessChoice)."""
 
@@ -66,29 +79,13 @@ class TestCoreSchema:
         assert core_schema.validate(xml), core_schema.error_log
 
     def test_rejects_process_choice_in_clean_output(self, core_schema):
-        xml = make_model_xml(
-            analysis_body='<A name="functional_unit">oil</A>',
-            field_body="""
-                <ProcessChoice name="gas_processing_path">
-                    <ProcessGroup name="All"/>
-                </ProcessChoice>
-                <Process class="Separation"/>
-                <Stream src="Reservoir" dst="Separation"/>
-            """,
+        xml = _core_model(
+            E_process_choice("gas_processing_path", E_process_group("All")),
         )
         assert not core_schema.validate(xml)
 
     def test_rejects_aggregator_in_clean_output(self, core_schema):
-        xml = make_model_xml(
-            analysis_body='<A name="functional_unit">oil</A>',
-            field_body="""
-                <Aggregator name="Upstream">
-                    <Process class="Drilling"/>
-                </Aggregator>
-                <Process class="Separation"/>
-                <Stream src="Reservoir" dst="Separation"/>
-            """,
-        )
+        xml = _core_model(E_aggregator("Upstream", E_process("Drilling")))
         assert not core_schema.validate(xml)
 
     def test_validates_with_explicit_attr(self, core_schema):
@@ -134,7 +131,9 @@ class TestCoreSchema:
         xml = E_model()
         assert core_schema.validate(xml), core_schema.error_log
 
-    def test_validates_with_valid_core_model_fixture(self, core_schema, valid_core_model):
+    def test_validates_with_valid_core_model_fixture(
+        self, core_schema, valid_core_model
+    ):
         assert core_schema.validate(valid_core_model), core_schema.error_log
 
 
@@ -201,16 +200,13 @@ class TestCoreSchemaAnalysis:
 class TestCoreSchemaField:
     """Tests for <Field> in opgee_core.xsd."""
 
-    def test_validates_with_enabled(self, core_schema):
-        xml = _core_model(field_kw={"enabled": "1"})
-        assert core_schema.validate(xml), core_schema.error_log
-
-    def test_validates_with_extend(self, core_schema):
-        xml = _core_model(field_kw={"extend": "1"})
-        assert core_schema.validate(xml), core_schema.error_log
-
-    def test_validates_with_delete(self, core_schema):
-        xml = _core_model(field_kw={"delete": "true"})
+    @pytest.mark.parametrize(
+        "attr_id,kw",
+        FIELD_OPTIONAL_ATTRS,
+        ids=[x[0] for x in FIELD_OPTIONAL_ATTRS],
+    )
+    def test_validates_with_optional_attr(self, core_schema, attr_id, kw):
+        xml = _core_model(field_kw=kw)
         assert core_schema.validate(xml), core_schema.error_log
 
     def test_validates_with_group_child(self, core_schema):
@@ -248,48 +244,28 @@ class TestCoreSchemaProcess:
         xml = _core_model()  # already has E_process("Separation")
         assert core_schema.validate(xml), core_schema.error_log
 
-    def test_validates_with_name(self, core_schema):
-        xml = _core_model(E_process("Drilling", name="drill1"))
-        assert core_schema.validate(xml), core_schema.error_log
-
-    def test_validates_with_enabled(self, core_schema):
-        xml = _core_model(E_process("Drilling", enabled="0"))
-        assert core_schema.validate(xml), core_schema.error_log
-
-    def test_validates_with_boundary(self, core_schema):
-        xml = _core_model(E_process("Drilling", boundary="Production"))
-        assert core_schema.validate(xml), core_schema.error_log
-
-    def test_validates_with_after(self, core_schema):
-        xml = _core_model(E_process("Drilling", after="true"))
-        assert core_schema.validate(xml), core_schema.error_log
-
-    def test_validates_with_impute_start(self, core_schema):
-        xml = _core_model(E_process("Drilling", impute_start="1"))
-        assert core_schema.validate(xml), core_schema.error_log
-
-    def test_validates_with_cycle_start(self, core_schema):
-        xml = _core_model(E_process("Drilling", cycle_start="1"))
-        assert core_schema.validate(xml), core_schema.error_log
-
-    def test_validates_with_extend(self, core_schema):
-        xml = _core_model(E_process("Drilling", extend="1"))
-        assert core_schema.validate(xml), core_schema.error_log
-
-    def test_validates_with_delete(self, core_schema):
-        xml = _core_model(E_process("Drilling", delete="true"))
-        assert core_schema.validate(xml), core_schema.error_log
-
-    def test_validates_with_desc(self, core_schema):
-        xml = _core_model(E_process("Drilling", desc="A description"))
+    @pytest.mark.parametrize(
+        "attr_id,kw",
+        PROCESS_OPTIONAL_ATTRS,
+        ids=[x[0] for x in PROCESS_OPTIONAL_ATTRS],
+    )
+    def test_validates_with_optional_attr(self, core_schema, attr_id, kw):
+        xml = _core_model(E_process("Drilling", **kw))
         assert core_schema.validate(xml), core_schema.error_log
 
     def test_validates_with_all_attrs(self, core_schema):
         xml = _core_model(
             E_process(
-                "Drilling", name="drill", enabled="1", boundary="Production",
-                after="true", impute_start="0", cycle_start="0",
-                extend="0", delete="false", desc="fully loaded",
+                "Drilling",
+                name="drill",
+                enabled="1",
+                boundary="Production",
+                after="true",
+                impute_start="0",
+                cycle_start="0",
+                extend="0",
+                delete="false",
+                desc="fully loaded",
             ),
         )
         assert core_schema.validate(xml), core_schema.error_log
@@ -327,20 +303,13 @@ class TestCoreSchemaStream:
         xml = _core_model()  # already has minimal stream
         assert core_schema.validate(xml), core_schema.error_log
 
-    def test_validates_with_name(self, core_schema):
-        xml = _core_model(E_stream("A", "B", name="gas_flow"))
-        assert core_schema.validate(xml), core_schema.error_log
-
-    def test_validates_with_impute(self, core_schema):
-        xml = _core_model(E_stream("A", "B", impute="0"))
-        assert core_schema.validate(xml), core_schema.error_log
-
-    def test_validates_with_boundary(self, core_schema):
-        xml = _core_model(E_stream("A", "B", boundary="Production"))
-        assert core_schema.validate(xml), core_schema.error_log
-
-    def test_validates_with_delete(self, core_schema):
-        xml = _core_model(E_stream("A", "B", delete="true"))
+    @pytest.mark.parametrize(
+        "attr_id,kw",
+        STREAM_OPTIONAL_ATTRS,
+        ids=[x[0] for x in STREAM_OPTIONAL_ATTRS],
+    )
+    def test_validates_with_optional_attr(self, core_schema, attr_id, kw):
+        xml = _core_model(E_stream("A", "B", **kw))
         assert core_schema.validate(xml), core_schema.error_log
 
     def test_validates_with_component(self, core_schema):
@@ -352,7 +321,8 @@ class TestCoreSchemaStream:
     def test_validates_with_multiple_components(self, core_schema):
         xml = _core_model(
             E_stream(
-                "A", "B",
+                "A",
+                "B",
                 E_component("CH4", "gas", "0.85"),
                 E_component("C2H6", "gas", "0.10"),
                 E_component("C3H8", "liquid", "0.05"),
@@ -375,11 +345,14 @@ class TestCoreSchemaStream:
     def test_validates_with_all_children(self, core_schema):
         xml = _core_model(
             E_stream(
-                "A", "B",
+                "A",
+                "B",
                 E_a("temperature", "100"),
                 E_component("CH4", "gas", "0.90"),
                 E_contains("gas"),
-                name="full_stream", impute="1", boundary="Production",
+                name="full_stream",
+                impute="1",
+                boundary="Production",
             ),
         )
         assert core_schema.validate(xml), core_schema.error_log
@@ -406,16 +379,13 @@ class TestCoreSchemaStream:
 class TestCoreSchemaComponent:
     """Tests for <Component> in opgee_core.xsd."""
 
-    def test_validates_gas_phase(self, core_schema):
-        xml = _core_model(E_stream("A", "B", E_component("CH4", "gas", "0.95")))
-        assert core_schema.validate(xml), core_schema.error_log
-
-    def test_validates_liquid_phase(self, core_schema):
-        xml = _core_model(E_stream("A", "B", E_component("C5", "liquid", "0.10")))
-        assert core_schema.validate(xml), core_schema.error_log
-
-    def test_validates_solid_phase(self, core_schema):
-        xml = _core_model(E_stream("A", "B", E_component("ite", "solid", "0.01")))
+    @pytest.mark.parametrize(
+        "phase_id,name,phase,value",
+        COMPONENT_PHASES,
+        ids=[x[0] for x in COMPONENT_PHASES],
+    )
+    def test_validates_phase(self, core_schema, phase_id, name, phase, value):
+        xml = _core_model(E_stream("A", "B", E_component(name, phase, value)))
         assert core_schema.validate(xml), core_schema.error_log
 
     def test_rejects_invalid_phase(self, core_schema):
@@ -478,60 +448,55 @@ class TestCoreSchemaA:
 # Ext schema (opgee_ext.xsd)
 # =====================================================================
 
+
 class TestExtSchema:
     """Tests for opgee_ext.xsd (pre-pipeline input with ProcessChoice etc.)"""
 
     # ── existing tests (preserved) ──
 
     def test_validates_raw_input_with_process_choice(self, ext_schema):
-        xml = make_model_xml(
-            analysis_body='<A name="functional_unit">oil</A>',
-            field_body="""
-                <A name="country">US</A>
-                <ProcessChoice name="gas_processing_path">
-                    <ProcessGroup name="All">
-                        <ProcessRef name="GasGathering"/>
-                        <StreamRef name="gas to dehydration"/>
-                    </ProcessGroup>
-                    <ProcessGroup name="None"/>
-                </ProcessChoice>
-                <Process class="Separation"/>
-                <Stream src="Reservoir" dst="Separation"/>
-            """,
+        xml = E_model(
+            E_analysis(E_a("functional_unit", "oil")),
+            E_field(
+                E_a("country", "US"),
+                E_process_choice(
+                    "gas_processing_path",
+                    E_process_group(
+                        "All",
+                        E_process_ref("GasGathering"),
+                        E_stream_ref("gas to dehydration"),
+                    ),
+                    E_process_group("None"),
+                ),
+                E_process("Separation"),
+                E_stream("Reservoir", "Separation"),
+            ),
         )
         assert ext_schema.validate(xml), ext_schema.error_log
 
     def test_validates_with_aggregator(self, ext_schema):
-        xml = make_model_xml(
-            analysis_body='<A name="functional_unit">oil</A>',
-            field_body="""
-                <A name="country">US</A>
-                <Aggregator name="Upstream">
-                    <Process class="Drilling"/>
-                </Aggregator>
-                <Process class="Separation"/>
-                <Stream src="Reservoir" dst="Separation"/>
-            """,
+        xml = E_model(
+            E_analysis(E_a("functional_unit", "oil")),
+            E_field(
+                E_a("country", "US"),
+                E_aggregator("Upstream", E_process("Drilling")),
+                E_process("Separation"),
+                E_stream("Reservoir", "Separation"),
+            ),
         )
         assert ext_schema.validate(xml), ext_schema.error_log
 
     def test_validates_field_with_modifies(self, ext_schema):
-        xml = make_model_xml(
-            analysis_body='<A name="functional_unit">oil</A>',
-            field_body="""
-                <A name="country">US</A>
-                <Process class="Separation"/>
-                <Stream src="Reservoir" dst="Separation"/>
-            """,
-            field_attrs='modifies="base_field"',
+        xml = E_model(
+            E_analysis(E_a("functional_unit", "oil")),
+            _valid_field(modifies="base_field"),
         )
         assert ext_schema.validate(xml), ext_schema.error_log
 
     def test_rejects_invalid_element(self, ext_schema):
-        xml = make_model_xml(
-            analysis_body='<A name="functional_unit">oil</A>',
-            field_body='<InvalidElement/>',
-        )
+        field = E_field()
+        field.append(etree.Element("InvalidElement"))
+        xml = E_model(E_analysis(E_a("functional_unit", "oil")), field)
         assert not ext_schema.validate(xml)
 
     # ── new tests ──
@@ -579,45 +544,17 @@ class TestExtSchemaProcessChoice:
         )
         assert ext_schema.validate(xml), ext_schema.error_log
 
-    def test_validates_with_default(self, ext_schema):
+    @pytest.mark.parametrize(
+        "attr_id,kw",
+        PROCESS_CHOICE_ATTRS,
+        ids=[x[0] for x in PROCESS_CHOICE_ATTRS],
+    )
+    def test_validates_with_optional_attr(self, ext_schema, attr_id, kw):
         xml = E_model(
             E_analysis(E_a("functional_unit", "oil")),
             E_field(
                 E_a("country", "US"),
-                E_process_choice(
-                    "gas_path", E_process_group("All"),
-                    default="All",
-                ),
-                E_process("Separation"),
-                E_stream("Reservoir", "Separation"),
-            ),
-        )
-        assert ext_schema.validate(xml), ext_schema.error_log
-
-    def test_validates_with_extend(self, ext_schema):
-        xml = E_model(
-            E_analysis(E_a("functional_unit", "oil")),
-            E_field(
-                E_a("country", "US"),
-                E_process_choice(
-                    "gas_path", E_process_group("All"),
-                    extend="1",
-                ),
-                E_process("Separation"),
-                E_stream("Reservoir", "Separation"),
-            ),
-        )
-        assert ext_schema.validate(xml), ext_schema.error_log
-
-    def test_validates_with_delete(self, ext_schema):
-        xml = E_model(
-            E_analysis(E_a("functional_unit", "oil")),
-            E_field(
-                E_a("country", "US"),
-                E_process_choice(
-                    "gas_path", E_process_group("All"),
-                    delete="true",
-                ),
+                E_process_choice("gas_path", E_process_group("All"), **kw),
                 E_process("Separation"),
                 E_stream("Reservoir", "Separation"),
             ),
@@ -647,7 +584,8 @@ class TestExtSchemaProcessChoice:
         xml = E_model(
             E_analysis(E_a("functional_unit", "oil")),
             E_field(
-                E_a("country", "US"), pc,
+                E_a("country", "US"),
+                pc,
                 E_process("Separation"),
                 E_stream("Reservoir", "Separation"),
             ),
@@ -660,7 +598,8 @@ class TestExtSchemaProcessChoice:
         xml = E_model(
             E_analysis(E_a("functional_unit", "oil")),
             E_field(
-                E_a("country", "US"), pc,
+                E_a("country", "US"),
+                pc,
                 E_process("Separation"),
                 E_stream("Reservoir", "Separation"),
             ),
@@ -763,7 +702,8 @@ class TestExtSchemaProcessGroup:
         xml = E_model(
             E_analysis(E_a("functional_unit", "oil")),
             E_field(
-                E_a("country", "US"), pc,
+                E_a("country", "US"),
+                pc,
                 E_process("Separation"),
                 E_stream("Reservoir", "Separation"),
             ),
@@ -824,7 +764,8 @@ class TestExtSchemaProcessRef:
                 E_process_choice(
                     "p",
                     E_process_group(
-                        "G", E_process_ref("drill1", cls="Drilling"),
+                        "G",
+                        E_process_ref("drill1", cls="Drilling"),
                     ),
                 ),
                 E_process("Separation"),
@@ -841,7 +782,8 @@ class TestExtSchemaProcessRef:
                 E_process_choice(
                     "p",
                     E_process_group(
-                        "G", E_process_ref("Drill", delete="true"),
+                        "G",
+                        E_process_ref("Drill", delete="true"),
                     ),
                 ),
                 E_process("Separation"),
@@ -873,7 +815,8 @@ class TestExtSchemaStreamRef:
             E_field(
                 E_a("country", "US"),
                 E_process_choice(
-                    "p", E_process_group("G", E_stream_ref("gas line")),
+                    "p",
+                    E_process_group("G", E_stream_ref("gas line")),
                 ),
                 E_process("Separation"),
                 E_stream("Reservoir", "Separation"),
@@ -1012,7 +955,8 @@ class TestExtSchemaAggregator:
         xml = E_model(
             E_analysis(E_a("functional_unit", "oil")),
             E_field(
-                E_a("country", "US"), agg,
+                E_a("country", "US"),
+                agg,
                 E_process("Separation"),
                 E_stream("Reservoir", "Separation"),
             ),
@@ -1033,33 +977,27 @@ class TestExtSchemaCrossValidation:
         """ProcessRef is an ext-only element; core should reject it."""
         # ProcessRef can only appear inside ProcessGroup, which is inside
         # ProcessChoice — and ProcessChoice itself is rejected by core.
-        xml = make_model_xml(
-            analysis_body='<A name="functional_unit">oil</A>',
-            field_body="""
-                <ProcessChoice name="p">
-                    <ProcessGroup name="G">
-                        <ProcessRef name="Drill"/>
-                    </ProcessGroup>
-                </ProcessChoice>
-                <Process class="Separation"/>
-                <Stream src="Reservoir" dst="Separation"/>
-            """,
+        xml = E_model(
+            E_analysis(E_a("functional_unit", "oil")),
+            E_field(
+                E_a("country", "US"),
+                E_process_choice("p", E_process_group("G", E_process_ref("Drill"))),
+                E_process("Separation"),
+                E_stream("Reservoir", "Separation"),
+            ),
         )
         assert not core_schema.validate(xml)
 
     def test_stream_ref_rejected_by_core(self, core_schema):
         """StreamRef is an ext-only element; core should reject it."""
-        xml = make_model_xml(
-            analysis_body='<A name="functional_unit">oil</A>',
-            field_body="""
-                <ProcessChoice name="p">
-                    <ProcessGroup name="G">
-                        <StreamRef name="gas line"/>
-                    </ProcessGroup>
-                </ProcessChoice>
-                <Process class="Separation"/>
-                <Stream src="Reservoir" dst="Separation"/>
-            """,
+        xml = E_model(
+            E_analysis(E_a("functional_unit", "oil")),
+            E_field(
+                E_a("country", "US"),
+                E_process_choice("p", E_process_group("G", E_stream_ref("gas line"))),
+                E_process("Separation"),
+                E_stream("Reservoir", "Separation"),
+            ),
         )
         assert not core_schema.validate(xml)
 
@@ -1067,6 +1005,7 @@ class TestExtSchemaCrossValidation:
 # =====================================================================
 # Attributes schema (attributes.xsd)
 # =====================================================================
+
 
 class TestAttrSchema:
     """Tests for attributes.xsd."""
@@ -1077,9 +1016,12 @@ class TestAttrSchema:
         xml = E_attr_defs(
             E_class_attrs(
                 "Field",
-                E_options("oil_type", "conventional",
-                          E_option("conventional"),
-                          E_option("heavy", label="heavy")),
+                E_options(
+                    "oil_type",
+                    "conventional",
+                    E_option("conventional"),
+                    E_option("heavy", label="heavy"),
+                ),
                 E_attr_def("age", "25", type="int", unit="yr"),
                 E_attr_def("country", "USA", type="str"),
             ),
@@ -1114,18 +1056,13 @@ class TestAttrSchema:
 class TestAttrSchemaAttrDef:
     """Tests for <AttrDef> in attributes.xsd."""
 
-    def test_validates_with_type(self, attr_schema):
-        xml = E_attr_defs(E_class_attrs("Field", E_attr_def("age", "25", type="int")))
-        assert attr_schema.validate(xml), attr_schema.error_log
-
-    def test_validates_with_unit(self, attr_schema):
-        xml = E_attr_defs(E_class_attrs("Field", E_attr_def("depth", "5000", unit="ft")))
-        assert attr_schema.validate(xml), attr_schema.error_log
-
-    def test_validates_with_desc(self, attr_schema):
-        xml = E_attr_defs(
-            E_class_attrs("Field", E_attr_def("age", "25", desc="Age of field")),
-        )
+    @pytest.mark.parametrize(
+        "attr_id,kw",
+        ATTRDEF_SINGLE_ATTRS,
+        ids=[x[0] for x in ATTRDEF_SINGLE_ATTRS],
+    )
+    def test_validates_with_single_attr(self, attr_schema, attr_id, kw):
+        xml = E_attr_defs(E_class_attrs("Field", E_attr_def("test_field", "25", **kw)))
         assert attr_schema.validate(xml), attr_schema.error_log
 
     def test_validates_with_options_ref(self, attr_schema):
@@ -1138,46 +1075,13 @@ class TestAttrSchemaAttrDef:
         )
         assert attr_schema.validate(xml), attr_schema.error_log
 
-    def test_validates_with_exclusive(self, attr_schema):
-        xml = E_attr_defs(
-            E_class_attrs("Field", E_attr_def("ratio", "0.5", exclusive="true")),
-        )
-        assert attr_schema.validate(xml), attr_schema.error_log
-
-    def test_validates_with_synchronized(self, attr_schema):
-        xml = E_attr_defs(
-            E_class_attrs("Field", E_attr_def("pair", "A", synchronized="partner")),
-        )
-        assert attr_schema.validate(xml), attr_schema.error_log
-
-    def test_validates_with_GT(self, attr_schema):
-        xml = E_attr_defs(
-            E_class_attrs("Field", E_attr_def("depth", "100", GT="0")),
-        )
-        assert attr_schema.validate(xml), attr_schema.error_log
-
-    def test_validates_with_GE(self, attr_schema):
-        xml = E_attr_defs(
-            E_class_attrs("Field", E_attr_def("ratio", "0", GE="0")),
-        )
-        assert attr_schema.validate(xml), attr_schema.error_log
-
-    def test_validates_with_LT(self, attr_schema):
-        xml = E_attr_defs(
-            E_class_attrs("Field", E_attr_def("fraction", "0.5", LT="1")),
-        )
-        assert attr_schema.validate(xml), attr_schema.error_log
-
-    def test_validates_with_LE(self, attr_schema):
-        xml = E_attr_defs(
-            E_class_attrs("Field", E_attr_def("fraction", "1.0", LE="1")),
-        )
-        assert attr_schema.validate(xml), attr_schema.error_log
-
-    def test_validates_with_GT_and_LE_combo(self, attr_schema):
-        xml = E_attr_defs(
-            E_class_attrs("Field", E_attr_def("fraction", "0.5", GT="0", LE="1")),
-        )
+    @pytest.mark.parametrize(
+        "constraint_id,kw",
+        ATTRDEF_CONSTRAINTS,
+        ids=[x[0] for x in ATTRDEF_CONSTRAINTS],
+    )
+    def test_validates_with_constraint(self, attr_schema, constraint_id, kw):
+        xml = E_attr_defs(E_class_attrs("Field", E_attr_def("depth", "100", **kw)))
         assert attr_schema.validate(xml), attr_schema.error_log
 
     def test_validates_default_value_as_text(self, attr_schema):
@@ -1191,10 +1095,16 @@ class TestAttrSchemaAttrDef:
             E_class_attrs(
                 "Field",
                 E_attr_def(
-                    "depth", "5000",
-                    type="float", unit="ft", desc="Well depth",
-                    options="depth_range", exclusive="true",
-                    synchronized="partner", GT="0", LE="50000",
+                    "depth",
+                    "5000",
+                    type="float",
+                    unit="ft",
+                    desc="Well depth",
+                    options="depth_range",
+                    exclusive="true",
+                    synchronized="partner",
+                    GT="0",
+                    LE="50000",
                 ),
             ),
         )
@@ -1239,7 +1149,8 @@ class TestAttrSchemaOptions:
             E_class_attrs(
                 "Field",
                 E_options(
-                    "oil_type", "conventional",
+                    "oil_type",
+                    "conventional",
                     E_option("conventional", label="Conventional Oil"),
                 ),
             ),
@@ -1251,7 +1162,8 @@ class TestAttrSchemaOptions:
             E_class_attrs(
                 "Field",
                 E_options(
-                    "oil_type", "conventional",
+                    "oil_type",
+                    "conventional",
                     E_option("conventional", desc="Standard crude"),
                 ),
             ),
@@ -1263,7 +1175,8 @@ class TestAttrSchemaOptions:
             E_class_attrs(
                 "Field",
                 E_options(
-                    "oil_type", "conventional",
+                    "oil_type",
+                    "conventional",
                     E_option("conventional"),
                     E_option("heavy", label="Heavy"),
                     E_option("light", desc="Light crude"),
