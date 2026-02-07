@@ -192,8 +192,10 @@ class TestResolveProcessChoices:
         field = result.find("Field")
         assert field.findall("Aggregator") == []
 
-    def test_validates_against_core_schema(self, core_schema):
-        """Output should validate against opgee_core.xsd."""
+    def test_validates_against_core_model(self):
+        """Output should validate against CoreModel (no ProcessChoice)."""
+        from opgee.input.xml.models import CoreModel
+
         xml = E_model(
             E_analysis(E_a("functional_unit", "oil")),
             E_field(
@@ -211,4 +213,4 @@ class TestResolveProcessChoices:
 
         result = resolve_process_choices(xml)
 
-        assert core_schema.validate(result), core_schema.error_log
+        CoreModel.from_xml_tree(result)

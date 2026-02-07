@@ -1,10 +1,16 @@
-"""Stage 4: Build lightweight model objects from clean lxml tree."""
+"""Stage 4: Build lightweight model objects from clean lxml tree.
+
+Parses the post-pipeline lxml tree into a CoreModel (pydantic-xml) for
+structural validation, then builds BuiltModel dataclasses with typed
+attr_dicts resolved via AttrDefs metadata.
+"""
 
 from dataclasses import dataclass
 from typing import Any
 
 from lxml import etree
 
+from .models import CoreModel, CoreField, CoreAnalysis, ProcessElement
 from .value_resolution import read_attr_value, get_attr_def
 
 
@@ -40,58 +46,69 @@ def build_model(root: etree.Element) -> BuiltModel:
     """
     Build a BuiltModel from a clean (post-pipeline) lxml tree.
 
+    Validates structure via CoreModel, then extracts typed attr_dicts.
+
     :param root: <Model> lxml Element with all defaults applied and
                  process choices resolved
     :return: BuiltModel with typed attribute dicts
     """
-    field_elt = root.find("Field")
-    analysis_elt = root.find("Analysis")
+    core = CoreModel.from_xml_tree(root)
 
-    analysis = _build_analysis(analysis_elt) if analysis_elt is not None else BuiltAnalysis(name="", attr_dict={})
+    analysis = _build_analysis(core.analysis, root.find("Analysis"))
 
     processes: dict[str, BuiltProcess] = {}
     process_names: list[str] = []
     stream_names: list[str] = []
 
-    if field_elt is not None:
-        for proc_elt in field_elt.findall("Process"):
-            built_proc = _build_process(proc_elt)
+    field_elt = root.find("Field")
+    if core.field is not None and field_elt is not None:
+        proc_elts = field_elt.findall("Process")
+        for i, proc in enumerate(core.field.processes):
+            built_proc = _build_process(proc, proc_elts[i])
             processes[built_proc.name] = built_proc
             process_names.append(built_proc.name)
 
-        for stream_elt in field_elt.findall("Stream"):
-            name = stream_elt.get("name") or f"{stream_elt.get('src')} => {stream_elt.get('dst')}"
-            stream_names.append(name)
+        stream_names = core.field.stream_names
 
-    field = _build_field(field_elt, process_names, stream_names) if field_elt is not None else BuiltField(
-        name="", attr_dict={}, process_names=[], stream_names=[]
-    )
+    field = _build_field(core.field, field_elt, process_names, stream_names)
 
     return BuiltModel(field=field, analysis=analysis, processes=processes)
 
 
-def _build_analysis(elt: etree.Element) -> BuiltAnalysis:
-    """Build a BuiltAnalysis from an <Analysis> element."""
-    name = elt.get("name", "")
-    attr_dict = _extract_attrs(elt, "Analysis")
-    return BuiltAnalysis(name=name, attr_dict=attr_dict)
+def _build_analysis(
+    analysis: CoreAnalysis | None, elt: etree.Element | None
+) -> BuiltAnalysis:
+    """Build a BuiltAnalysis from CoreAnalysis + lxml element."""
+    if analysis is None or elt is None:
+        return BuiltAnalysis(name="", attr_dict={})
+    return BuiltAnalysis(name=analysis.name, attr_dict=_extract_attrs(elt, "Analysis"))
 
 
-def _build_process(elt: etree.Element) -> BuiltProcess:
-    """Build a BuiltProcess from a <Process> element."""
-    class_name = elt.get("class", "")
-    name = elt.get("name") or class_name
-    attr_dict = _extract_attrs(elt, class_name)
-    return BuiltProcess(name=name, class_name=class_name, attr_dict=attr_dict)
+def _build_process(proc: ProcessElement, elt: etree.Element) -> BuiltProcess:
+    """Build a BuiltProcess from ProcessElement + lxml element."""
+    name = proc.resolved_name
+    return BuiltProcess(
+        name=name,
+        class_name=proc.class_name,
+        attr_dict=_extract_attrs(elt, proc.class_name),
+    )
 
 
-def _build_field(elt: etree.Element, process_names: list[str],
-                 stream_names: list[str]) -> BuiltField:
-    """Build a BuiltField from a <Field> element."""
-    name = elt.get("name", "")
-    attr_dict = _extract_attrs(elt, "Field")
-    return BuiltField(name=name, attr_dict=attr_dict,
-                      process_names=process_names, stream_names=stream_names)
+def _build_field(
+    field: CoreField | None,
+    elt: etree.Element | None,
+    process_names: list[str],
+    stream_names: list[str],
+) -> BuiltField:
+    """Build a BuiltField from CoreField + lxml element."""
+    if field is None or elt is None:
+        return BuiltField(name="", attr_dict={}, process_names=[], stream_names=[])
+    return BuiltField(
+        name=field.name,
+        attr_dict=_extract_attrs(elt, "Field"),
+        process_names=process_names,
+        stream_names=stream_names,
+    )
 
 
 def _extract_attrs(elt: etree.Element, class_name: str) -> dict[str, Any]:

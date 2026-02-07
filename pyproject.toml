@@ -23,6 +23,9 @@ dependencies = [
   "pandas>=2.2.3",
   "pint>=0.24.3",
   "pint-pandas==0.6.2",
+  "pydantic>=2.12.5",
+  "pydantic-settings>=2.12.0",
+  "pydantic-xml[lxml]>=2.18.0",
   "pydot>=3.0.2",
   "python-dateutil>=2.9.0.post0",
   "pyxsteam>=0.4.9",
@@ -33,6 +36,7 @@ dependencies = [
   "sphinx-rtd-theme>=3.0.1",
   "thermo>=0.3.0",
   "thermosteam>=0.45.0",
+  "xmlschema>=4.3.1",
 ]
 requires-python = ">=3.11"
 readme = "README.md"

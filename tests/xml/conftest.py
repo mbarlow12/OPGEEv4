@@ -10,33 +10,8 @@ from opgee.attributes import AttrDefs
 
 # ── Path helpers ──────────────────────────────────────────────────
 
-SCHEMA_DIR = Path(__file__).resolve().parents[2] / "opgee" / "input" / "xml" / "schemas"
 OPGEE_ETC = Path(__file__).resolve().parents[2] / "opgee" / "etc"
 TEST_FILES = Path(__file__).resolve().parents[1] / "files"
-
-
-# ── Schema fixtures ──────────────────────────────────────────────
-
-
-@pytest.fixture
-def core_schema() -> etree.XMLSchema:
-    """Post-pipeline schema (no ProcessChoice/Aggregator)."""
-    doc = etree.parse(str(SCHEMA_DIR / "opgee_core.xsd"))
-    return etree.XMLSchema(doc)
-
-
-@pytest.fixture
-def ext_schema() -> etree.XMLSchema:
-    """Pre-pipeline schema (with ProcessChoice/Aggregator)."""
-    doc = etree.parse(str(SCHEMA_DIR / "opgee_ext.xsd"))
-    return etree.XMLSchema(doc)
-
-
-@pytest.fixture
-def attr_schema() -> etree.XMLSchema:
-    """AttrDefs schema."""
-    doc = etree.parse(str(SCHEMA_DIR / "attributes.xsd"))
-    return etree.XMLSchema(doc)
 
 
 # ── AttrDefs fixtures ────────────────────────────────────────────
