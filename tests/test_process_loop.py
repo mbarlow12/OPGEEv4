@@ -1,7 +1,10 @@
+import pytest
 from opgee.units import ureg
 from opgee.stream import Stream, PHASE_LIQUID
 from opgee.process import Process
 from .utils_for_tests import load_test_model
+
+pytestmark = pytest.mark.slow
 
 
 class LoopProc1(Process):

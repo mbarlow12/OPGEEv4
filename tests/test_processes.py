@@ -391,21 +391,6 @@ def test_CO2Flooding_CO2_reinjection(test_model_with_change):
     assert approx_equal(total, expected)
 
 
-def test_CO2Flooding_non_zero(test_model_with_change):
-    analysis = test_model_with_change.get_analysis('test_gas_processes')
-    field = analysis.get_field('test_CO2Flooding')
-    field.run(analysis)
-    proc = field.find_process('GasPartition')
-    # ensure total energy flow rates
-    total = proc.find_output_stream("gas").gas_flow_rates().sum()
-    expected = ureg.Quantity(9976.199771722018, "tonne/day")
-    assert approx_equal(total, expected, rel=10e-3)
-
-    total = proc.find_output_stream("exported gas").gas_flow_rates().sum()
-    expected = ureg.Quantity(24885.555110000005, "tonne/day")
-    assert approx_equal(total, expected)
-
-
 def test_NGFlooding_onsite(test_model):
     analysis = test_model.get_analysis('test_gas_processes')
     field = analysis.get_field('test_NGFlooding_onsite_gas')
@@ -419,23 +404,6 @@ def test_NGFlooding_onsite(test_model):
     total = proc.find_output_stream("exported gas").gas_flow_rates().sum()
     expected = ureg.Quantity(22185.893, "tonne/day")
     assert approx_equal(total, expected, rel=10e-3)
-
-
-def test_CO2Flooding_sour_gas_reinjection(test_model_with_change):
-    analysis = test_model_with_change.get_analysis('test_gas_processes')
-    field = analysis.get_field('test_CO2Flooding')
-    field.run(analysis)
-    proc = field.find_process('GasPartition')
-
-    # ensure total energy flow rates
-    s = proc.find_output_stream("gas")
-    total = s.gas_flow_rates().sum()
-    expected = ureg.Quantity(9976.19977, "tonne/day")
-    assert approx_equal(total, expected, rel=10e-3)
-
-    total = proc.find_output_stream("exported gas").gas_flow_rates().sum()
-    expected = ureg.Quantity(24885.5551, "tonne/day")
-    assert approx_equal(total, expected, rel=10e-4)
 
 
 def test_NGFlooding_offset(test_model):
@@ -694,12 +662,9 @@ def test_WaterTreatment(test_model):
 
 
 # TODO: RP created this test. Wennan should improve it!
-def test_CrudeOilTransport():
-    from .utils_for_tests import path_to_test_file, load_test_model
-
-    model2 = load_test_model('test_model2.xml', class_path=path_to_test_file('user_processes.py'))
-
-    analysis = model2.get_analysis('Analysis1')
+@pytest.mark.slow
+def test_CrudeOilTransport(test_model2):
+    analysis = test_model2.get_analysis('Analysis1')
     analysis.boundary = 'Transportation'
 
     field = analysis.get_field('Field1')

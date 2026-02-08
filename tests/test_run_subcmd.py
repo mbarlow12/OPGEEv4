@@ -7,6 +7,8 @@ from opgee.post_processor import PostProcessor
 from opgee.tool import opg
 from .utils_for_tests import path_to_test_file, tempdir
 
+pytestmark = pytest.mark.slow
+
 @pytest.fixture(autouse=True)
 def decache_post_plugins():
     PostProcessor.decache()

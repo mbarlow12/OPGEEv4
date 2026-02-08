@@ -3,16 +3,17 @@ from opgee.error import OpgeeException
 from opgee.stream import Stream
 from .utils_for_tests import load_test_model, path_to_test_file
 
-@pytest.fixture(scope="function")
-def test_model2(configure_logging_for_tests):
-    # This fixture also serves to test user classpath
-    model = load_test_model('test_model2.xml', class_path=path_to_test_file('user_processes.py'))
-    return model
 
 def test_stream_components(configure_logging_for_tests):
-    load_test_model('test_model.xml', stream_components='Foo, Bar')
-    comps = Stream.component_names
-    assert 'Foo' in comps and 'Bar' in comps
+    saved = Stream.component_names.copy()
+    saved_ext = Stream._extensions.copy()
+    try:
+        load_test_model('test_model.xml', stream_components='Foo, Bar')
+        comps = Stream.component_names
+        assert 'Foo' in comps and 'Bar' in comps
+    finally:
+        Stream.component_names = saved
+        Stream._extensions = saved_ext
 
 
 def test_unknown_analysis(test_model2):

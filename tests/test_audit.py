@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 import pytest
 
+pytestmark = pytest.mark.slow
+
 from pandas import DataFrame
 import pandas as pd
 
@@ -105,8 +107,7 @@ def audit_setup_and_run(tmp_path: Path, opgee, audit_level: str | None = None):
         setParam("OPGEE.AuditLevel", str(audit_level))
 
     audit_xml_path = path_to_test_file("audit_model.xml")
-    mf = ModelFile.from_xml_string(open(audit_xml_path).read())
-    field = mf.model.get_field("audit-field")
+    field_name = "audit-field"
     cmd = [
         "run",
         "-m", str(audit_xml_path),
@@ -116,7 +117,7 @@ def audit_setup_and_run(tmp_path: Path, opgee, audit_level: str | None = None):
     ]
 
     opgee.run(argList=cmd)
-    return results_dir / "field_audit.csv", results_dir / "process_graphs" / f"{field.name}_process_graph.png"
+    return results_dir / "field_audit.csv", results_dir / "process_graphs" / f"{field_name}_process_graph.png"
 
 def test_audit_save_results(tmp_path: Path, audit_model_file: ModelFile, opgee_main):
     audit_path, proc_graph_path = audit_setup_and_run(tmp_path, opgee_main, "Field")
@@ -125,7 +126,7 @@ def test_audit_save_results(tmp_path: Path, audit_model_file: ModelFile, opgee_m
     audit_df = pd.read_csv(audit_path)
     inputs = audit_df[audit_df['source'] == 'input']
     vals = inputs['value'].values
-    assert len(vals == 2)
+    assert len(vals) == 2
     assert vals[0] == '25.5'
     assert vals[1] == '1500.0'
 
