@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<fragment><Reservoir/><ReservoirWellInterface cycle-start="true"/><DownholePump/><Separation impute-start="true"/><CrudeOilDewatering/><WaterTreatment/><SteamGeneration/><WaterInjection/><Drilling after="true"/><Stream src="Reservoir" dst="ReservoirWellInterface">
+      <Contains>oil</Contains>
+    </Stream>
+    <Stream src="ReservoirWellInterface" dst="DownholePump">
+      <Contains>oil</Contains>
+    </Stream>
+    <Stream src="DownholePump" dst="Separation">
+      <Contains>oil</Contains>
+    </Stream>
+    <Stream src="Separation" dst="CrudeOilDewatering">
+      <Contains>oil</Contains>
+    </Stream>
+    <Stream src="Separation" dst="WaterTreatment">
+      <Contains>water</Contains>
+    </Stream>
+    <Stream src="Separation" dst="VFPartition">
+      <Contains>gas for partition</Contains>
+    </Stream>
+    <Stream src="CrudeOilDewatering" dst="CrudeOilStabilization">
+      <Contains>oil for stabilization</Contains>
+    </Stream>
+    <Stream src="CrudeOilDewatering" dst="CrudeOilStorage">
+      <Contains>oil for storage</Contains>
+    </Stream>
+    <Stream src="CrudeOilDewatering" dst="HeavyOilUpgrading">
+      <Contains>oil for upgrading</Contains>
+    </Stream>
+    <Stream src="CrudeOilDewatering" dst="HeavyOilDilution">
+      <Contains>oil for dilution</Contains>
+    </Stream>
+    <Stream src="WaterTreatment" dst="ProductionBoundary">
+      <Contains>water for subsurface disposal</Contains>
+    </Stream>
+    <Stream src="WaterTreatment" dst="SteamGeneration" name="produced water treatment">
+      <Contains>produced water</Contains>
+    </Stream>
+    <Stream src="WaterTreatment" dst="SteamGeneration" name="makeup water treatment">
+      <Contains>makeup water</Contains>
+    </Stream>
+    <Stream src="WaterTreatment" dst="WaterInjection">
+      <Contains>water</Contains>
+    </Stream>
+    </fragment>
