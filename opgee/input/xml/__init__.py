@@ -19,6 +19,7 @@ from lxml import etree
 from opgee.input.models.field import FieldModel
 
 from .deserialize import deserialize_field
+from .parse import parse_and_split
 from .resolve import FRAGMENTS_DIR, resolve_includes, unwrap_fragments
 from .validation import validate_post_resolution, validate_pre_resolution
 
@@ -41,10 +42,10 @@ def process_field_xml(input_path: Path) -> list[FieldModel]:
     resolve_includes(tree)
     unwrap_fragments(root)
 
-    # Deserialize each Field
+    # Deserialize each Field (matched to optional Analysis via Group)
     results: list[FieldModel] = []
-    for field_elt in root.findall("Field"):
-        field_model = deserialize_field(field_elt)
+    for unit in parse_and_split(root):
+        field_model = deserialize_field(unit.field)
 
         # Apply smart defaults
         from opgee.input.smart_defaults import apply_defaults

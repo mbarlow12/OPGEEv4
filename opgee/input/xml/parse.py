@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import re
+from collections.abc import Iterator
 from dataclasses import dataclass
-from pathlib import Path
 
 from lxml import etree
 
@@ -16,32 +17,48 @@ class FieldUnit:
     analysis: etree._Element | None
 
 
-# backwards,
-# analysis is the selection mechanism to gather fields under single "simulation" group
-def parse_and_split(input_path: Path) -> list[FieldUnit]:
-    """Parse input XML and split into per-Field processing units.
+def _analysis_matches_field(
+    analysis: etree._Element,
+    field_group: str | None,
+) -> bool:
+    """Check if any Group in the analysis matches this field's group."""
+    if field_group is None:
+        return False
+    for group_elt in analysis.findall("Group"):
+        text = group_elt.text
+        if not text:
+            continue
+        is_regex = group_elt.get("regex", "0") in ("1", "true")
+        if is_regex:
+            if re.search(text, field_group):
+                return True
+        else:
+            if text == field_group:
+                return True
+    return False
 
-    :param input_path: path to the XML model file
-    :return: list of FieldUnit, one per <Field> element
+
+def parse_and_split(root: etree._Element) -> Iterator[FieldUnit]:
+    """Yield per-Field processing units from parsed XML root.
+
+    Matches Fields to Analyses via the Field's ``group`` attribute
+    and the Analysis's ``<Group>`` child elements:
+
+    - Literal: Analysis Group text == Field's group attribute
+    - Regex: Analysis Group with ``regex="1"`` matches Field's group attribute
+
+    :param root: the already-parsed XML root element
+    :yields: FieldUnit for each ``<Field>`` element
     """
-    tree = etree.parse(str(input_path))
-    root = tree.getroot()
+    analyses = list(root.findall("Analysis"))
 
-    # Find all analyses (there's usually one)
-    analyses = {a.get("name"): a for a in root.findall("Analysis")}
-
-    units = []
     for field_elt in root.findall("Field"):
-        # Try to find the matching analysis via FieldRef
-        analysis_elt = None
-        for analysis in analyses.values():
-            for ref in analysis.findall("FieldRef"):
-                if ref.get("name") == field_elt.get("name"):
-                    analysis_elt = analysis
-                    break
-            if analysis_elt is not None:
+        field_group = field_elt.get("group")
+
+        matched_analysis = None
+        for analysis in analyses:
+            if _analysis_matches_field(analysis, field_group):
+                matched_analysis = analysis
                 break
 
-        units.append(FieldUnit(field=field_elt, analysis=analysis_elt))
-
-    return units
+        yield FieldUnit(field=field_elt, analysis=matched_analysis)

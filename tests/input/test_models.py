@@ -8,7 +8,7 @@ from opgee.input.models import (
     AnalysisModel,
     ContainsElement,
     FieldModel,
-    FieldRefElement,
+    GroupElement,
     ModelModel,
     StreamModel,
 )
@@ -374,6 +374,16 @@ class TestFieldModel:
         m = FieldModel.from_xml_tree(xml)
         assert m.enabled is None
 
+    def test_field_group_attr(self):
+        xml = etree.fromstring('<Field name="grouped" group="oil"><Separation/></Field>')
+        m = FieldModel.from_xml_tree(xml)
+        assert m.group == "oil"
+
+    def test_field_group_default_none(self):
+        xml = etree.fromstring('<Field name="ungrouped"><Separation/></Field>')
+        m = FieldModel.from_xml_tree(xml)
+        assert m.group is None
+
     def test_field_literal_values(self):
         """Literal-typed fields accept valid enum values."""
         xml = etree.fromstring(
@@ -428,7 +438,7 @@ class TestAnalysisModel:
         assert m.GWP_version is None
         assert m.functional_unit is None
         assert m.boundary is None
-        assert m.field_refs == []
+        assert m.groups == []
 
     def test_analysis_with_all_elements(self):
         xml = etree.fromstring(
@@ -445,17 +455,17 @@ class TestAnalysisModel:
         assert m.functional_unit == "oil"
         assert m.boundary == "Production"
 
-    def test_analysis_with_field_refs(self):
+    def test_analysis_with_groups(self):
         xml = etree.fromstring(
-            '<Analysis name="refs">'
-            '  <FieldRef name="field-1"/>'
-            '  <FieldRef name="field-2"/>'
+            '<Analysis name="grps">'
+            '  <Group>oil</Group>'
+            '  <Group>gas</Group>'
             '</Analysis>'
         )
         m = AnalysisModel.from_xml_tree(xml)
-        assert len(m.field_refs) == 2
-        assert m.field_refs[0].name == "field-1"
-        assert m.field_refs[1].name == "field-2"
+        assert len(m.groups) == 2
+        assert m.groups[0].text == "oil"
+        assert m.groups[1].text == "gas"
 
     def test_analysis_name_required(self):
         xml = etree.fromstring('<Analysis/>')
@@ -466,28 +476,41 @@ class TestAnalysisModel:
         """Analysis uses search_mode=unordered, so element order is flexible."""
         xml = etree.fromstring(
             '<Analysis name="unord">'
-            '  <FieldRef name="f1"/>'
+            '  <Group>oil</Group>'
             '  <GWP_version>AR6</GWP_version>'
-            '  <FieldRef name="f2"/>'
+            '  <Group>gas</Group>'
             '  <GWP_horizon>20</GWP_horizon>'
             '</Analysis>'
         )
         m = AnalysisModel.from_xml_tree(xml)
         assert m.GWP_horizon == "20"
         assert m.GWP_version == "AR6"
-        assert len(m.field_refs) == 2
+        assert len(m.groups) == 2
 
 
-class TestFieldRefElement:
-    def test_parse_field_ref(self):
-        xml = etree.fromstring('<FieldRef name="my-field"/>')
-        m = FieldRefElement.from_xml_tree(xml)
-        assert m.name == "my-field"
+class TestGroupElement:
+    def test_parse_group_with_text(self):
+        xml = etree.fromstring('<Group>oil</Group>')
+        m = GroupElement.from_xml_tree(xml)
+        assert m.text == "oil"
+        assert m.regex is False
 
-    def test_field_ref_name_required(self):
-        xml = etree.fromstring('<FieldRef/>')
-        with pytest.raises(Exception):
-            FieldRefElement.from_xml_tree(xml)
+    def test_parse_group_regex_true(self):
+        xml = etree.fromstring('<Group regex="true">oil.*</Group>')
+        m = GroupElement.from_xml_tree(xml)
+        assert m.text == "oil.*"
+        assert m.regex is True
+
+    def test_parse_group_regex_default_false(self):
+        xml = etree.fromstring('<Group>gas</Group>')
+        m = GroupElement.from_xml_tree(xml)
+        assert m.regex is False
+
+    def test_parse_group_empty(self):
+        xml = etree.fromstring('<Group/>')
+        m = GroupElement.from_xml_tree(xml)
+        assert m.text is None
+        assert m.regex is False
 
 
 # ---------------------------------------------------------------------------
@@ -510,9 +533,9 @@ class TestModelModel:
         xml = etree.fromstring(
             '<Model>'
             '  <Analysis name="a1">'
-            '    <FieldRef name="f1"/>'
+            '    <Group>oil</Group>'
             '  </Analysis>'
-            '  <Field name="f1">'
+            '  <Field name="f1" group="oil">'
             '    <Separation/>'
             '  </Field>'
             '</Model>'
@@ -585,7 +608,7 @@ class TestModelModel:
         assert len(m.analyses) == 1
 
     def test_model_full_structure(self):
-        """End-to-end: Model with analysis referencing a field,
+        """End-to-end: Model with analysis referencing a field via Group,
         field with processes and streams."""
         xml = etree.fromstring(
             '<Model schema_version="4.0">'
@@ -593,9 +616,9 @@ class TestModelModel:
             '    <GWP_horizon>100</GWP_horizon>'
             '    <GWP_version>AR5</GWP_version>'
             '    <functional_unit>oil</functional_unit>'
-            '    <FieldRef name="my-field"/>'
+            '    <Group>oil-fields</Group>'
             '  </Analysis>'
-            '  <Field name="my-field">'
+            '  <Field name="my-field" group="oil-fields">'
             '    <API>28.0</API>'
             '    <GOR>400</GOR>'
             '    <depth>10000</depth>'
@@ -621,12 +644,13 @@ class TestModelModel:
         assert m.analysis.name == "base-case"
         assert m.analysis.GWP_horizon == "100"
         assert m.analysis.GWP_version == "AR5"
-        assert len(m.analysis.field_refs) == 1
-        assert m.analysis.field_refs[0].name == "my-field"
+        assert len(m.analysis.groups) == 1
+        assert m.analysis.groups[0].text == "oil-fields"
 
         # Field
         field = m.field
         assert field.name == "my-field"
+        assert field.group == "oil-fields"
         assert field.API == 28.0
         assert field.GOR == 400.0
         assert field.depth == 10000.0

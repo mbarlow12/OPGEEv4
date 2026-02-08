@@ -33,11 +33,12 @@ def make_field_xml(name: str = "test", children: list | None = None, **attrs) ->
 @pytest.fixture()
 def minimal_model_xml() -> etree._Element:
     """A minimal <Model> with one Field (containing a Separation process)
-    and one Analysis referencing it.
+    and one Analysis referencing it via Group.
     """
     field = make_field_xml("test_field", oil_sands_mine="None")
+    field.set("group", "default")
     analysis = E.Analysis(
-        E.FieldRef(name="test_field"),
+        E.Group("default"),
         name="test_analysis",
     )
     model = E.Model(field, analysis)

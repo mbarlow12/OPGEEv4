@@ -1,5 +1,5 @@
 """Pydantic-xml models for OPGEE XML deserialization."""
-from .analysis import AnalysisModel, FieldRefElement
+from .analysis import AnalysisModel, GroupElement
 from .base import OPGEEBaseModel
 from .field import FieldModel
 from .model import ModelModel
@@ -10,7 +10,7 @@ __all__ = [
     "AnalysisModel",
     "ContainsElement",
     "FieldModel",
-    "FieldRefElement",
+    "GroupElement",
     "ModelModel",
     "OPGEEBaseModel",
     "ProcessUnion",

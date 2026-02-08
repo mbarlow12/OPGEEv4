@@ -22,6 +22,7 @@ class FieldModel(OPGEEBaseModel, tag="Field", search_mode=SearchMode.UNORDERED):
 
     name: str = attr()
     enabled: bool | None = attr(default=None)
+    group: str | None = attr(default=None)
 
     # --- Production methods ---
     downhole_pump: int = element(tag="downhole_pump", default=1)
