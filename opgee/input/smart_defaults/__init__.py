@@ -4,10 +4,13 @@ Uses a decorator-based registry with topological dependency ordering.
 Operates on FieldModel instances using model_fields_set to skip explicitly
 set values.
 """
+
 from __future__ import annotations
+from opgee.input.models.processes import ProcessClassName
+from opgee.input.models import FieldModel, AnalysisModel, ProcessUnion
 
 from collections.abc import Callable
-from typing import Any, ParamSpec, TypeVar
+from typing import Any, ParamSpec, TypeVar, overload, Literal
 
 import networkx as nx
 
@@ -24,7 +27,9 @@ _registry: dict[str, tuple[Callable[..., Any], list[str]]] = {}
 _run_order: list[str] | None = None
 
 
-def register(attr_name: str, dependencies: list[str]) -> Callable[[Callable[P, R]], Callable[P, R]]:
+def register(
+    attr_name: str, dependencies: list[str]
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Decorator to register a smart default function.
 
     :param attr_name: target attribute name (may be "ClassName.attr_name")
@@ -60,7 +65,9 @@ def run_order() -> list[str]:
     return _run_order
 
 
-def apply_defaults(field_model: Any, analysis_model: Any | None = None) -> None:
+def apply_defaults(
+    field_model: FieldModel, analysis_model: AnalysisModel | None = None
+) -> None:
     """Apply all smart defaults to pydantic model instances.
 
     For each attr in topological order:
@@ -92,7 +99,9 @@ def apply_defaults(field_model: Any, analysis_model: Any | None = None) -> None:
 
         target_model = _find_model(target_class, field_model, analysis_model)
         if target_model is None:
-            _logger.debug("Skipping smart default for '%s': target model not found", attr_name)
+            _logger.debug(
+                "Skipping smart default for '%s': target model not found", attr_name
+            )
             continue
 
         # Skip if explicitly set in XML
@@ -119,7 +128,31 @@ def apply_defaults(field_model: Any, analysis_model: Any | None = None) -> None:
         setattr(target_model, target_attr, result)
 
 
-def _find_model(class_name: str, field_model: Any, analysis_model: Any | None) -> Any | None:
+@overload
+def _find_model(
+    class_name: Literal["Field"],
+    field_model: FieldModel,
+    analysis_model: AnalysisModel | None,
+) -> FieldModel: ...
+@overload
+def _find_model(
+    class_name: Literal["AnalysisModel"],
+    field_model: FieldModel,
+    analysis_model: AnalysisModel | None,
+) -> AnalysisModel: ...
+@overload
+def _find_model(
+    class_name: ProcessClassName,
+    field_model: FieldModel,
+    analysis_model: AnalysisModel | None,
+) -> ProcessUnion: ...
+@overload
+def _find_model(
+    class_name: str, field_model: FieldModel, analysis_model: AnalysisModel | None
+) -> ProcessUnion: ...
+def _find_model(
+    class_name: str, field_model: FieldModel, analysis_model: AnalysisModel | None
+) -> FieldModel | AnalysisModel | ProcessUnion:
     """Find the target model for a given class name."""
     if class_name == "Field":
         return field_model
@@ -130,11 +163,11 @@ def _find_model(class_name: str, field_model: Any, analysis_model: Any | None) -
         for proc in field_model.processes:
             if type(proc).__name__ == class_name:
                 return proc
-        return None
+    raise ValueError(f"Unknown `class_name` ({class_name}).")
 
 
 def _resolve_dependencies(
-    field_model: Any,
+    field_model: FieldModel,
     analysis_model: Any | None,
     dependencies: list[str],
 ) -> list[Any]:

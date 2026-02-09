@@ -71,6 +71,12 @@ markers = [
 [tool.uv]
 package = true
 
+[tool.uv.workspace]
+members = [
+    "packages/opgee-input",
+    "packages/opgee-xml",
+]
+
 
 [dependency-groups]
 dev = [

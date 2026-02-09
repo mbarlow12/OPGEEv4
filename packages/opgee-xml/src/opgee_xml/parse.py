@@ -1,5 +1,4 @@
 """Parse and split input XML into per-Field processing units."""
-
 from __future__ import annotations
 
 import re
@@ -15,6 +14,7 @@ class FieldUnit:
 
     field: etree._Element
     analysis: etree._Element | None
+    group: str | None = None
 
 
 def _analysis_matches_field(
@@ -61,4 +61,4 @@ def parse_and_split(root: etree._Element) -> Iterator[FieldUnit]:
                 matched_analysis = analysis
                 break
 
-        yield FieldUnit(field=field_elt, analysis=matched_analysis)
+        yield FieldUnit(field=field_elt, analysis=matched_analysis, group=field_group)

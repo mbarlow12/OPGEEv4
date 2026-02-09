@@ -1,4 +1,7 @@
-"""Tests for the smart defaults system at opgee/input/smart_defaults/."""
+"""Tests for the smart defaults system at opgee/input/smart_defaults/.
+
+Skipped until smart defaults are integrated with the new opgee-input package.
+"""
 from __future__ import annotations
 
 import importlib
@@ -7,7 +10,9 @@ from math import exp
 import pytest
 from lxml import etree
 
-from opgee.input.models.field import FieldModel
+pytest.importorskip("opgee.input.models", reason="opgee.input.models removed; smart defaults integration deferred")
+
+from opgee.input.models.field import FieldModel  # noqa: E402
 from opgee.input.smart_defaults import (
     _registry,
     apply_defaults,

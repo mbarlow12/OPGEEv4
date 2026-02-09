@@ -5,13 +5,12 @@ for matching instead of all attributes.
 """
 from __future__ import annotations
 
+import logging
 from copy import deepcopy
 
 from lxml import etree
 
-from opgee.log import getLogger
-
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 # Attributes used for element identity matching
 IDENTITY_ATTRS = ("name", "boundary")
@@ -58,7 +57,7 @@ def merge_element(parent: etree._Element, new_elt: etree._Element) -> None:
                 merge_elements(sibling, list(new_elt))
             return
 
-    # No match found — append copy
+    # No match found -- append copy
     parent.append(deepcopy(new_elt))
 
 
