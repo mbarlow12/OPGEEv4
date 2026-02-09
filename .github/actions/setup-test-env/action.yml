@@ -9,35 +9,15 @@ runs:
       shell: bash
       run: sudo apt-get update -qq && sudo apt-get install -y -qq graphviz
 
-    - name: Cache Homebrew packages (macOS)
-      if: runner.os == 'macOS'
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/Library/Caches/Homebrew
-          /usr/local/Cellar/graphviz
-          /opt/homebrew/Cellar/graphviz
-        key: brew-graphviz-${{ runner.os }}
-
     - name: Install graphviz (macOS)
       if: runner.os == 'macOS'
       shell: bash
-      run: brew install graphviz || true
-
-    - name: Cache Chocolatey packages (Windows)
-      if: runner.os == 'Windows'
-      uses: actions/cache@v4
-      with:
-        path: C:\ProgramData\chocolatey\lib\graphviz
-        key: choco-graphviz-${{ runner.os }}
+      run: brew install graphviz
 
     - name: Install graphviz (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
-      run: |
-        if (!(Test-Path "C:\ProgramData\chocolatey\lib\graphviz")) {
-          choco install graphviz -y
-        }
+      run: choco install graphviz -y
 
     - name: Set up uv
       uses: astral-sh/setup-uv@v5
