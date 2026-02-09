@@ -7,7 +7,6 @@ on:
       - main
       - dev
       - refactor-v5
-      - refactor/separate-xml-results
 
 jobs:
   test:
@@ -27,15 +26,38 @@ jobs:
 
       - name: Install graphviz (Ubuntu)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y graphviz
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: graphviz
+          version: 1.0
+
+      - name: Cache Homebrew packages (macOS)
+        if: runner.os == 'macOS'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /usr/local/Cellar/graphviz
+            /opt/homebrew/Cellar/graphviz
+          key: brew-graphviz-${{ runner.os }}
 
       - name: Install graphviz (macOS)
         if: runner.os == 'macOS'
-        run: brew install graphviz
+        run: brew install graphviz || true
+
+      - name: Cache Chocolatey packages (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/cache@v4
+        with:
+          path: C:\ProgramData\chocolatey\lib\graphviz
+          key: choco-graphviz-${{ runner.os }}
 
       - name: Install graphviz (Windows)
         if: runner.os == 'Windows'
-        run: choco install graphviz -y
+        run: |
+          if (!(Test-Path "C:\ProgramData\chocolatey\lib\graphviz")) {
+            choco install graphviz -y
+          }
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
@@ -47,7 +69,12 @@ jobs:
         run: uv python install 3.12
 
       - name: Install dependencies
-        run: uv sync --frozen
+        run: uv sync --all-packages --frozen
 
-      - name: Run tests with coverage
-        run: uv run pytest -n auto --cov=opgee --cov-report=xml
+      - name: Run workspace package tests
+        run: |
+          uv run pytest packages/opgee-input/tests/ -xv
+          uv run pytest packages/opgee-xml/tests/ -xv
+
+      - name: Run main tests with coverage
+        run: uv run pytest tests/ -xv --cov=opgee --cov-report=xml
