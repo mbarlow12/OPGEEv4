@@ -1,7 +1,10 @@
 import os
+import pytest
 from opgee.tool import opg
 from opgee.model_file import ModelFile
 from .utils_for_tests import tmpdir, path_to_test_file, tempdir
+
+pytestmark = pytest.mark.slow
 
 def test_csv2xml():
     with tempdir() as output_dir:

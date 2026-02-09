@@ -1,4 +1,4 @@
-name: OPGEE Unit Tests with Coverage
+name: OPGEE Tests
 
 on:
   pull_request:
@@ -7,7 +7,6 @@ on:
       - main
       - dev
       - refactor-v5
-      - refactor/separate-xml-results
 
 jobs:
   test:
@@ -21,33 +20,16 @@ jobs:
     env:
       OPGEE_HOME: ${{ github.workspace }}/tests/files
       CI: "true"
+      UV_PYTHON: "3.12"
 
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-test-env
 
-      - name: Install graphviz (Ubuntu)
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y graphviz
+      - name: Run workspace package tests
+        run: |
+          uv run pytest packages/opgee-input/tests/ -xv
+          uv run pytest packages/opgee-xml/tests/ -xv
 
-      - name: Install graphviz (macOS)
-        if: runner.os == 'macOS'
-        run: brew install graphviz
-
-      - name: Install graphviz (Windows)
-        if: runner.os == 'Windows'
-        run: choco install graphviz -y
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-
-      - name: Set up Python
-        run: uv python install 3.12
-
-      - name: Install dependencies
-        run: uv sync --frozen
-
-      - name: Run tests with coverage
-        run: uv run pytest -n auto --cov=opgee --cov-report=xml
+      - name: Run main tests with coverage
+        run: uv run pytest tests/ -xv --cov=opgee --cov-report=xml

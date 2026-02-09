@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<fragment><CrudeOilStabilization/><CrudeOilStorage/><CrudeOilTransport/><Stream src="CrudeOilStorage" dst="CrudeOilTransport">
+      <Contains>oil</Contains>
+    </Stream>
+    <Stream src="CrudeOilStabilization" dst="CrudeOilStorage">
+      <Contains>oil for storage</Contains>
+    </Stream>
+    <Stream src="CrudeOilDewatering" dst="CrudeOilStabilization">
+      <Contains>oil for stabilization</Contains>
+    </Stream>
+    </fragment>

@@ -1,8 +1,7 @@
 import pytest
 from opgee.units import ureg
-from .utils_for_tests import load_model_from_str
+from .utils_for_tests import load_model_from_str, load_test_model
 from opgee.error import XmlFormatError
-from .utils_for_tests import load_test_model
 from .test_processes import approx_equal
 
 model_xml_1 = """
@@ -61,6 +60,7 @@ def test_field(configure_logging_for_tests):
                            use_default_model=True) # this is required since test_fields references "template" field
 
 
+@pytest.mark.slow
 def test_component_fugitive(test_field):
     analysis = test_field.get_analysis('test_fugitive')
     oilfield = analysis.get_field('test_component_fugitive_oilfield')

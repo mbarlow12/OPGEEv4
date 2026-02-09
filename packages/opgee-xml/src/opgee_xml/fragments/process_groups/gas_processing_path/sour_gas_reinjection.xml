@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<fragment><GasGathering/><GasDehydration/><SourGasCompressor/><SourGasInjection/><Stream src="GasGathering" dst="GasDehydration">
+      <Contains>gas for gas dehydration</Contains>
+    </Stream>
+    <Stream src="GasDehydration" dst="SourGasCompressor">
+      <Contains>gas for sour gas compressor</Contains>
+    </Stream>
+    <Stream src="SourGasCompressor" dst="SourGasInjection">
+      <Contains>gas</Contains>
+    </Stream>
+    </fragment>

@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<fragment><GasGathering/><GasDehydration/><RyanHolmes/><CO2ReinjectionCompressor/><CO2InjectionWell/><NGL/><Stream src="GasGathering" dst="GasDehydration">
+      <Contains>gas for gas dehydration</Contains>
+    </Stream>
+    <Stream src="GasDehydration" dst="RyanHolmes">
+      <Contains>gas for Ryan Holmes</Contains>
+    </Stream>
+    <Stream src="RyanHolmes" dst="CO2ReinjectionCompressor">
+      <Contains>gas for CO2 compressor</Contains>
+    </Stream>
+    <Stream src="RyanHolmes" dst="GasPartition">
+      <Contains>gas for gas partition</Contains>
+    </Stream>
+    <Stream src="RyanHolmes" dst="NGL">
+      <Contains>gas for NGL</Contains>
+    </Stream>
+    <Stream src="CO2ReinjectionCompressor" dst="CO2InjectionWell">
+      <Contains>gas</Contains>
+    </Stream>
+    <Stream src="CO2InjectionWell" dst="ReservoirWellInterface" impute="False">
+      <Contains>CO2</Contains>
+    </Stream>
+    </fragment>

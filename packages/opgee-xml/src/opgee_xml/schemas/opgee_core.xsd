@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema' elementFormDefault='qualified'>
+
+  <!--
+    Minimal elements for a fully-resolved model (post-pipeline output).
+    Field children: only A, Group, Process, Stream (no ProcessChoice, no Aggregator).
+  -->
+
+  <!-- Attribute types -->
+  <xs:simpleType name="PhaseType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="gas"/>
+      <xs:enumeration value="liquid"/>
+      <xs:enumeration value="solid"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:element name='Model'>
+    <xs:complexType>
+      <xs:choice maxOccurs="unbounded">
+        <xs:element minOccurs='0' ref="A"/>
+        <xs:element minOccurs='0' ref="Analysis"/>
+        <xs:element minOccurs='0' ref='Field'/>
+      </xs:choice>
+      <xs:attribute name='schema_version' use='optional' type='xs:string'/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name='Analysis'>
+    <xs:complexType>
+      <xs:choice maxOccurs='unbounded'>
+        <xs:element ref='A'/>
+        <xs:element minOccurs='0' ref='FieldRef'/>
+        <xs:element minOccurs='0' ref='Group'/>
+      </xs:choice>
+      <xs:attribute name='name' use='required' type='xs:NCName'/>
+      <xs:attribute name='delete' type='xs:boolean'/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name='Group'>
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base='xs:string'>
+          <xs:attribute name='regex' default='0' type='xs:boolean'/>
+          <xs:attribute name='delete' type='xs:boolean'/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name='Field'>
+    <xs:complexType>
+      <xs:choice maxOccurs='unbounded'>
+        <xs:element minOccurs='0' ref='A'/>
+        <xs:element minOccurs='0' ref='Group'/>
+        <xs:element minOccurs='0' ref='Process'/>
+        <xs:element minOccurs='0' ref='Stream'/>
+      </xs:choice>
+      <xs:attribute name='name' use='required' type='xs:string'/>
+      <xs:attribute name='enabled' default='1' type='xs:boolean'/>
+      <xs:attribute name='extend' default='0' type='xs:boolean'/>
+      <xs:attribute name='delete' type='xs:boolean'/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name='A'>
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base='xs:string'>
+          <xs:attribute name='name' use='required' type='xs:NCName'/>
+          <xs:attribute name='delete' type='xs:boolean'/>
+          <xs:attribute name='explicit' type='xs:string'/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name='Contains'>
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base='xs:string'>
+          <xs:attribute name='delete' type='xs:boolean'/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name='Stream'>
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element minOccurs="0" maxOccurs="3" ref='A'/>
+        <xs:element ref='Component'/>
+        <xs:element ref="Contains"/>
+      </xs:choice>
+      <xs:attribute name='name'/>
+      <xs:attribute name='src' use='required'/>
+      <xs:attribute name='dst' use='required'/>
+      <xs:attribute name="impute" default="1"/>
+      <xs:attribute name="boundary" type='xs:string'/>
+      <xs:attribute name='delete' type='xs:boolean'/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name='Component'>
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base='xs:decimal'>
+          <xs:attribute name='name' use='required'/>
+          <xs:attribute name='phase' use='required' type="PhaseType"/>
+          <xs:attribute name='delete' type='xs:boolean'/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name='Process'>
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element minOccurs='0' ref='A'/>
+      </xs:choice>
+      <xs:attribute name='class' use='required'/>
+      <xs:attribute name='name' type='xs:NCName'/>
+      <xs:attribute name='desc' type='xs:string'/>
+      <xs:attribute name='enabled' default='1' type='xs:boolean'/>
+      <xs:attribute name='extend' default='0' type='xs:boolean'/>
+      <xs:attribute name='impute-start' default='0' type='xs:boolean'/>
+      <xs:attribute name='cycle-start' default='0' type='xs:boolean'/>
+      <xs:attribute name="boundary" type='xs:string'/>
+      <xs:attribute name='delete' type='xs:boolean'/>
+      <xs:attribute name='after' type='xs:boolean'/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name='FieldRef'>
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base='xs:string'>
+          <xs:attribute name='name' use='required' type='xs:string'/>
+          <xs:attribute name='delete' type='xs:boolean'/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+
+</xs:schema>

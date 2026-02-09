@@ -1,0 +1,31 @@
+name: OPGEE Slow Tests
+
+on:
+  pull_request:
+    branches:
+      - master
+      - main
+      - dev
+      - refactor-v5
+  workflow_dispatch:
+
+jobs:
+  slow-test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    name: Slow Test (${{ matrix.os }})
+
+    env:
+      OPGEE_HOME: ${{ github.workspace }}/tests/files
+      CI: "true"
+      UV_PYTHON: "3.12"
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-test-env
+
+      - name: Run slow tests
+        run: uv run pytest tests/ -xv --run-slow -m slow --cov=opgee --cov-report=xml

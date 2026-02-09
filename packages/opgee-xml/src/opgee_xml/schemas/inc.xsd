@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="urn:opgee:include">
+  <xs:element name="template" type="xs:string"/>
+  <xs:element name="oil_sands_mine" type="xs:string"/>
+  <xs:element name="gas_processing_path" type="xs:string"/>
+  <xs:element name="oil_processing_path" type="xs:string"/>
+  <xs:element name="common_gas_process_choice" type="xs:string"/>
+  <xs:element name="upgrader_type" type="xs:string"/>
+</xs:schema>

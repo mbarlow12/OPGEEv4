@@ -8,13 +8,7 @@ from opgee.field import Field
 from opgee.results import FieldResult
 from opgee.post_processor import PostProcessor
 
-from .utils_for_tests import load_test_model, path_to_test_file, tempdir
-
-@pytest.fixture(scope="function")
-def test_model2(configure_logging_for_tests):
-    # This fixture also serves to test user classpath
-    model = load_test_model('test_model2.xml', class_path=path_to_test_file('user_processes.py'))
-    return model
+from .utils_for_tests import path_to_test_file, tempdir
 
 @pytest.fixture(autouse=True)
 def decach_around_tests():

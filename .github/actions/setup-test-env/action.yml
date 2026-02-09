@@ -1,0 +1,37 @@
+name: Setup OPGEE Test Environment
+description: Install graphviz, uv, Python, and project dependencies with caching
+
+runs:
+  using: composite
+  steps:
+    - name: Install graphviz (Ubuntu)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: sudo apt-get update -qq && sudo apt-get install -y -qq graphviz
+
+    - name: Install graphviz (macOS)
+      if: runner.os == 'macOS'
+      shell: bash
+      run: brew install graphviz
+
+    - name: Install graphviz (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: choco install graphviz -y
+
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+        cache-dependency-glob: "uv.lock"
+        python-version: "3.12"
+
+    - name: Cache venv
+      uses: actions/cache@v4
+      with:
+        path: .venv
+        key: venv-${{ runner.os }}-py3.12-${{ hashFiles('uv.lock') }}
+
+    - name: Install dependencies
+      shell: bash
+      run: uv sync --all-packages --frozen

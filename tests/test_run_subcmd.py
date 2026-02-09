@@ -7,6 +7,8 @@ from opgee.post_processor import PostProcessor
 from opgee.tool import opg
 from .utils_for_tests import path_to_test_file, tempdir
 
+pytestmark = pytest.mark.slow
+
 @pytest.fixture(autouse=True)
 def decache_post_plugins():
     PostProcessor.decache()
@@ -119,18 +121,8 @@ def test_packetization(opgee_main):
 
         opgee_main.run(None, args)
 
-        csv_files = glob(f"{output_dir}/*.csv")
-
-        # TODO: reinstate this once debugged
-        # d = {os.path.basename(name): pd.read_csv(name) for name in csv_files}
-
-        # TODO: remove temporary debugging code
-        d = {}
-        for name in csv_files:
-            try:
-                d[os.path.basename(name)] = pd.read_csv(name)
-            except Exception as e:
-                print(f"\n\nTest Exception: {e}: '{name}'\n\n")
+        csv_files = glob(f"{output_dir}/carbon_intensity_*.csv")
+        d = {os.path.basename(name): pd.read_csv(name) for name in csv_files}
 
     # Should find 3 result files; 2 with 3 results each, and one with 1 result.
     num_files = fields // packet_size + (1 if fields % packet_size else 0)

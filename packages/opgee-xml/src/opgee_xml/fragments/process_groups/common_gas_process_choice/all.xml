@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<fragment><GasLiftingCompressor/><GasReinjectionCompressor/><TransmissionCompressor/><GasReinjectionWell/><StorageCompressor/><LNGLiquefaction/><GasDistribution/><LNGRegasification/><LNGTransport/><StorageWell/><StorageSeparator/><PostStorageCompressor/><Stream src="CO2Membrane" dst="CO2ReinjectionCompressor">
+      <Contains>gas for CO2 compressor</Contains>
+    </Stream>
+    <Stream src="GasLiftingCompressor" dst="DownholePump" impute="False">
+      <Contains>lifting gas</Contains>
+    </Stream>
+    <Stream src="GasReinjectionCompressor" dst="GasReinjectionWell">
+      <Contains>gas</Contains>
+    </Stream>
+    <Stream src="TransmissionCompressor" dst="TransportationBoundary" name="transmission gas for storage">
+      <Contains>gas for storage</Contains>
+    </Stream>
+    <Stream src="TransmissionCompressor" dst="TransportationBoundary" name="transmission gas for LNG">
+      <Contains>LNG</Contains>
+    </Stream>
+    <Stream src="TransmissionCompressor" dst="TransportationBoundary" name="transmission gas for distribution">
+      <Contains>gas for distribution</Contains>
+    </Stream>
+    </fragment>
