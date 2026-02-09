@@ -1,9 +1,13 @@
 name: OPGEE Slow Tests
 
 on:
+  pull_request:
+    branches:
+      - master
+      - main
+      - dev
+      - refactor-v5
   workflow_dispatch:
-  schedule:
-    - cron: "0 6 * * 1-5"  # weekdays at 6am UTC
 
 jobs:
   slow-test:
