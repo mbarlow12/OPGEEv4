@@ -1,0 +1,59 @@
+name: Setup OPGEE Test Environment
+description: Install graphviz, uv, Python, and project dependencies with caching
+
+runs:
+  using: composite
+  steps:
+    - name: Install graphviz (Ubuntu)
+      if: runner.os == 'Linux'
+      uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: graphviz
+        version: 1.0
+
+    - name: Cache Homebrew packages (macOS)
+      if: runner.os == 'macOS'
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/Library/Caches/Homebrew
+          /usr/local/Cellar/graphviz
+          /opt/homebrew/Cellar/graphviz
+        key: brew-graphviz-${{ runner.os }}
+
+    - name: Install graphviz (macOS)
+      if: runner.os == 'macOS'
+      shell: bash
+      run: brew install graphviz || true
+
+    - name: Cache Chocolatey packages (Windows)
+      if: runner.os == 'Windows'
+      uses: actions/cache@v4
+      with:
+        path: C:\ProgramData\chocolatey\lib\graphviz
+        key: choco-graphviz-${{ runner.os }}
+
+    - name: Install graphviz (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        if (!(Test-Path "C:\ProgramData\chocolatey\lib\graphviz")) {
+          choco install graphviz -y
+        }
+
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+        cache-dependency-glob: "uv.lock"
+        python-version: "3.12"
+
+    - name: Cache venv
+      uses: actions/cache@v4
+      with:
+        path: .venv
+        key: venv-${{ runner.os }}-py3.12-${{ hashFiles('uv.lock') }}
+
+    - name: Install dependencies
+      shell: bash
+      run: uv sync --all-packages --frozen

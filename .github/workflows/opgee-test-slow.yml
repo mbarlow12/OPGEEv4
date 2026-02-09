@@ -1,0 +1,27 @@
+name: OPGEE Slow Tests
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1-5"  # weekdays at 6am UTC
+
+jobs:
+  slow-test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    name: Slow Test (${{ matrix.os }})
+
+    env:
+      OPGEE_HOME: ${{ github.workspace }}/tests/files
+      CI: "true"
+      UV_PYTHON: "3.12"
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-test-env
+
+      - name: Run slow tests
+        run: uv run pytest tests/ -xv --run-slow -m slow --cov=opgee --cov-report=xml
