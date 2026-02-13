@@ -1,5 +1,5 @@
 """
-thermo_funcs — Functional thermodynamics for OPGEE.
+opgee_thermo — Functional thermodynamics for OPGEE.
 
 A standalone, workspace-member package that re-implements the calculations
 from ``opgee.thermodynamics`` in a **purely functional** style with
@@ -9,14 +9,14 @@ No dependency on anything in ``opgee``.
 
 Sub-modules
 -----------
-- ``thermo_funcs.units``         — pint registry and ``Q_`` shorthand
-- ``thermo_funcs.constants``     — physical / model constants
-- ``thermo_funcs.types``         — frozen dataclass proxies (StreamInfo, etc.)
-- ``thermo_funcs.chemical_info`` — chemical property look-ups (requires thermosteam)
-- ``thermo_funcs.air``           — air-mixture calculations (requires thermosteam)
-- ``thermo_funcs.oil``           — oil thermodynamics
-- ``thermo_funcs.gas``           — gas thermodynamics
-- ``thermo_funcs.water``         — water / steam thermodynamics
+- ``opgee_thermo.units``         — pint registry and ``Q_`` shorthand
+- ``opgee_thermo.constants``     — physical / model constants
+- ``opgee_thermo.types``         — frozen dataclass proxies (StreamInfo, etc.)
+- ``opgee_thermo.chemical_info`` — chemical property look-ups (requires thermosteam)
+- ``opgee_thermo.air``           — air-mixture calculations (requires thermosteam)
+- ``opgee_thermo.oil``           — oil thermodynamics
+- ``opgee_thermo.gas``           — gas thermodynamics
+- ``opgee_thermo.water``         — water / steam thermodynamics
 """
 from __future__ import annotations
 
@@ -48,15 +48,15 @@ from .constants import (
 # Lazy sub-module access for heavy dependencies (thermosteam, pyXSteam, …)
 # ---------------------------------------------------------------------------
 # These names are resolved on first attribute access so that importing
-# ``thermo_funcs`` itself stays fast and doesn't require thermosteam at
+# ``opgee_thermo`` itself stays fast and doesn't require thermosteam at
 # import time.
 
 _LAZY_SUBMODULES: dict[str, str] = {
-    "chemical_info": "thermo_funcs.chemical_info",
-    "air":           "thermo_funcs.air",
-    "oil":           "thermo_funcs.oil",
-    "gas":           "thermo_funcs.gas",
-    "water":         "thermo_funcs.water",
+    "chemical_info": "opgee_thermo.chemical_info",
+    "air":           "opgee_thermo.air",
+    "oil":           "opgee_thermo.oil",
+    "gas":           "opgee_thermo.gas",
+    "water":         "opgee_thermo.water",
 }
 
 # Names re-exported from chemical_info
@@ -83,17 +83,17 @@ def __getattr__(name: str):
 
     # Re-exported chemical_info names
     if name in _CHEMICAL_INFO_ATTRS:
-        mod = importlib.import_module("thermo_funcs.chemical_info")
+        mod = importlib.import_module("opgee_thermo.chemical_info")
         globals().update({n: getattr(mod, n) for n in _CHEMICAL_INFO_ATTRS})
         return getattr(mod, name)
 
     # Re-exported air names
     if name in _AIR_ATTRS:
-        mod = importlib.import_module("thermo_funcs.air")
+        mod = importlib.import_module("opgee_thermo.air")
         globals().update({n: getattr(mod, n) for n in _AIR_ATTRS})
         return getattr(mod, name)
 
-    raise AttributeError(f"module 'thermo_funcs' has no attribute {name!r}")
+    raise AttributeError(f"module 'opgee_thermo' has no attribute {name!r}")
 
 
 # ---------------------------------------------------------------------------

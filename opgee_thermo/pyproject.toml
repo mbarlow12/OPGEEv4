@@ -1,5 +1,5 @@
 [project]
-name = "thermo_funcs"
+name = "opgee-thermo"
 version = "0.1.0"
 description = "Functional thermodynamics calculations for OPGEE"
 authors = [

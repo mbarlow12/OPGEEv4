@@ -1,5 +1,5 @@
 """
-Unit registry setup for thermo_funcs.
+Unit registry setup for opgee_thermo.
 
 Initializes a pint ApplicationRegistry with custom OPGEE unit definitions
 and exports the shared ``ureg`` and ``Quantity`` objects used throughout

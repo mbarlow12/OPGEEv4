@@ -2,9 +2,9 @@
 Gas thermodynamic calculations — purely functional.
 
 Every function that formerly lived as a method on ``Gas`` is now a free
-function.  Stream data is passed via :class:`~thermo_funcs.types.StreamInfo`
+function.  Stream data is passed via :class:`~opgee_thermo.types.StreamInfo`
 and component look-up tables via
-:class:`~thermo_funcs.types.ComponentProperties`.
+:class:`~opgee_thermo.types.ComponentProperties`.
 """
 from __future__ import annotations
 

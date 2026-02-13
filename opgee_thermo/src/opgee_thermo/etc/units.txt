@@ -1,5 +1,5 @@
 #
-# Pint unit definitions for thermo_funcs
+# Pint unit definitions for opgee_thermo
 # (copied from opgee/etc/units.txt with identical semantics)
 #
 

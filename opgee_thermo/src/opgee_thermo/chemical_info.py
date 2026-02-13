@@ -196,7 +196,7 @@ def build_component_properties(
     stp_T: pint.Quantity | None = None,
     stp_P: pint.Quantity | None = None,
 ) -> "ComponentProperties":
-    """Create a :class:`~thermo_funcs.types.ComponentProperties` for all
+    """Create a :class:`~opgee_thermo.types.ComponentProperties` for all
     tracked components.
 
     Parameters

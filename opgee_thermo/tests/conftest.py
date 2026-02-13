@@ -1,5 +1,5 @@
 """
-Fixtures for thermo_funcs tests.
+Fixtures for opgee_thermo tests.
 
 These replicate the data that the original opgee test suite obtained by
 loading test_model.xml and reading field.oil / field.gas / field.water.
@@ -9,15 +9,15 @@ independent of the opgee package.
 import pandas as pd
 import pytest
 
-from thermo_funcs.air import dry_air_properties
-from thermo_funcs.chemical_info import build_component_properties, mol_weights, heating_value
-from thermo_funcs.types import (
+from opgee_thermo.air import dry_air_properties
+from opgee_thermo.chemical_info import build_component_properties, mol_weights, heating_value
+from opgee_thermo.types import (
     AirProperties,
     ComponentProperties,
     StreamInfo,
     TemperaturePressure,
 )
-from thermo_funcs.units import ureg, Q_
+from opgee_thermo.units import ureg, Q_
 
 # ---------------------------------------------------------------------------
 # Test-model parameters  (from tests/files/test_model.xml, field "test")
@@ -70,14 +70,14 @@ def oil_SG() -> "pint.Quantity":
 @pytest.fixture(scope="session")
 def gas_SG(dry_air) -> "pint.Quantity":
     """Gas specific gravity for the test-model gas composition."""
-    from thermo_funcs.oil import gas_specific_gravity
+    from opgee_thermo.oil import gas_specific_gravity
     mw = mol_weights()
     return gas_specific_gravity(TEST_GAS_COMP, mw, dry_air)
 
 
 @pytest.fixture(scope="session")
 def oil_LHV_mass() -> "pint.Quantity":
-    from thermo_funcs.oil import mass_energy_density
+    from opgee_thermo.oil import mass_energy_density
     return mass_energy_density(TEST_API, use_LHV=True)
 
 

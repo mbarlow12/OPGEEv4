@@ -4,7 +4,7 @@ Oil thermodynamic calculations — purely functional.
 Every function that formerly lived as a method on ``Oil`` (or
 ``AbstractSubstance``) is now a free function.  ``self`` state is replaced by
 explicit parameters: scalar :class:`pint.Quantity` values or the lightweight
-proxy data-classes from :mod:`thermo_funcs.types`.
+proxy data-classes from :mod:`opgee_thermo.types`.
 """
 from __future__ import annotations
 
