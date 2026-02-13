@@ -1,9 +1,15 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.12'",
     "python_full_version < '3.12'",
+]
+
+[manifest]
+members = [
+    "opgee",
+    "thermo-funcs",
 ]
 
 [[package]]
@@ -1691,6 +1697,43 @@ sdist = { url = "https://files.pythonhosted.org/packages/cf/d0/05eeac4529d2cbc3a
 wheels = [
     { url = "https://files.pythonhosted.org/packages/96/1a/e0ed0364163d57c6624e2589dee29aa7df7a6b91b0014ab51a3ad879bd21/thermo-0.4.1-py3-none-any.whl", hash = "sha256:ca3a11d1cfefb8d26fced4529305be35b1b59bc0631586402b2490eec5c606eb", size = 10450523, upload-time = "2024-12-09T01:50:32.418Z" },
 ]
+
+[[package]]
+name = "thermo-funcs"
+version = "0.1.0"
+source = { editable = "thermo_funcs" }
+dependencies = [
+    { name = "chemicals" },
+    { name = "graphviz" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "pint" },
+    { name = "pint-pandas" },
+    { name = "pyxsteam" },
+    { name = "pyyaml" },
+    { name = "thermosteam" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "chemicals", specifier = ">=1.2.0" },
+    { name = "graphviz", specifier = ">=0.20.3" },
+    { name = "numpy", specifier = ">=1.26.4" },
+    { name = "pandas", specifier = ">=2.2.3" },
+    { name = "pint", specifier = ">=0.24.3" },
+    { name = "pint-pandas", specifier = ">=0.6.2" },
+    { name = "pyxsteam", specifier = ">=0.4.9" },
+    { name = "pyyaml", specifier = ">=6.0.2" },
+    { name = "thermosteam", specifier = ">=0.45.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=8.3.4" }]
 
 [[package]]
 name = "thermosteam"

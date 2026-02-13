@@ -62,6 +62,12 @@ include = ["opgee*"]
 [tool.uv]
 package = true
 
+[tool.uv.workspace]
+members = ["thermo_funcs"]
+
+[tool.uv.sources]
+thermo_funcs = { workspace = true }
+
 [dependency-groups]
 dev = [
     "pytest>=8.3.4",

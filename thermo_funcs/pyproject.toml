@@ -1,0 +1,34 @@
+[project]
+name = "thermo_funcs"
+version = "0.1.0"
+description = "Functional thermodynamics calculations for OPGEE"
+authors = [
+  { name = "Michael Barlow", email = "mbarlow@rmi.org" },
+]
+dependencies = [
+  "chemicals>=1.2.0",
+  "graphviz>=0.20.3",
+  "numpy>=1.26.4",
+  "pandas>=2.2.3",
+  "pint>=0.24.3",
+  "pint-pandas>=0.6.2",
+  "pyxsteam>=0.4.9",
+  "pyyaml>=6.0.2",
+  "thermosteam>=0.45.0",
+]
+requires-python = ">=3.11"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["thermo_funcs*"]
+
+[tool.setuptools.package-data]
+thermo_funcs = ["etc/*.txt", "etc/*.csv"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.4",
+]
