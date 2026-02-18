@@ -34,7 +34,7 @@ dependencies = [
   "thermo>=0.3.0",
   "thermosteam>=0.45.0",
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 readme = "README.md"
 license-files = ["LICENSE.txt"]
 classifiers = [
@@ -63,7 +63,4 @@ include = ["opgee*"]
 package = true
 
 [dependency-groups]
-dev = [
-    "pytest>=8.3.4",
-    "ruff>=0.11.8",
-]
+dev = ["pytest>=8.3.4", "ruff>=0.11.8"]
