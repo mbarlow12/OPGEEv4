@@ -138,3 +138,5 @@ DEPRECATED_launch_plugin.py
 DEPRECATED_runsim_plugin.py
 tests/tmp/
 .vscode/
+.claude/settings.local.json
+.agents/plans
