@@ -38,15 +38,15 @@ dependencies = [
   "thermosteam>=0.45.0",
   "xmlschema>=4.3.1",
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 readme = "README.md"
 license-files = ["LICENSE.txt"]
 classifiers = [
   "Development Status :: 2 - Pre-Alpha",
   "Intended Audience :: Science/Research",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
 
 [build-system]
@@ -64,24 +64,14 @@ opg = "opgee.tool:main"
 include = ["opgee*"]
 
 [tool.pytest.ini_options]
-markers = [
-    "slow: marks tests as slow (skip unless --run-slow is passed)",
-]
+markers = ["slow: marks tests as slow (skip unless --run-slow is passed)"]
 
 [tool.uv]
 package = true
 
 [tool.uv.workspace]
-members = [
-    "packages/opgee-input",
-    "packages/opgee-xml",
-]
+members = ["packages/opgee-input", "packages/opgee-xml"]
 
 
 [dependency-groups]
-dev = [
-    "pytest>=8.3.4",
-    "pytest-cov>=6.0.0",
-    "ruff>=0.11.8",
-    "ty>=0.0.15",
-]
+dev = ["pytest>=8.3.4", "pytest-cov>=6.0.0", "ruff>=0.11.8", "ty>=0.0.15"]

@@ -1,0 +1,7 @@
+{
+  "include": ["opgee", "packages"],
+  "extraPaths": ["packages/opgee-input/src", "packges/optee-xml/src"],
+  "venvPath": ".",
+  "venv": ".venv",
+  "pythonVersion": "3.12"
+}

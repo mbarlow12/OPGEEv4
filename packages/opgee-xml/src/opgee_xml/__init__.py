@@ -3,6 +3,7 @@
 Public API:
     process_field_xml(input_path) -> Iterator[ParsedField]
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterator
@@ -54,7 +55,9 @@ def process_field_xml(input_path: Path) -> Iterator[ParsedField]:
                 f"{'; '.join(post_errors)}"
             )
 
-        analysis_input = extract_analysis(unit.analysis) if unit.analysis is not None else None
+        analysis_input = (
+            extract_analysis(unit.analysis) if unit.analysis is not None else None
+        )
 
         yield ParsedField(
             field=field_input,

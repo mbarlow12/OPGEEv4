@@ -1,5 +1,54 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<fragment><Boundary boundary="Production"/><Boundary boundary="Transportation"/><Boundary boundary="Distribution"/><Exploration after="true"/><Drilling after="true"/><ReservoirWellInterface cycle-start="true"/><DownholePump/><CrudeOilStorage/><CO2ReinjectionCompressor/><SourGasCompressor/><CO2InjectionWell/><Flaring/><Separation impute-start="true"/><CrudeOilDewatering/><CrudeOilStabilization/><VRUCompressor/><Venting/><SourGasInjection/><GasLiftingCompressor/><GasReinjectionCompressor/><WaterTreatment/><BitumenMining/><SteamGeneration/><WaterInjection/><HeavyOilDilution/><HeavyOilUpgrading/><GasGathering/><GasPartition/><VFPartition/><GasDehydration/><AcidGasRemoval/><Demethanizer/><PreMembraneChiller/><PreMembraneCompressor/><CO2Membrane/><RyanHolmes/><GasReinjectionWell/><CrudeOilTransport/><PetrocokeTransport/><TransmissionCompressor/><StorageCompressor/><StorageWell/><StorageSeparator/><GasDistribution/><PostStorageCompressor/><NGL/><LNGLiquefaction/><LNGRegasification/><LNGTransport/><!--		Mixture processing path-->
+<fragment>
+  <Boundary boundary="Production"/>
+  <Boundary boundary="Transportation"/>
+  <Boundary boundary="Distribution"/>
+  <Exploration after="true"/>
+  <Drilling after="true"/>
+  <ReservoirWellInterface cycle-start="true"/>
+  <DownholePump/>
+  <CrudeOilStorage/>
+  <CO2ReinjectionCompressor/>
+  <SourGasCompressor/>
+  <CO2InjectionWell/>
+  <Flaring/>
+  <Separation impute-start="true"/>
+  <CrudeOilDewatering/>
+  <CrudeOilStabilization/>
+  <VRUCompressor/>
+  <Venting/>
+  <SourGasInjection/>
+  <GasLiftingCompressor/>
+  <GasReinjectionCompressor/>
+  <WaterTreatment/>
+  <BitumenMining/>
+  <SteamGeneration/>
+  <WaterInjection/>
+  <HeavyOilDilution/>
+  <HeavyOilUpgrading/>
+  <GasGathering/>
+  <GasPartition/>
+  <VFPartition/>
+  <GasDehydration/>
+  <AcidGasRemoval/>
+  <Demethanizer/>
+  <PreMembraneChiller/>
+  <PreMembraneCompressor/>
+  <CO2Membrane/>
+  <RyanHolmes/>
+  <GasReinjectionWell/>
+  <CrudeOilTransport/>
+  <PetrocokeTransport/>
+  <TransmissionCompressor/>
+  <StorageCompressor/>
+  <StorageWell/>
+  <StorageSeparator/>
+  <GasDistribution/>
+  <PostStorageCompressor/>
+  <NGL/>
+  <LNGLiquefaction/>
+  <LNGRegasification/>
+  <LNGTransport/><!--		Mixture processing path-->
     <Stream src="Exploration" dst="Drilling">
       <Contains>None</Contains>
     </Stream>
