@@ -10,13 +10,6 @@ resolution-markers = [
     "python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 
-[manifest]
-members = [
-    "opgee",
-    "opgee-input",
-    "opgee-xml",
-]
-
 [[package]]
 name = "alabaster"
 version = "1.0.0"
@@ -1339,44 +1332,6 @@ dev = [
     { name = "pytest-cov", specifier = ">=6.0.0" },
     { name = "ruff", specifier = ">=0.11.8" },
     { name = "ty", specifier = ">=0.0.15" },
-]
-
-[[package]]
-name = "opgee-input"
-version = "0.1.0"
-source = { editable = "packages/opgee-input" }
-dependencies = [
-    { name = "pint" },
-    { name = "pydantic" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pytest" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "pint", specifier = ">=0.24.3" },
-    { name = "pydantic", specifier = ">=2.12.5" },
-]
-
-[package.metadata.requires-dev]
-dev = [{ name = "pytest", specifier = ">=9.0.2" }]
-
-[[package]]
-name = "opgee-xml"
-version = "0.1.0"
-source = { editable = "packages/opgee-xml" }
-dependencies = [
-    { name = "lxml" },
-    { name = "opgee-input" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "lxml", specifier = ">=5.3.0" },
-    { name = "opgee-input", editable = "packages/opgee-input" },
 ]
 
 [[package]]

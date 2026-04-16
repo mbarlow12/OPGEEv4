@@ -1,5 +1,0 @@
-<?xml version='1.0' encoding='UTF-8'?>
-<fragment><BitumenMining/><Stream src="BitumenMining" dst="HeavyOilDilution">
-      <Contains>oil for dilution</Contains>
-    </Stream>
-    </fragment>
