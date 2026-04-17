@@ -1,4 +1,5 @@
 """Core OPGEE base classes and physical constants."""
+
 import datetime
 import time
 
@@ -16,38 +17,6 @@ class OpgeeObject:
 
     def __str__(self) -> str:
         return self.name
-
-
-class TemperaturePressure:
-    """Stores temperature and pressure together for convenience."""
-    __slots__ = ('T', 'P')
-
-    def __init__(self, T, P):
-        self.T = None
-        self.P = None
-        self.set(T=T, P=P)
-
-    def __str__(self):
-        return f"<T={self.T} P={self.P}>"
-
-    def set(self, T=None, P=None):
-        if T is None and P is None:
-            return
-        if T is not None:
-            self.T = T if isinstance(T, pint.Quantity) else ureg.Quantity(float(T), "degF")
-        if P is not None:
-            self.P = P if isinstance(P, pint.Quantity) else ureg.Quantity(float(P), "psia")
-
-    def get(self):
-        return (self.T, self.P)
-
-    def copy_from(self, tp):
-        self.set(T=tp.T, P=tp.P)
-
-
-std_temperature = ureg.Quantity(60.0, "degF")
-std_pressure    = ureg.Quantity(14.676, "psia")
-STP = TemperaturePressure(std_temperature, std_pressure)
 
 
 def dict_from_list(objs):
@@ -71,7 +40,7 @@ class Timer:
     def __init__(self, feature_name, start=True):
         self.feature_name = feature_name
         self.start_time = None
-        self.stop_time  = None
+        self.stop_time = None
 
         if start:
             self.start()
@@ -96,3 +65,60 @@ class Timer:
         else:
             status = f"completed in {self.duration()}"
         return f"<Timer '{self.feature_name}' {status}>"
+
+
+from .error import OpgeeException
+
+
+def coercible(value, type_fn, default=None):
+    """Attempt to coerce `value` using `type_fn`, return `default` on failure."""
+    try:
+        return type_fn(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def to_int(value, default=None):
+    return coercible(value, int, default=default)
+
+
+def binary(value, default=None):
+    return coercible(value, lambda v: int(float(v)), default=default)
+
+
+def parse_boolean(value):
+    """Parse string to boolean. Replaces getBooleanXML."""
+    if isinstance(value, bool):
+        return value
+    s = str(value).strip().lower()
+    if s in ("1", "true", "yes"):
+        return True
+    if s in ("0", "false", "no"):
+        return False
+    raise OpgeeException(f"Cannot convert '{value}' to boolean")
+
+
+def getFuncName(level=1):
+    """Return the name of the calling function."""
+    import inspect
+
+    return inspect.stack()[level][3]
+
+
+def roundup(value, nearest):
+    """Round `value` up to the nearest multiple of `nearest`."""
+    return int(nearest * ((value + nearest - 1) // nearest))
+
+
+def flatten(lst):
+    """Flatten a list of lists into a single list."""
+    return [item for sublist in lst for item in sublist]
+
+
+def dequantify_dataframe(df):
+    """Remove pint units from a DataFrame's values."""
+    return df.apply(lambda col: col.pint.magnitude if hasattr(col, "pint") else col)
+
+
+# Deprecated alias (removed in a later phase; retained here while callers are migrated)
+getBooleanXML = parse_boolean
