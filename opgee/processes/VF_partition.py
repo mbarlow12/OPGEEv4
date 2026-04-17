@@ -6,10 +6,15 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-from ..core import STP
 import logging
+
+from pint.facets.plain import PlainQuantity as Quantity
+
+from ..context import FieldContext
+from ..core import STP
 from ..process import Process
 from ..stream import PHASE_GAS, Stream
+from ..thermodynamics import Gas
 
 _logger = logging.getLogger(__name__)
 
@@ -18,8 +23,13 @@ class VFPartition(Process):
     """
     VF (Venting and Flaring) partition is to check the reasonable amount of gas goes to venting, flaring and further process
     """
-    def __init__(self, name, **kwargs):
-        super().__init__(name, **kwargs)
+    def __init__(self, name: str, ctx: FieldContext, gas: Gas, FOR: Quantity[float], oil_volume_rate: Quantity[float], combusted_gas_frac: Quantity[float]):
+        super().__init__(name, ctx)
+
+        self.gas = gas
+        self.FOR = FOR
+        self.oil_volume_rate = oil_volume_rate
+        self.combusted_gas_frac = combusted_gas_frac
 
         # TODO: avoid process names in contents.
         self._required_inputs = [
@@ -32,25 +42,8 @@ class VFPartition(Process):
             "gas for venting",
         ]
 
-        self.mol_per_scf = self.field.model.const("mol-per-scf")
-
-        self.FOR = None
-        self.combusted_gas_frac = None
-        self.oil_volume_rate = None
-
-        self.cache_attributes()
-
-    def cache_attributes(self):
-        field = self.field
-        self.FOR = field.FOR
-        self.oil_volume_rate = field.oil_volume_rate
-
-        # TODO: add smart default to this parameter from lookup table
-        self.combusted_gas_frac = field.attr("combusted_gas_frac")
-
-    def run(self, analysis):
+    def run(self):
         self.print_running_msg()
-        field = self.field
 
         if not self.all_streams_ready("gas for partition"):
             return
@@ -59,8 +52,8 @@ class VFPartition(Process):
         if input.is_uninitialized():
             return
 
-        input_stream_mol_fracs = field.gas.component_molar_fractions(input)
-        SCO_bitumen_ratio = field.get_process_data("SCO_bitumen_ratio")
+        input_stream_mol_fracs = self.gas.component_molar_fractions(input)
+        SCO_bitumen_ratio = self.ctx.process_data.get("SCO_bitumen_ratio")
         temp = self.oil_volume_rate * self.FOR
         if SCO_bitumen_ratio:
             volume_of_gas_flared = temp / SCO_bitumen_ratio
@@ -71,7 +64,7 @@ class VFPartition(Process):
         volume_rate_gas_combusted = temp * self.combusted_gas_frac
         volume_rate_gas_slip = temp * (1 - self.combusted_gas_frac)
 
-        temp = field.gas.component_gas_rho_STP[volume_rate_gas_combusted.index]
+        temp = self.gas.component_gas_rho_STP[volume_rate_gas_combusted.index]
         mass_rate_gas_combusted =\
             volume_rate_gas_combusted * temp
         mass_rate_gas_slip = volume_rate_gas_slip * temp

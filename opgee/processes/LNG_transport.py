@@ -7,11 +7,13 @@
 # See LICENSE.txt for license details.
 #
 import logging
-from typing import Any
 
 from ..context import FieldContext
+from ..import_export import NGL_LPG
 from ..process import Process
 from ..thermodynamics import Gas
+from .shared import get_energy_carrier
+from .transport_energy import TransportEnergy
 
 _logger = logging.getLogger(__name__)
 
@@ -26,10 +28,10 @@ class LNGTransport(Process):
         name: str,
         ctx: FieldContext,
         gas: Gas,
-        transport_energy: Any,
-        transport_share_fuel: Any,
-        transport_parameter: Any,
-        transport_by_mode: Any,
+        transport_energy: TransportEnergy,
+        transport_share_fuel,
+        transport_parameter,
+        transport_by_mode,
     ):
         super().__init__(name, ctx)
 
@@ -58,9 +60,25 @@ class LNGTransport(Process):
         output = self.find_output_stream("gas")
         output.copy_flow_rates_from(input)
 
-        # TODO(phase 5 tier 2): TransportEnergy still uses legacy API expecting `field`.
-        # Wire properly when transport_energy.py is migrated. The pre-refactor flow
-        # was: gas_LHV_rate = input.total_gas_rate() * self.gas.mass_energy_density(input);
-        # then transport_energy.get_transport_energy_dict(..., gas_LHV_rate, "LNG"); then
-        # set_import_from_energy + set_export(NGL_LPG, gas_LHV_rate) + set_combustion_emissions.
-        raise NotImplementedError("LNGTransport.run: blocked on TransportEnergy migration (Tier 2)")
+        gas_mass_rate = input.total_gas_rate()
+        gas_mass_energy_density = self.gas.mass_energy_density(input)
+        gas_LHV_rate = gas_mass_rate * gas_mass_energy_density
+
+        # LNG denominator: LHV per unit mass for C1 (methane), the dominant LNG component
+        denominator = self.gas.component_LHV_mass["C1"]
+
+        fuel_consumption = self.transport_energy.get_transport_energy_dict(
+            self.transport_parameter,
+            self.transport_share_fuel,
+            self.transport_by_mode,
+            gas_LHV_rate,
+            "LNG",
+            denominator,
+        )
+
+        for name, value in fuel_consumption.items():
+            self.energy.set_rate(get_energy_carrier(name), value.to("mmBtu/day"))
+
+        self.set_import_from_energy(self.energy)
+        self.import_export.set_export(self.name, NGL_LPG, gas_LHV_rate)
+        self.set_combustion_emissions()
