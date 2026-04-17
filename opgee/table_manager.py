@@ -1,21 +1,17 @@
-#
-# TableManager class
-#
-# Author: Richard Plevin and Wennan Long
-#
-# Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
-# See LICENSE.txt for license details.
-#
+import logging
 import os
+from importlib.resources import files
 
 import pandas as pd
 
-from .core import OpgeeObject
 from .error import OpgeeException
-from .log import getLogger
-from .pkg_utils import resourceStream
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
+
+
+def _table_path(basename: str):
+    """Return a resource path (Traversable) for a CSV table in opgee.tables."""
+    return files("opgee.tables").joinpath(f"{basename}.csv")
 
 
 class TableDef(object):
@@ -31,7 +27,7 @@ class TableDef(object):
         self.fillna = fillna
 
 
-class TableManager(OpgeeObject):
+class TableManager:
     """
     The TableManager loads built-in CSV files into DataFrames and stores them in a dictionary keyed by the root name
     of the table. When adding CSV files to the opgee “tables” directory, a corresponding entry must be added in the
@@ -76,9 +72,8 @@ class TableManager(OpgeeObject):
 
     _table_def_dict = {tbl_def.basename: tbl_def for tbl_def in table_defs}
 
-    def __init__(self, updates=None):
+    def __init__(self):
         self.table_dict = {}
-        self.updates = updates
 
     def get_table(self, name, raiseError=True):
         """
@@ -101,30 +96,24 @@ class TableManager(OpgeeObject):
                 else:
                     return None
 
-            relpath = f"tables/{name}.csv"
-            s = resourceStream(relpath, stream_type='text')
-            if tbl_def.has_units:
-                df = pd.read_csv(s, index_col=tbl_def.index_col, header=[0, 1])
+            path = _table_path(name)
+            with path.open('r') as f:
+                if tbl_def.has_units:
+                    df = pd.read_csv(f, index_col=tbl_def.index_col, header=[0, 1])
 
-                unitful_cols = [name for name, unit in df.columns if unit != '_']
-                for col in unitful_cols:
-                    df[col] = df[col].astype(float) # force numeric values to float to avoid complaints from pint
+                    unitful_cols = [name for name, unit in df.columns if unit != '_']
+                    for col in unitful_cols:
+                        df[col] = df[col].astype(float)  # force numeric values to float to avoid complaints from pint
 
-                df_units = df[unitful_cols].pint.quantify(level=-1)
-                df[unitful_cols] = df_units[unitful_cols]
-                df.columns = df.columns.droplevel(1)        # drop the units from the column index
-            else:
-                df = pd.read_csv(s, index_col=tbl_def.index_col) if tbl_def.index_row is None \
-                    else pd.read_csv(s, index_col=tbl_def.index_col, header=tbl_def.index_row)
+                    df_units = df[unitful_cols].pint.quantify(level=-1)
+                    df[unitful_cols] = df_units[unitful_cols]
+                    df.columns = df.columns.droplevel(1)  # drop the units from the column index
+                else:
+                    df = pd.read_csv(f, index_col=tbl_def.index_col) if tbl_def.index_row is None \
+                        else pd.read_csv(f, index_col=tbl_def.index_col, header=tbl_def.index_row)
 
             if tbl_def.fillna is not None:
                 df.fillna(tbl_def.fillna, inplace=True)
-
-            # apply XML table updates from user
-            update = self.updates and self.updates.get(name)
-            if update and update.enabled:
-                for cell in update.cells:
-                    df.loc[cell.row, cell.col] = cell.value
 
             self.table_dict[name] = df
 
