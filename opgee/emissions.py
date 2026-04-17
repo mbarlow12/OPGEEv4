@@ -1,9 +1,9 @@
 import pandas as pd
 import pint
 
+from .chemistry import VOCS
 from .units import magnitude, ureg
 from .error import OpgeeException
-from .stream import Stream
 
 EM_COMBUSTION = 'Combustion'
 EM_LAND_USE = 'Land-use'
@@ -219,7 +219,7 @@ class Emissions:
             self.add_rate(category, EM_CO, series[EM_CO])
 
         # All gas-phase hydrocarbons heavier than methane are considered VOCs
-        voc_rate = series[series.index.intersection(Stream.VOCs)].sum()
+        voc_rate = series[series.index.intersection(VOCS)].sum()
         self.add_rate(category, EM_VOC, voc_rate)
 
     def set_from_series(self, category, series):
@@ -238,7 +238,7 @@ class Emissions:
             self.set_rate(category, EM_CO, series[EM_CO])
 
         # All gas-phase hydrocarbons heavier than methane are considered VOCs
-        voc_rate = series[series.index.intersection(Stream.VOCs)].sum()
+        voc_rate = series[series.index.intersection(VOCS)].sum()
         self.set_rate(category, EM_VOC, voc_rate)
 
     def add_rates_from(self, emissions):

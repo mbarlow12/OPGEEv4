@@ -1,139 +1,62 @@
-import pytest
-from opgee.error import OpgeeException
-from opgee.process import Process
-from opgee.units import ureg
+"""Tests for opgee.stream.Stream.
 
-from .utils_for_tests import load_test_model
-
-
-class Proc1(Process):
-    def run(self, analysis):
-        pass
-
-
-class Proc2(Process):
-    def run(self, analysis):
-        pass
-
-
-class Proc3(Process):
-    def __init__(self, name, **kwargs):
-        super().__init__(name, **kwargs)
-
-        self._required_inputs = [
-            self.valdict(r'.*gas.*', min=2, max=2),
-        ]
-        self._required_outputs = [
-            "CO2",
-        ]
-
-    def run(self, analysis):
-        pass
-
-
-class Proc4(Process):
-    def run(self, analysis):
-        pass
-
-
-@pytest.fixture(scope="module")
-def stream_model(configure_logging_for_tests):
-    return load_test_model('test_stream.xml')
+Process-level stream-finding tests (``find_stream`` / ``find_output_stream``
+etc.) will be reintroduced under Phase 6.2 once the new Field/Process API
+is in place; for now we only exercise Stream's direct public surface.
+"""
+from opgee.chemistry import PHASE_GAS, PHASE_LIQUID, is_carbon_number
+from opgee.core import TemperaturePressure
+from opgee.stream import Stream
 
 
 def test_carbon_number():
-    from opgee.stream import is_carbon_number
     assert is_carbon_number("C2") and is_carbon_number("C200")
-
     assert not is_carbon_number("foo")
 
 
-def test_find_stream(stream_model):
-    analysis = stream_model.get_analysis('test')
-    field = analysis.get_field('test')
-
-    name = 'stream1'
-    s = field.find_stream(name)
-    assert s.name == name
-
-    bad_name = 'unknown_stream'
-    with pytest.raises(OpgeeException, match=f"Stream named '{bad_name}' was not found .*"):
-        field.find_stream(bad_name)
-
-    proc3 = field.find_process('Proc3')
-
-    stream = proc3.find_output_stream('CO2')
-    assert stream and 'CO2' in stream.contents
-
-    contents = 'hydrogen'
-    with pytest.raises(OpgeeException, match=f"Expected one output stream with '{contents}'.*"):
-        proc3.find_output_stream(contents)
-
-    streams = proc3.find_output_streams('hydrogen', as_list=False)
-    assert streams and isinstance(streams, dict) and len(streams) == 2
-
-    streams = proc3.find_output_streams('hydrogen', as_list=True)
-    assert streams and isinstance(streams, list) and len(streams) == 2
-
-    with pytest.raises(OpgeeException, match=".*both 'combine' and 'as_list' cannot be True"):
-        proc3.find_output_streams('hydrogen', as_list=True, combine=True)
-
-    streams = proc3.find_input_streams('gas.*', as_list=False, regex=True)
-    assert streams and isinstance(streams, dict)
-
-    streams = proc3.find_input_streams('gas.*', as_list=True, regex=True)
-    assert streams and isinstance(streams, list)
-
-    with pytest.raises(OpgeeException, match=f".*no input streams contain '{bad_name}'"):
-        proc3.find_input_streams(bad_name, combine=False, as_list=False, raiseError=True)
-
-    bad_regex = r'foo.*'
-    with pytest.raises(OpgeeException, match=f".*no input streams contain '{bad_regex}'"):
-        proc3.find_input_streams(bad_regex, combine=False, as_list=False, regex=True, raiseError=True)
-
-def test_initialization(stream_model):
-    analysis = stream_model.get_analysis('test')
-    field = analysis.get_field('test')
-
-    stream1 = field.find_stream('initialized')
-    assert stream1.is_initialized() and not stream1.has_zero_flow()
-
-    stream2 = field.find_stream("Proc3-to-Proc4")
-    assert stream2.is_uninitialized() and stream2.has_zero_flow()
-
-    stream2.set_gas_flow_rate("CO2", 0)
-    assert stream2.is_initialized() and stream2.has_zero_flow()
-
-    stream2.set_gas_flow_rate("CO2", 10)
-    assert stream2.is_initialized() and not stream2.has_zero_flow()
-
-    assert stream2.solid_flow_rate('PC').m == 0
-
-    rates = stream1.non_zero_flow_rates()
-    assert len(rates) == 1 and rates.index[0] == 'oil'
-    oil = rates.loc['oil']
-    assert oil.solid.m == 0.0 and oil.gas.m == 0.0 and oil.liquid.m == 100.0
-
-
-def test_combustion_stream(stream_model):
-    analysis = stream_model.get_analysis('test')
-    field = analysis.get_field('test')
-    stream1 = field.find_stream("combustion stream")
-    CO2_stream = field.find_stream("combusted final stream")
-    CO2_stream.add_combustion_CO2_from(stream1)
-    assert CO2_stream.gas_flow_rate("CO2") == ureg.Quantity(pytest.approx(8.950127703143934), "t/d")
-
-def test_stream_utils(stream_model):
-    from opgee.core import TemperaturePressure
-    from opgee.stream import Stream
-    tp = None
-    s = Stream('stream1', tp)
+def test_stream_utils():
+    s = Stream("stream1", None)
     assert s.tp is None
 
     tp = TemperaturePressure(100, 200)
     s.set_tp(tp)
 
-    # check that T & P are unchanged
-    s.tp.T.m == 100.0
-    s.tp.P.m == 200.0
-    
+    assert s.tp.T.m == 100.0
+    assert s.tp.P.m == 200.0
+
+
+def test_to_dataframe():
+    tp = TemperaturePressure(100, 200)
+    s = Stream(
+        "stream1", tp, src_name="src_proc", dst_name="dst_proc", contents=["gas"]
+    )
+    s.set_flow_rate("C1", PHASE_GAS, 12.5)
+    s.set_flow_rate("oil", PHASE_LIQUID, 3.25)
+
+    df = s.to_dataframe()
+
+    # The legacy 'field' column was dropped in Phase 3.3.
+    assert "field" not in df.columns
+    assert list(df.columns) == [
+        "stream",
+        "source",
+        "destination",
+        "phase",
+        "component",
+        "value",
+        "units",
+    ]
+
+    assert (df["stream"] == "stream1").all()
+    assert (df["source"] == "src_proc").all()
+    assert (df["destination"] == "dst_proc").all()
+
+    # component rows present
+    component_rows = df[df["phase"].isin(["gas", "liquid", "solid"])]
+    components = set(component_rows["component"])
+    assert "C1" in components
+    assert "oil" in components
+
+    # T and P rows appear with blank phase
+    extras = df[df["phase"] == ""]
+    assert set(extras["component"]) >= {"T", "P"}

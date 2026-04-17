@@ -6,161 +6,73 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
+import logging
 import re
 from copy import copy
 
 import pandas as pd
 import pint
-import pint_pandas
 
-from .units import ureg, magnitude
-from .attributes import AttributeMixin
-from .core import XmlInstantiable, elt_name, TemperaturePressure
-from .error import OpgeeException, ModelValidationError
-import logging
-from .table_manager import TableManager
-from .utils import getBooleanXML, coercible
+from .chemistry import (
+    CARBON_NUMBER,
+    COMPONENT_NAMES,
+    GASES,
+    HYDROCARBONS,
+    LIQUIDS,
+    PHASE_GAS,
+    PHASE_LIQUID,
+    PHASE_SOLID,
+    VOCS,
+)
+from .context import FieldContext
+from .core import TemperaturePressure
+from .error import OpgeeException
+from .units import magnitude, ureg
 
 _logger = logging.getLogger(__name__)
 
-# constants to use instead of strings
-PHASE_SOLID = "solid"
-PHASE_LIQUID = "liquid"
-PHASE_GAS = "gas"
+# Carbon-number series used by ``add_combustion_CO2_from``. Built once at
+# module load from the canonical ``CARBON_NUMBER`` dict in ``opgee.chemistry``.
+_carbon_number_series = pd.Series(CARBON_NUMBER, dtype="pint[dimensionless]")
 
-# Compile the patterns at load time for better performance
-_carbon_number_prog = re.compile(r"^C(\d+)$")
-_hydrocarbon_prog = re.compile(r"^(C\d+)H(\d+)$")
-
-
-def is_carbon_number(name):
-    return _carbon_number_prog.match(name) is not None
-
-
-def is_hydrocarbon(name):
-    return name == "CH4" or _hydrocarbon_prog.match(name) is not None
-
-
-def molecule_to_carbon(molecule):
-    if molecule == "CH4":
-        return "C1"
-
-    m = _hydrocarbon_prog.match(molecule)
-    if m is None:
-        raise OpgeeException(
-            f"Expected hydrocarbon molecule name like CxHy, got {molecule}"
-        )
-
-    c_name = m.group(1)
-    return c_name
-
-
-def carbon_to_molecule(c_name):
-    if c_name == "C1":
-        return "CH4"
-
-    m = _carbon_number_prog.match(c_name)
-    if m is None:
-        raise OpgeeException(f"Expected carbon number name like Cn, got {c_name}")
-
-    carbons = int(m.group(1))
-    hydrogens = 2 * carbons + 2
-    molecule = f"{c_name}H{hydrogens}"
-    return molecule
+# Components assumed to combust completely to CO2 (used by
+# ``add_combustion_CO2_from``).
+_combustible_components = HYDROCARBONS + GASES
 
 
 #
 # Can streams have emissions (e.g., leakage) or is that attributed to a process?
 #
-class Stream(AttributeMixin, XmlInstantiable):
+class Stream:
     """
-    The `Stream` class represent the flow rates of single substances or mingled combinations of co-flowing substances
-    in any of the three states of matter (solid, liquid, or gas). Streams and stream components are specified in mass
-    flow rates (e.g., Mg per day). The default set of substances is defined by ``Stream.component_names`` but can be
-    extended by the user to include other substances, by setting the configuration file variable
-    `OPGEE.StreamComponents`.
-
-    Streams are defined within the `<Field>` element and are stored in a `Field` instance. The `Field` class tracks
-    all `Stream` instances in a dictionary keyed by `Stream` name.
-
-    See also :doc:`OPGEE XML documentation <opgee-xml>`
+    The `Stream` class represents the flow rates of single substances or mingled
+    combinations of co-flowing substances in any of the three states of matter
+    (solid, liquid, or gas). Streams and stream components are specified in mass
+    flow rates (e.g., Mg per day). The default set of substances is defined by
+    ``opgee.chemistry.COMPONENT_NAMES``.
     """
 
     _phases = [PHASE_SOLID, PHASE_LIQUID, PHASE_GAS]
 
-    # HCs with 1-60 carbon atoms, i.e., C1, C2, ..., C50
-    mgr = TableManager()
-    table_name = "pubchem-cid"
-    pubchem_cid_df = mgr.get_table(table_name)
-
-    idx = pubchem_cid_df.index
-    _hydrocarbons = list(idx)
-    max_carbon_number = len(_hydrocarbons)
-    _carbon_number_dict = {f"C{n}": float(n) for n in range(1, max_carbon_number + 1)}
-
-    # Verify that the pubchem-cid index includes 1..N where N is the max_carbon number
-    if set(_carbon_number_dict.keys()) != set(idx):
-        raise ModelValidationError(
-            f"{table_name} must contain carbon numbers 1..{max_carbon_number}."
-        )
-
-    # All hydrocarbon gases other than methane (C1) are considered VOCs.
-    VOCs = _hydrocarbons[1:]
-
-    _solids = ["PC"]  # petcoke
-    _liquids = ["oil"]
-
-    # _hc_molecules = ['CH4', 'C2H6', 'C3H8', 'C4H10']
-    non_hydrocarbon_gases = _gases = [
-        "N2",
-        "O2",
-        "CO2",
-        "H2O",
-        "H2",
-        "H2S",
-        "SO2",
-        "CO",
-        "Argon",
-        "Neon",
-        "Helium",
-        "Krypton",
-        "Xenon",
-    ]
-    _other = ["Na+", "Cl-", "Si-"]
-
-    combustible_components = _hydrocarbons + _gases
-
-    for gas in _gases:
-        _carbon_number_dict[gas] = 1.0 if gas[0] == "C" else 0.0
-
-    carbon_number = pd.Series(_carbon_number_dict, dtype="pint[dimensionless]")
-
-    #: The stream components tracked by OPGEE. This list can be extended by calling ``Stream.extend_components(names)``,
-    #: or more simply by defining configuration file variable ``OPGEE.StreamComponents``.
-    component_names = _solids + _liquids + _gases + _other + _hydrocarbons
-
-    # Remember extensions to avoid applying any redundantly.
-    # Value is a dict keyed by set(added_component_names).
-    _extensions = {}
-
     _units = ureg.Unit("tonne/day")
-    
+
     tp: TemperaturePressure
 
     def __init__(
         self,
-        name,
-        tp,
-        parent=None,
+        name: str,
+        tp: TemperaturePressure | None,
+        ctx: FieldContext | None = None,
+        *,
         API=None,
         comp_matrix=None,
-        src_name=None,
-        dst_name=None,
-        contents=None,
-        impute=True,
+        src_name: str | None = None,
+        dst_name: str | None = None,
+        contents: list[str] | None = None,
+        impute: bool = True,
     ):
-        AttributeMixin.__init__(self)  # no-op, but here for completeness
-        XmlInstantiable.__init__(self, name, parent=parent)
+        self.name = name
+        self.ctx = ctx
 
         # TBD: rename this self.comp_matrix for clarity
         self.components = (
@@ -169,28 +81,29 @@ class Stream(AttributeMixin, XmlInstantiable):
 
         self.tp = copy(tp)
 
-        # These values are used by self.reset() to restore the stream to it's initial state per the XML.
+        # These values are used by self.reset() to restore the stream to its
+        # initial state.
         self.initial_tp = copy(self.tp)
-        self.xml_data = comp_matrix
+        self.initial_data = comp_matrix
 
         self.src_name = src_name
         self.dst_name = dst_name
 
         self.src_proc = None  # set in Field.connect_processes()
         self.dst_proc = None
-        self.field = None
         self.API = API
 
         self.contents = contents or []  # generic description of what the stream carries
 
         self.impute = impute
 
-        # This flag indicates whether any data have been written to the stream yet. Note that it is False
-        # if only temperature and pressure are set, though setting T & P makes no sense on an empty stream.
-        self.has_exogenous_data = self.initialized = comp_matrix is not None
+        # Tracks whether any data have been written to the stream yet. Note
+        # that it is False if only temperature and pressure are set, though
+        # setting T & P makes no sense on an empty stream.
+        self.initialized = comp_matrix is not None
 
     def __str__(self):
-        return f"<Stream '{self.name}' enabled={self.enabled}>"
+        return f"<Stream '{self.name}'>"
 
     def to_dataframe(self):
         """
@@ -226,31 +139,25 @@ class Stream(AttributeMixin, XmlInstantiable):
         extras = pd.DataFrame(data=tuples, columns=columns)
         result = pd.concat([df, extras], axis='rows')
 
-        result['field'] = self.parent.name
         result['stream'] = self.name
         result['source'] = self.src_name
         result['destination'] = self.dst_name
 
-        col_order = ["field", "stream", "source", "destination"] + columns
+        col_order = ["stream", "source", "destination"] + columns
         return result[col_order]
-
-    def children(self):
-        return []
-
-    def validate(self):
-        pass
 
     def reset(self):
         """
-        Reset an existing `Stream` to a state suitable for re-running the model. If the stream
-        was initialized with data from the XML, this will have been stored in self.xml_data and
-        is used to reset the stream. Otherwise, a new component matrix is created.
+        Reset an existing `Stream` to a state suitable for re-running the model.
+        If the stream was initialized with an explicit component matrix, this
+        will have been stored in ``self.initial_data`` and is used to reset the
+        stream. Otherwise, a new component matrix is created.
 
         :return: none
         """
-        self.initialized = has_xml_data = self.xml_data is not None
+        self.initialized = has_initial_data = self.initial_data is not None
         self.components = (
-            self.xml_data if has_xml_data else self.create_component_matrix()
+            self.initial_data if has_initial_data else self.create_component_matrix()
         )
 
         self.tp.copy_from(self.initial_tp)
@@ -258,36 +165,6 @@ class Stream(AttributeMixin, XmlInstantiable):
     @classmethod
     def units(cls):
         return cls._units
-
-    @classmethod
-    def extend_components(cls, names):
-        """
-        Allows the user to extend the global `Component` list. This must be called before any streams
-        are instantiated. This method is called automatically if the configuration file variable
-        ``OPGEE.StreamComponents`` is not empty: set it to a comma-delimited list of component names
-        which will be added to ``Stream.names`` at startup.
-
-        :param names: (iterable of str) the names of new stream components.
-        :return: None
-        :raises: OpgeeException if any of the names were previously defined stream components.
-        """
-        name_set = frozenset(names)  # frozenset so we can use as index into _extensions
-
-        if name_set in cls._extensions:
-            _logger.debug(f"Redundantly tried to extend components with {names}")
-        else:
-            cls._extensions[name_set] = True
-
-        # ensure no duplicate names
-        bad = name_set.intersection(set(cls._extensions))
-        if bad:
-            raise OpgeeException(
-                f"extend_components: these proposed extensions are already defined: {bad}"
-            )
-
-        _logger.info(f"Extended stream components to include {names}")
-
-        cls.component_names.extend(names)
 
     @classmethod
     def create_component_matrix(cls):
@@ -298,7 +175,7 @@ class Stream(AttributeMixin, XmlInstantiable):
         """
         return pd.DataFrame(
             data=0.0,
-            index=cls.component_names,
+            index=COMPONENT_NAMES,
             columns=cls._phases,
             dtype="pint[tonne/day]",
         )
@@ -347,7 +224,7 @@ class Stream(AttributeMixin, XmlInstantiable):
         :param phase: (str) the name of a phase of matter ('gas', 'liquid' or 'solid')
         :return: (float) the flow rates for all the hydrocarbons
         """
-        return self.flow_rate(self._hydrocarbons + self._liquids, phase)
+        return self.flow_rate(HYDROCARBONS + LIQUIDS, phase)
 
     def hydrocarbon_rate(self, phase):
         """
@@ -363,7 +240,7 @@ class Stream(AttributeMixin, XmlInstantiable):
 
         :return:
         """
-        return self.gas_flow_rate(self._hydrocarbons + self._gases)
+        return self.gas_flow_rate(HYDROCARBONS + GASES)
 
     def total_gas_rate(self):
         """
@@ -435,7 +312,7 @@ class Stream(AttributeMixin, XmlInstantiable):
         return self.flow_rate(name, PHASE_SOLID)
 
     def voc_flow_rates(self):
-        return self.components.gas[Stream.VOCs]
+        return self.components.gas[VOCS]
 
     def non_zero_flow_rates(self):
         zero = ureg.Quantity(0.0, "tonne/day")
@@ -641,12 +518,10 @@ class Stream(AttributeMixin, XmlInstantiable):
 
         component_MW = ChemicalInfo.mol_weights()
 
-        combustibles = stream.combustible_components
-
         rate = (
-            stream.components.loc[combustibles, PHASE_GAS]
-            / component_MW[combustibles]
-            * Stream.carbon_number
+            stream.components.loc[_combustible_components, PHASE_GAS]
+            / component_MW[_combustible_components]
+            * _carbon_number_series
             * component_MW["CO2"]
         ).sum()
 
@@ -666,82 +541,6 @@ class Stream(AttributeMixin, XmlInstantiable):
         else:
             return stream_type in self.contents
 
-    @classmethod
-    def from_xml(cls, elt, parent=None):
-        """
-        Instantiate an instance from an XML element
-
-        :param elt: (etree.Element) representing a <Stream> element
-        :param parent: (opgee.Field) the Field containing the new Stream
-        :return: (Stream) instance of class Stream
-        """
-        a = elt.attrib
-        src = a["src"]
-        dst = a["dst"]
-        name = a.get("name") or f"{src} => {dst}"
-        impute = getBooleanXML(a.get("impute", "1"))
-
-        # There should be 2 attributes: temperature and pressure
-        # N.B. These are added via <ClassAttrs> in etc/attributes.xml and cannot
-        # currently be added via XML, i.e., not permitted in opgee.xsd.
-        attr_dict = cls.instantiate_attrs(elt)
-        expected = {"temperature", "pressure", "API"}
-        if set(attr_dict.keys()) != expected:
-            raise OpgeeException(
-                f"Stream {name}: expected attributes {sorted(expected)}"
-            )
-
-        temp = attr_dict["temperature"].value
-        pres = attr_dict["pressure"].value
-        tp = TemperaturePressure(temp, pres)
-
-        API = attr_dict["API"].value
-
-        contents = [node.text for node in elt.findall("Contains")]
-
-        # Set up the stream component info, if provided
-        comp_elts = elt.findall("Component")
-        has_exogenous_data = len(comp_elts) > 0
-
-        if has_exogenous_data:
-            matrix = cls.create_component_matrix()
-
-            for comp_elt in comp_elts:
-                a = comp_elt.attrib
-                comp_name = elt_name(comp_elt)
-                rate = coercible(comp_elt.text, float)
-                phase = a[
-                    "phase"
-                ]  # required by XML schema to be one of the 3 legal values
-
-                # convert hydrocarbon molecule name to carbon number format
-                if is_hydrocarbon(comp_name):
-                    comp_name = molecule_to_carbon(comp_name)
-
-                if comp_name not in matrix.index:
-                    raise OpgeeException(
-                        f"Unrecognized stream component name '{comp_name}'."
-                    )
-
-                matrix.loc[comp_name, phase] = rate
-
-        else:
-            matrix = None  # let the stream create it
-
-        obj = Stream(
-            name,
-            tp,
-            API=API,
-            parent=parent,
-            comp_matrix=matrix,
-            src_name=src,
-            dst_name=dst,
-            contents=contents,
-            impute=impute,
-        )
-
-        return obj
-
     @property
     def hydrocarbons(self):
-        return self._hydrocarbons
+        return HYDROCARBONS

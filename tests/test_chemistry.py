@@ -4,6 +4,7 @@ from opgee.chemistry import (
     COMPONENT_NAMES, CARBON_NUMBER, VOCS, HYDROCARBONS,
     R_GAS,
 )
+from opgee.units import ureg
 
 
 def test_phase_constants():
@@ -36,6 +37,9 @@ def test_hydrocarbons():
 
 
 def test_r_gas():
-    # Universal gas constant in J/(mol·K)
+    # Universal gas constant in J/(mol·K). Compare against a reference
+    # Quantity rather than a formatted unit string — the default pint
+    # output format can be mutated by other imported libraries (e.g.
+    # thermosteam), so string-level comparisons are brittle.
     assert abs(R_GAS.magnitude - 8.31446) < 0.001
-    assert str(R_GAS.units) == "joule / kelvin / mole"
+    assert R_GAS.units == ureg.Unit("joule / kelvin / mole")

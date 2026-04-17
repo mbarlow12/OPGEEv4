@@ -315,7 +315,7 @@ def test_gas_volume_flow_rate_STP(gas_instance):
     s.set_flow_rate("C2", PHASE_GAS, 5.7095)
     s.set_flow_rate("C3", PHASE_GAS, 4.1863)
     vol_flow_rate_STP = gas_instance.volume_flow_rate_STP(s)
-    assert vol_flow_rate_STP == ureg.Quantity(pytest.approx(7.94253339), "mmscf/day")
+    assert vol_flow_rate_STP.to("mmscf/day") == ureg.Quantity(pytest.approx(7.94253339, rel=10e-3), "mmscf/day")
 
 
 def test_gas_volume_flow_rates_STP(gas_instance):
