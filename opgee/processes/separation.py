@@ -6,21 +6,52 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
+import logging
+
+import pandas as pd
+from pint.facets.plain import PlainQuantity as Quantity
+
 from ..combine_streams import combine_streams
+from ..context import FieldContext
 from ..core import TemperaturePressure
 from ..emissions import EM_FUGITIVES
-import logging
 from ..process import Process
 from ..processes.compressor import Compressor
 from ..stream import Stream, PHASE_GAS
+from ..thermodynamics import Gas, Oil, Water
 from .shared import get_energy_carrier, get_energy_consumption_stages
 
 _logger = logging.getLogger(__name__)
 
 
 class Separation(Process):
-    def __init__(self, name, **kwargs):
-        super().__init__(name, **kwargs)
+    def __init__(
+        self,
+        name: str,
+        ctx: FieldContext,
+        oil: Oil,
+        gas: Gas,
+        water: Water,
+        oil_volume_rate: Quantity[float],
+        wellhead_t: Quantity[float],
+        wellhead_p: Quantity[float],
+        gas_oil_ratio: Quantity[float],
+        gas_comp: pd.Series,
+        stab_gas_press: Quantity[float],
+        WOR: Quantity[float],
+        API: Quantity[float],
+        prime_mover_type: str,
+        temperature_outlet: Quantity[float],
+        pressure_outlet: Quantity[float],
+        pressure_first_stage: Quantity[float],
+        pressure_second_stage: Quantity[float],
+        pressure_third_stage: Quantity[float],
+        number_stages: int,
+        water_content_oil_emulsion: Quantity[float],
+        eta_compressor: Quantity[float],
+        loss_rate: Quantity[float],
+    ):
+        super().__init__(name, ctx)
 
         # TODO: avoid process names in contents.
         self._required_inputs = [
@@ -31,87 +62,61 @@ class Separation(Process):
             "gas for partition",    # TODO: this is called "gas for gas partition" elsewhere
         ]
 
-        self.compressor_eff = None
-        self.gas_comp = None
-        self.gas_oil_ratio = None
-        self.loss_rate = None
-        self.loss_rate = None
-        self.num_of_stages = None
-        self.num_of_stages = None
-        self.oil_volume_rate = None
-        self.outlet_tp = None
-        self.pressure_after_boosting = None
-        self.pressure_stage1 = None
-        self.pressure_stage2 = None
-        self.pressure_stage3 = None
-        self.prime_mover_type = None
-        self.temperature_stage1 = None
-        self.temperature_stage2 = None
-        self.water_content = None
+        self.oil = oil
+        self.gas = gas
+        self.water = water
+        self.water_density_STP = water.density()
 
-        self.cache_attributes()
+        self.oil_volume_rate = oil_volume_rate
+        self.API = API
+        self.WOR = WOR
+        self.prime_mover_type = prime_mover_type
+        self.compressor_eff = eta_compressor
+        self.num_of_stages = number_stages
+        self.water_content = water_content_oil_emulsion
+        self.pressure_after_boosting = stab_gas_press
 
-    def cache_attributes(self):
-        field = self.field
-        self.oil_volume_rate = field.oil_volume_rate
+        self.outlet_tp = TemperaturePressure(temperature_outlet, pressure_outlet)
+        self.wellhead_tp = TemperaturePressure(wellhead_t, wellhead_p)
 
-        # Primary mover type is one of: {"NG_engine", "Electric_motor", "Diesel_engine", "NG_turbine"}
-        self.prime_mover_type = self.attr("prime_mover_type")
-
-        self.loss_rate = self.venting_fugitive_rate()
-        self.loss_rate = (1 / (1 - self.loss_rate)).to("frac")
-
-        self.outlet_tp = TemperaturePressure(self.attr("temperature_outlet"),
-                                             self.attr("pressure_outlet"))
-
-        self.temperature_stage1 = field.wellhead_t
-        self.temperature_stage2 = (self.temperature_stage1.to("kelvin") + self.outlet_tp.T.to("kelvin")) / 2
+        self.temperature_stage1 = wellhead_t
+        self.temperature_stage2 = (wellhead_t.to("kelvin") + self.outlet_tp.T.to("kelvin")) / 2
 
         #TODO: move it to smart default
-        self.pressure_stage1 = min(field.wellhead_p, self.attr("pressure_first_stage"))
-        self.pressure_stage2 = self.attr("pressure_second_stage")
-        self.pressure_stage3 = self.attr("pressure_third_stage")
+        self.pressure_stage1 = min(wellhead_p, pressure_first_stage)
+        self.pressure_stage2 = pressure_second_stage
+        self.pressure_stage3 = pressure_third_stage
 
-        self.gas_oil_ratio = field.gas_oil_ratio
-        self.gas_comp = field.gas_comp
+        self.gas_oil_ratio = gas_oil_ratio
+        self.gas_comp = gas_comp
 
-        self.num_of_stages = self.attr("number_stages")
         #TODO: move it to smart default
-        if field.wellhead_p.m < 500:
+        if wellhead_p.m < 500:
             self.num_of_stages = 1
 
-        self.pressure_after_boosting = field.stab_gas_press
+        self.loss_rate = loss_rate
 
-        self.water_content = self.attr("water_content_oil_emulsion")
-        self.compressor_eff = self.attr("eta_compressor")
-
-    def run(self, analysis):
+    def run(self):
         self.print_running_msg()
-        field = self.field
-
-        #TODO: Fix this after data pipeline is done
-        water_oil_ratio = field.attr("WOR")
 
         # mass rate
         input = self.find_input_stream("oil")
 
-        loss_rate = field.component_fugitive_table[self.name]
-        gas_fugitives = self.set_gas_fugitives(input, loss_rate)
+        gas_fugitives = self.set_gas_fugitives(input, self.loss_rate)
 
         gas_after = self.find_output_stream("gas for partition")
         gas_after.copy_gas_rates_from(input)
         gas_after.subtract_rates_from(gas_fugitives)
-        field.save_process_data(gas_tp_after_separation=gas_after.tp)
+        self.ctx.process_data["gas_tp_after_separation"] = gas_after.tp
 
         self.set_iteration_value(gas_after.total_flow_rate())
 
         # energy rate
 
-        free_gas_stages, final_GOR = self.get_free_gas_stages(field, input)  # (float, list) scf/bbl
+        free_gas_stages, final_GOR = self.get_free_gas_stages(input)  # (float, list) scf/bbl
         gas_compression_volume_stages = [(self.oil_volume_rate * free_gas).to("mmscf/day") for free_gas in
                                          free_gas_stages]
-        compressor_brake_horsepower_of_stages = self.compressor_brake_horsepower_of_stages(self.field,
-                                                                                           gas_after,
+        compressor_brake_horsepower_of_stages = self.compressor_brake_horsepower_of_stages(gas_after,
                                                                                            gas_compression_volume_stages)
         energy_consumption_of_stages = get_energy_consumption_stages(self.prime_mover_type,
                                                                      compressor_brake_horsepower_of_stages)
@@ -129,21 +134,18 @@ class Separation(Process):
         self.emissions.set_from_stream(EM_FUGITIVES, gas_fugitives)
 
     def impute(self):
-        field = self.field
-        oil = field.oil
+        oil = self.oil
 
-        gas_after, oil_after, water_after = self.get_output_streams(field)
+        gas_after, oil_after, water_after = self.get_output_streams()
         output = combine_streams([oil_after, gas_after, water_after])
 
-        loss_rate = field.component_fugitive_table[self.name]
-        loss_rate = (1 / (1 - loss_rate)).to("frac")
-        output.multiply_flow_rates(loss_rate)
+        output.multiply_flow_rates(self.loss_rate)
 
         input = self.find_input_stream("oil")
-        input.copy_flow_rates_from(output, tp=field.wellhead_tp)
+        input.copy_flow_rates_from(output, tp=self.wellhead_tp)
         oil_LHV_rate = oil.energy_flow_rate(input)
-        gas_LHV_rate = field.gas.energy_flow_rate(input)
-        field.save_process_data(wellhead_LHV_rate=gas_LHV_rate + oil_LHV_rate)
+        gas_LHV_rate = self.gas.energy_flow_rate(input)
+        self.ctx.process_data["wellhead_LHV_rate"] = gas_LHV_rate + oil_LHV_rate
 
     def get_stages_temperature_and_pressure(self):
 
@@ -153,11 +155,11 @@ class Separation(Process):
 
         return temperature_of_stages, pressure_of_stages
 
-    def get_output_streams(self, field):
+    def get_output_streams(self):
         temperature_of_stages, pressure_of_stages = self.get_stages_temperature_and_pressure()
 
-        oil = field.oil
-        gas = field.gas
+        oil = self.oil
+        gas = self.gas
 
         gas_after = self.find_output_stream("gas for partition")
 
@@ -182,10 +184,9 @@ class Separation(Process):
         oil_after.set_liquid_flow_rate("oil", oil_mass_rate)
         oil_after.set_liquid_flow_rate("H2O", water_in_oil_mass_rate)
         oil_after.set_tp(self.outlet_tp)
-        oil_after.set_API(field.attr("API"))
+        oil_after.set_API(self.API)
 
-        water_density_STP = field.water.density()
-        water_mass_rate = max(0, self.oil_volume_rate * field.attr("WOR") * water_density_STP - water_in_oil_mass_rate)
+        water_mass_rate = max(0, self.oil_volume_rate * self.WOR * self.water_density_STP - water_in_oil_mass_rate)
         water_after = self.find_output_stream("water")
         water_after.set_liquid_flow_rate("H2O", water_mass_rate, tp=self.outlet_tp)
 
@@ -194,15 +195,14 @@ class Separation(Process):
     def water_in_oil_mass_rate(self, oil_mass_rate):
         """
 
-        :param field:
         :param oil_mass_rate: (float) oil mass rate
         :return: (float) water mass rate in the oil stream after separation (unit = tonne/day)
         """
         water_in_oil_mass_rate = (oil_mass_rate * self.water_content).to("tonne/day")
         return water_in_oil_mass_rate
 
-    def get_free_gas_stages(self, field, input_stream):
-        oil = field.oil
+    def get_free_gas_stages(self, input_stream):
+        oil = self.oil
 
         temperature_of_stages, pressure_of_stages = self.get_stages_temperature_and_pressure()
 
@@ -224,11 +224,10 @@ class Separation(Process):
 
         return free_gas_of_stages, solution_gas_oil_ratio_of_stages[-1]
 
-    def compressor_brake_horsepower_of_stages(self, field, gas_stream, gas_compression_volume_stages):
+    def compressor_brake_horsepower_of_stages(self, gas_stream, gas_compression_volume_stages):
         """
         Get the compressor horsepower of all stages in the separator
 
-        :param field:
         :param gas_stream:
         :param gas_compression_volume_stages: (float) a list contains gas compression volume for each stages
         :return: (float) compresssor brake horsepower for each stages
@@ -247,7 +246,7 @@ class Separation(Process):
                        pressure_of_stages,
                        compression_ratio_per_stages,
                        gas_compression_volume_stages):
-            work_sum, _, _ = Compressor.get_compressor_work_temp(field, inlet_temp, inlet_press,
+            work_sum, _, _ = Compressor.get_compressor_work_temp(self.gas, inlet_temp, inlet_press,
                                                                  gas_stream, compression_ratio, num_of_compression)
             horsepower = work_sum * gas_compression_volume
             brake_horsepower = horsepower / self.compressor_eff
