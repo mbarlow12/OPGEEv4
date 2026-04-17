@@ -1,16 +1,7 @@
-#
-# Emissions handling
-#
-# Author: Richard Plevin
-#
-# Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
-# See LICENSE.txt for license details.
-#
 import pandas as pd
 import pint
 
 from .units import magnitude, ureg
-from .core import OpgeeObject
 from .error import OpgeeException
 from .stream import Stream
 
@@ -43,7 +34,7 @@ class EmissionsError(OpgeeException):
             return f"{self.func_name}: Unrecognized gas '{self.gas}'"
 
 
-class Emissions(OpgeeObject):
+class Emissions:
     """
     Emissions is an object wrapper around a pandas.Series holding emission flow
     rates for a pre-defined set of substances, defined in ``Emissions.emissions``.
