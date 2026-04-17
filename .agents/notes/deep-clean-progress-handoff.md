@@ -10,7 +10,7 @@
 
 ## 1. Status at this handoff
 
-**Just completed:** Phase 5 in full. All 51 Process subclasses + helper classes migrated to the new `Process(name, ctx)` + `run(self)` constructor shape. `TransportEnergy` and `predict_blower_energy_use` helpers fully refactored to pure-param APIs. `SteamGenerator` helper class decoupled from `Field`. Gate tag `phase-5-gate` applied at commit `c6cc513`.
+**Just completed:** Phase 5 in full. All 51 Process subclasses + helper classes migrated to the new `Process(name, ctx)` + `run(self)` constructor shape. `TransportEnergy` and `predict_blower_energy_use` helpers fully refactored to pure-param APIs. `SteamGenerator` helper class decoupled from `Field`. The `phase-5-gate` tag marks the gate commit; the `STOP` tag marks the session-stop / resume point (both land on the same commit — this doc).
 **Next resume point:** Task 6.1 — restructure `opgee/field.py` (remove AttributeMixin / XmlInstantiable / from_xml / SmartDefault / Boundary / compute_carbon_intensity; introduce new explicit-param constructor; move bfs → networkx; move graph metadata from Process to Field). **Opus** model recommended for this task.
 
 ### What landed since the previous handoff (phase-5-tier-2-complete `4b28c9c`)
@@ -85,8 +85,8 @@ Callers: `acid_gas_removal.py`, `gas_dehydration.py`, `demethanizer.py`. No more
 |---|---|---|
 | #1 | ✅ completed | Phase 5.3: Tier 3 — 19 complex processes (batches D–I + 2 single) |
 | #2 | ✅ completed | Phase 5.4: Refactor predict_blower_energy_use (atomic, rolled into Batch F commit) |
-| #3 | 🔄 in_progress | **Phase 5.5: Verification gate — Phase 5** (this handoff closes it) |
-| #4 | pending (next) | **Phase 6.1: Restructure Field class** ← resume here |
+| #3 | ✅ completed | Phase 5.5: Verification gate — Phase 5 (closed by this commit) |
+| #4 | 🔄 pending (next) | **Phase 6.1: Restructure Field class** ← resume here |
 | #5 | pending | Phase 6.2: Adapt remaining test files |
 | #6 | pending | Phase 6.3: Final cleanup — public API + dependencies |
 | #7 | pending | Phase 6.4: Final verification gate |
@@ -162,7 +162,8 @@ The heaviest wiring work is inside `SteamGenerator` construction — ~50 values 
 ## 4. Tags and recent commits (newest first)
 
 ```
-(this commit) docs: phase 5 gate handoff                                                            ← phase-5-gate
+(HEAD)  docs: phase 5 gate handoff                                                                  ← phase-5-gate, STOP
+9f91c28 docs: phase 5 gate handoff (superseded by HEAD for tag resolution)
 c6cc513 phase 5: migrate Tier 3 singles gas_partition.py + steam_generator.py (closes Task 5.3)
 b9a53c0 phase 5: migrate Tier 3 Batch I (2 files, 30-32 refs) + exploration TransportEnergy rewire
 7bf2a46 phase 5: migrate Tier 3 Batch H (3 files, 24-28 refs)
@@ -178,7 +179,7 @@ f5f9344 phase 5: migrate Tier 2 Batch A (7 files, 3-5 field refs)
 5aabd26 phase 4: address 4.1 code-quality review                                                    ← phase-4-gate
 ```
 
-Tag list (chronological): `phase-0-gate` → `phase-1-gate` → `phase-2-gate` → `phase-3-gate` → `phase-4-gate` → `phase-5-tier-2-complete` (mid-phase) → **`phase-5-gate`**. Next gate tag will be `phase-6-gate` after Task 6.4.
+Tag list (chronological): `phase-0-gate` → `phase-1-gate` → `phase-2-gate` → `phase-3-gate` → `phase-4-gate` → `phase-5-tier-2-complete` (mid-phase) → **`phase-5-gate`** + **`STOP`** (both on this commit). Next gate tag will be `phase-6-gate` after Task 6.4. The `STOP` tag marks the resume point for the next session.
 
 ---
 
@@ -198,7 +199,7 @@ Tag list (chronological): `phase-0-gate` → `phase-1-gate` → `phase-2-gate` �
 1. **This file** — the handoff.
 2. `.agents/docs/plans/2026-04-16-deep-clean-plan.md` — skim; read Phase 6 Task 6.1 in detail (lines ~1527-1614).
 3. `.agents/notes/2026-04-16-deep-clean-field.md` — the historical Field analysis; the Task 6.1 implementer should read this.
-4. `opgee/process.py` at `c6cc513` — confirm new `Process(name, ctx)` shape is unchanged since Phase 4.
+4. `opgee/process.py` at `phase-5-gate` — confirm new `Process(name, ctx)` shape is unchanged since Phase 4.
 5. `opgee/context.py` — confirm FieldContext interface (the contract Field must satisfy).
 6. `opgee/processes/transport_energy.py` and `opgee/processes/steam_generator.py` — helper-class shapes Field must wire up.
 7. (Optional) 2–3 migrated process files (e.g. `heavy_oil_upgrading.py`, `gas_partition.py`, `steam_generation.py`) — to understand the constructor parameter shapes Field must satisfy.
