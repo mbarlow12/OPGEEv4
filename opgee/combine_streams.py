@@ -1,21 +1,21 @@
 #
-# OPGEE Attribute and related classes
+# Stream combination utilities
 #
 # Authors: Richard Plevin and Wennan Long
 #
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior
 # University. See LICENSE.txt for license details.
 #
+import logging
 import pandas as pd
 
 from .units import ureg
 from .core import STP
 from .core import TemperaturePressure
-from .log import getLogger
 from .stream import Stream
 from .thermodynamics import Oil, Gas, Water
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 # TODO: improve this to use temp and press
 def combine_streams(streams):
