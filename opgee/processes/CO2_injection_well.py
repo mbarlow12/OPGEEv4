@@ -6,8 +6,12 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-from ..emissions import EM_FUGITIVES
 import logging
+
+from pint.facets.plain import PlainQuantity as Quantity
+
+from ..context import FieldContext
+from ..emissions import EM_FUGITIVES
 from ..process import Process
 
 _logger = logging.getLogger(__name__)
@@ -23,8 +27,12 @@ class CO2InjectionWell(Process):
         output streams:
             - gas for gas partition: gas stream with CO2 injected into reservoir
     """
-    def __init__(self, name, **kwargs):
-        super().__init__(name, **kwargs)
+
+    loss_rate: Quantity[float]
+
+    def __init__(self, name: str, ctx: FieldContext, loss_rate: Quantity[float]):
+        super().__init__(name, ctx)
+        self.loss_rate = loss_rate
 
         # TODO: avoid process names in contents.
         self._required_inputs = [
@@ -35,20 +43,16 @@ class CO2InjectionWell(Process):
             "gas for gas partition",
         ]
 
-    def run(self, analysis):
+    def run(self):
         self.print_running_msg()
-        field = self.field
 
         # Get input stream and check if it's initialized
         input = self.find_input_stream("gas")
         if input.is_uninitialized():
             return
 
-        # Calculate fugitive loss rate
-        loss_rate = self.get_compressor_and_well_loss_rate(input)
-
         # Set up gas fugitives stream and calculate flow rates
-        gas_fugitives = self.set_gas_fugitives(input, loss_rate)
+        gas_fugitives = self.set_gas_fugitives(input, self.loss_rate)
 
         # Set up output gas stream for gas partition
         gas_to_partition = self.find_output_stream("gas for gas partition")
@@ -61,7 +65,7 @@ class CO2InjectionWell(Process):
 
         self.set_iteration_value(gas_to_partition.total_flow_rate())
 
-        field.save_process_data(is_input_from_well=True)
+        self.ctx.process_data["is_input_from_well"] = True
 
         # Set fugitive emissions rates
         emissions = self.emissions

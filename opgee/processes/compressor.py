@@ -10,9 +10,10 @@ from typing import Optional, Sequence, Tuple
 
 from pint.facets.plain import PlainQuantity as Quantity
 
-from opgee.core import OpgeeObject, TemperaturePressure
+from opgee.core import TemperaturePressure
 from opgee.processes.shared import get_energy_consumption
 from opgee.stream import Stream
+from opgee.thermodynamics import Gas
 from opgee.units import ureg
 
 # type aliases
@@ -23,16 +24,13 @@ Q_IntTuple = Tuple[Q_Float, int]
 
 _power = [1, 1 / 2, 1 / 3, 1 / 4, 1 / 5]
 
-class Compressor(OpgeeObject):
-    def __init__(self, field):
-        self.field = field
-
+class Compressor:
     @staticmethod
-    def get_compressor_work_temp(field, inlet_temp, inlet_press, gas_stream, compression_ratio, num_of_compression,
+    def get_compressor_work_temp(gas: Gas, inlet_temp, inlet_press, gas_stream, compression_ratio, num_of_compression,
     ) -> Tuple[Q_Float, Q_Float, Q_Float]:
         """
 
-        :param field:
+        :param gas: (Gas) thermodynamics Gas instance
         :param inlet_temp:
         :param inlet_press:
         :param gas_stream:
@@ -40,7 +38,6 @@ class Compressor(OpgeeObject):
         :param num_of_compression:
         :return:(float) overall work from compressor which has maximum five stages (unit = hp*day/mmscf)
         """
-        gas = field.gas
         corrected_temp = gas.corrected_pseudocritical_temperature(gas_stream)
         corrected_press = gas.corrected_pseudocritical_pressure(gas_stream)
         ratio_of_specific_heat = gas.ratio_of_specific_heat(gas_stream)
@@ -83,7 +80,7 @@ class Compressor(OpgeeObject):
     @staticmethod
     @ureg.wraps(("mmbtu/day", "degF", "psia"), (None, None, None, "frac", None, None))
     def get_compressor_energy_consumption(
-        field,
+        gas: Gas,
         prime_mover_type,
         eta_compressor,
         overall_compression_ratio,
@@ -93,7 +90,7 @@ class Compressor(OpgeeObject):
         """
         Calculate compressor energy consumption
 
-        :param field: (Field)
+        :param gas: (Gas) thermodynamics Gas instance
         :param prime_mover_type:
         :param eta_compressor:
         :param overall_compression_ratio:
@@ -110,13 +107,13 @@ class Compressor(OpgeeObject):
             return energy_consumption, inlet_temp, inlet_press
 
         compression_ratio, num_stages = Compressor.get_compression_ratio_and_stage(overall_compression_ratio)
-        total_work, outlet_temp, outlet_press = Compressor.get_compressor_work_temp(field,
+        total_work, outlet_temp, outlet_press = Compressor.get_compressor_work_temp(gas,
                                                                                     inlet_temp,
                                                                                     inlet_press,
                                                                                     inlet_stream,
                                                                                     compression_ratio,
                                                                                     num_stages)
-        volume_flow_rate_STP = field.gas.volume_flow_rate_STP(inlet_stream)
+        volume_flow_rate_STP = gas.volume_flow_rate_STP(inlet_stream)
         total_energy = total_work * volume_flow_rate_STP
         brake_horse_power = total_energy / eta_compressor
         energy_consumption = get_energy_consumption(prime_mover_type, brake_horse_power)

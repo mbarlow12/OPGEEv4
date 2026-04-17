@@ -6,18 +6,28 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-from ..units import ureg
+import logging
+
+from pint.facets.plain import PlainQuantity as Quantity
+
+from ..context import FieldContext
 from ..emissions import EM_FUGITIVES
 from ..energy import EN_ELECTRICITY
-import logging
 from ..process import Process
+from ..units import ureg
 
 _logger = logging.getLogger(__name__)
 
 
 class PreMembraneChiller(Process):
-    def __init__(self, name, **kwargs):
-        super().__init__(name, **kwargs)
+    outlet_temp: "Quantity[float]"
+    loss_rate: "Quantity[float]"
+
+    def __init__(self, name: str, ctx: FieldContext, outlet_temp: "Quantity[float]", loss_rate: "Quantity[float]"):
+        super().__init__(name, ctx)
+
+        self.outlet_temp = outlet_temp
+        self.loss_rate = loss_rate
 
         # TODO: avoid process names in contents.
         self._required_inputs = [
@@ -32,13 +42,7 @@ class PreMembraneChiller(Process):
         self.feed_stream_mass_rate = ureg.Quantity(6.111072, "tonne/day")
         self.pressure_drop = ureg.Quantity(56.0, "delta_degC")
 
-        self.outlet_temp = None
-        self.cache_attributes()
-
-    def cache_attributes(self):
-        self.outlet_temp = self.attr("chiller_outlet_temp")
-
-    def run(self, analysis):
+    def run(self):
         self.print_running_msg()
 
         # mass rate
@@ -46,8 +50,7 @@ class PreMembraneChiller(Process):
         if input.is_uninitialized():
             return
 
-        loss_rate = self.venting_fugitive_rate()
-        gas_fugitives = self.set_gas_fugitives(input, loss_rate)
+        gas_fugitives = self.set_gas_fugitives(input, self.loss_rate)
 
         gas_to_compressor = self.find_output_stream("gas")
         gas_to_compressor.copy_flow_rates_from(input)
