@@ -6,24 +6,57 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-import pandas as pd
+import logging
 
-from ..units import ureg
+import pandas as pd
+from pint.facets.plain import PlainQuantity as Quantity
+
+from ..context import FieldContext
 from ..core import STP
 from ..emissions import EM_FLARING
 from ..energy import EN_NATURAL_GAS, EN_ELECTRICITY, EN_UPG_PROC_GAS, EN_PETCOKE
 from ..import_export import ELECTRICITY, H2
-import logging
 from ..process import Process
-from ..stream import PHASE_GAS
-from ..stream import Stream
+from ..stream import PHASE_GAS, Stream
+from ..thermodynamics import Gas, Oil, Water
+from ..units import ureg
 
 _logger = logging.getLogger(__name__)
 
 
 class HeavyOilUpgrading(Process):
-    def __init__(self, name, **kwargs):
-        super().__init__(name, **kwargs)
+    """
+    Synthetic crude oil (SCO) upgrading of heavy oil / bitumen.
+
+    Takes bitumen (``oil for upgrading``) and produces SCO (``oil for storage``),
+    exported process gas, flared gas, and petrocoke. Energy use is split across
+    natural gas, upgrader process gas, petcoke heat, and imported electricity.
+    Electricity and hydrogen are exported via ``self.import_export``.
+
+    The ``upgrader_type`` string selects a column in ``heavy_oil_upgrading_df``
+    that drives all yield ratios. When ``upgrader_type == "None"``, the caller
+    is expected to omit this process from the field; no internal gating remains.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        ctx: FieldContext,
+        NG_comp: pd.Series,
+        upgrader_gas_comp: pd.Series,
+        NG_heating_value: Quantity[float],
+        petro_coke_heating_value: Quantity[float],
+        mole_to_scf: Quantity[float],
+        cogeneration_upgrading: Quantity[float],
+        fraction_elec_onsite: Quantity[float],
+        oil_sands_mine: str,
+        upgrader_type: str,
+        oil: Oil,
+        water: Water,
+        gas: Gas,
+        heavy_oil_upgrading_df: pd.DataFrame,
+    ):
+        super().__init__(name, ctx)
 
         # TODO: avoid process names in contents.
         self._required_inputs = [
@@ -37,39 +70,24 @@ class HeavyOilUpgrading(Process):
             "petrocoke",
         ]
 
-        field = self.field
-        self.water_density = self.water.density()
+        self.NG_comp = NG_comp
+        self.upgrader_gas_comp = upgrader_gas_comp
+        self.NG_heating_value = NG_heating_value
+        self.petro_coke_heating_value = petro_coke_heating_value
+        self.mole_to_scf = mole_to_scf
+        self.cogeneration_upgrading = cogeneration_upgrading
+        self.fraction_elec_onsite = fraction_elec_onsite
+        self.oil_sands_mine = oil_sands_mine
+        self.upgrader_type = upgrader_type
+        self.oil = oil
+        self.water = water
+        self.gas = gas
+        self.heavy_oil_upgrading_df = heavy_oil_upgrading_df
 
-        self.NG_comp = field.imported_gas_comp["Imported Fuel"]
-        self.upgrader_gas_comp = field.imported_gas_comp["Upgrader Gas"]
+        self.water_density = water.density()
 
-        model = self.model
-        self.NG_heating_value = model.const("NG-heating-value")
-        self.petro_coke_heating_value = model.const("petrocoke-heating-value")
-        self.mole_to_scf = model.const("mol-per-scf")
-
-        self.cogeneration_upgrading = None
-        self.fraction_elec_onsite = None
-        self.oil_sands_mine = None
-        self.upgrader_type = None
-
-        self.cache_attributes()
-
-    def cache_attributes(self):
-        field = self.field
-        self.cogeneration_upgrading = self.attr("cogeneration_upgrading")
-        self.fraction_elec_onsite = field.fraction_elec_onsite
-        self.oil_sands_mine = field.oil_sands_mine
-        self.upgrader_type = field.upgrader_type
-
-
-    def check_enabled(self):
-        if self.upgrader_type == "None":
-            self.set_enabled(False)
-
-    def run(self, analysis):
+    def run(self):
         self.print_running_msg()
-        field = self.field
 
         # mass rate
         input_oil = self.find_input_streams("oil for upgrading", combine=True)
@@ -77,7 +95,7 @@ class HeavyOilUpgrading(Process):
         if input_oil.is_uninitialized():
             return
 
-        df = self.model.heavy_oil_upgrading
+        df = self.heavy_oil_upgrading_df
         totals = df.query("Fraction == 'total'")
         d = {}
         for i, row in totals.iterrows():
@@ -95,20 +113,20 @@ class HeavyOilUpgrading(Process):
                                               self.mole_to_scf).sum()
         SCO_bitumen_ratio = heavy_oil_upgrading_table["SCO/bitumen ratio"]
 
-        field.save_process_data(SCO_bitumen_ratio=SCO_bitumen_ratio)  # used in the Flaring process
+        self.ctx.process_data["SCO_bitumen_ratio"] = SCO_bitumen_ratio  # used in the Flaring process
 
         SCO_API = heavy_oil_upgrading_table["API gravity of resulting upgraded product output"]
-        SCO_specific_gravity = field.oil.specific_gravity(SCO_API)
+        SCO_specific_gravity = self.oil.specific_gravity(SCO_API)
 
         input_liquid_mass_rate = input_oil.liquid_flow_rate("oil")
         input_liquid_SG = self.oil.specific_gravity(input_oil.API)
 
-        input_liquid_vol_rate = input_liquid_mass_rate / (input_liquid_SG * self.water.density())
+        input_liquid_vol_rate = input_liquid_mass_rate / (input_liquid_SG * self.water_density)
         SCO_output = input_liquid_vol_rate * SCO_bitumen_ratio
 
         SCO_output_mass_rate = SCO_output * SCO_specific_gravity * self.water_density
         SCO_to_storage = self.find_output_stream("oil for storage")
-        SCO_to_storage.set_liquid_flow_rate("oil", SCO_output_mass_rate, tp=field.stp)
+        SCO_to_storage.set_liquid_flow_rate("oil", SCO_output_mass_rate, tp=self.ctx.stp)
         SCO_to_storage.set_API(SCO_API)
 
         # Process gas calculation
@@ -183,8 +201,8 @@ class HeavyOilUpgrading(Process):
         NG_stream.set_rates_from_series(NG_mass_rate, PHASE_GAS)
         upgrader_gas_stream.set_rates_from_series(upgrader_mass_rate, PHASE_GAS)
 
-        NG_consumption = field.gas.energy_flow_rate(NG_stream)
-        upgrader_process_gas_consumption = field.gas.energy_flow_rate(upgrader_gas_stream)
+        NG_consumption = self.gas.energy_flow_rate(NG_stream)
+        upgrader_process_gas_consumption = self.gas.energy_flow_rate(upgrader_gas_stream)
         petro_coke_consumption = coke_to_heat * self.petro_coke_heating_value
 
         energy_use.set_rate(EN_NATURAL_GAS, NG_consumption.to("mmBtu/day"))
@@ -194,8 +212,8 @@ class HeavyOilUpgrading(Process):
 
         # import/export
         self.set_import_from_energy(energy_use)
-        field.import_export.set_export(self.name, ELECTRICITY, elect_cogen)
-        field.import_export.set_export(self.name, H2, proc_gas_to_H2_mass_rate.sum() + NG_to_H2_mass_rate.sum())
+        self.import_export.set_export(self.name, ELECTRICITY, elect_cogen)
+        self.import_export.set_export(self.name, H2, proc_gas_to_H2_mass_rate.sum() + NG_to_H2_mass_rate.sum())
 
         # emissions
         self.set_combustion_emissions()
