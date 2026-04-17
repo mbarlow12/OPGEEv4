@@ -1,322 +1,59 @@
-'''
-.. Created as part of pygcam (2015)
-   Imported into opgee (2021)
+"""General-purpose utility functions."""
+import logging
 
-   Common functions and data
-
-.. Copyright (c) 2015-2022 Richard Plevin
-   See the https://opensource.org/licenses/MIT for license details.
-'''
-import argparse
-import os
-import sys
-from contextlib import contextmanager
-
-from .config import unixPath
 from .error import OpgeeException
-from .log import getLogger
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
-def ipython_info():  # pragma: no cover
-    ip = False
-    if 'ipykernel' in sys.modules:
-        ip = 'notebook'
-    elif 'IPython' in sys.modules:
-        ip = 'terminal'
-    return ip
 
-@contextmanager
-def pushd(directory):
-    """
-    Context manager that changes to the given directory and then
-    returns to the original directory. Usage is ``with pushd('/foo/bar'): ...``
-
-    :param directory: (str) a directory to chdir to temporarily
-    :return: none
-    """
-    old_wd = os.getcwd()
+def coercible(value, type_fn, default=None):
+    """Attempt to coerce `value` using `type_fn`, return `default` on failure."""
     try:
-        os.chdir(directory)
-        yield directory
-    finally:
-        os.chdir(old_wd)
+        return type_fn(value)
+    except (TypeError, ValueError):
+        return default
 
 
-# A 'type' to use with argparse to require value be a positive integer.
-def positive_int(value):
-    import argparse
-
-    try:
-        i = int(value)
-    except:
-        i = 0   # the effect is to convert a ValueError into an ArgumentTypeError
-
-    if i <= 0:
-        raise argparse.ArgumentTypeError(f"{value} is not a positive integer")
-
-    return i
-
-#
-# Custom argparse "action" to parse comma-delimited strings to lists
-#
-class ParseCommaList(argparse.Action):
-    def __init__(self, option_strings, dest, nargs=None, **kwargs):
-        if nargs is not None:  # pragma: no cover
-            raise ValueError(f"nargs not allowed with {option_strings}")
-
-        super(ParseCommaList, self).__init__(option_strings, dest, **kwargs)
-
-    def __call__(self, parser, namespace, values, option_string=None):
-        setattr(namespace, self.dest, splitAndStrip(values, ','))
+def to_int(value, default=None):
+    return coercible(value, int, default=default)
 
 
-def splitAndStrip(s, delim):
-    items = [item.strip() for item in s.split(delim)]
-    return items
-
-def is_relpath(p):
-    drive, path = os.path.splitdrive(p)
-    return not (drive or path.startswith('/'))
-
-def mkdirs(newdir, mode=0o770):
-    """
-    Try to create the full path `newdir` and ignore the error if it already exists.
-
-    :param newdir: the directory to create (along with any needed parent directories)
-    :return: nothing
-    """
-    from errno import EEXIST
-
-    try:
-        os.makedirs(newdir, mode)
-    except OSError as e:
-        if e.errno != EEXIST:
-            raise
+def binary(value, default=None):
+    return coercible(value, lambda v: int(float(v)), default=default)
 
 
-def removeTree(path, ignore_errors=True):
-    import shutil
-    _logger.debug(f"shutil.rmtree('{path}')")
-    if os.path.lexists(path) and os.path.islink(path):
-        os.remove(path)
-    else:
-        shutil.rmtree(path, ignore_errors=ignore_errors)
-
-
-# Not used currently
-# def rmlink(path):
-#     if os.path.lexists(path) and os.path.islink(path):
-#         os.remove(path)
-#
-# def symlink(src, dst):
-#     rmlink(dst)
-#     _logger.debug(f"ln -s '{src}', '{dst}'")
-#     try:
-#         os.symlink(src, dst)
-#     except Exception:
-#         print(f"Can't symlink '{src} to '{dst}'")
-#         raise
-#
-
-def filecopy(src, dst, removeDst=True):
-    'Copy src file to dst, optionally removing dst first to avoid writing through symlinks'
-    from shutil import copy2  # equivalent to "cp -p"
-
-    _logger.debug(f"copyfile({src}, dst, removeDst)")
-    if removeDst and os.path.islink(dst):
-        os.remove(dst)
-
-    copy2(src, dst)
-
-# def copyfiles(files, dstdir, removeDst=True):
-#     '''
-#     :param files: a list of files to copy
-#     :param dstdir: the directory to copy to
-#     :param removeDst: if True-like, remove destination file before copying
-#     :return: nothing
-#     '''
-#     mkdirs(dstdir)
-#     for f in files:
-#         filecopy(f, dstdir, removeDst=removeDst)
-
-# used only in opgee modules
-def getBooleanXML(value):
-    """
-    Get a value from an XML file and convert it into a boolean True or False.
-
-    :param value: any value (it's first converted to a lower-case string)
-    :return: True if the value is in ['true', 'yes', '1'], False if the value is
-             in ['false', 'no', '0', 'none']. An exception is raised if any other
-             value is passed.
-    :raises: OpgeeException
-    """
-    false = ["false", "no", "0", "0.0", "none"]
-    true = ["true", "yes", "1", "1.0"]
-    valid = true + false
-
-    val = str(value).strip().lower()
-    if val not in valid:
-        raise OpgeeException(f"Can't convert '{value}' to boolean; must be one of {valid} (case sensitive).")
-
-    return (val in true)
-
-
-# Function to return current function name, or the caller, and so on up
-# the stack, based on value of n.
-getFuncName = lambda n=0: sys._getframe(n + 1).f_code.co_name
-
-
-def to_int(s):
-    f = float(s)
-    i = int(f)
-    if f == i:
-        return i
-
-    raise TypeError(f"coercible: Refusing to truncate float {s} to int")
-
-
-# pseudo-type
-def binary(value):
-    return 1 if getBooleanXML(value) else 0
-
-
-def coercible(value, pytype, raiseError=True):
-    """
-    Attempt to coerce a value to `pytype` and raise an error on failure. If the
-    value is a pint.Quantity, the value is simply returned.
-
-    :param value: any value coercible to `pytype`
-    :param pytype: any Python type or its string equivalent
-    :param raiseError: (bool) whether to raise errors when appropriate
-    :return: (`pytype`) the coerced value, if it's coercible, otherwise
-       None if raiseError is False
-    :raises OpgeeException: if the value is a pint.Quantity, it is returned
-       unchanged. Otherwise, if not coercible and raiseError is True, error is raised.
-    """
-    from pint import Quantity
-
-    if isinstance(value, Quantity):
+def parse_boolean(value):
+    """Parse string to boolean. Replaces getBooleanXML."""
+    if isinstance(value, bool):
         return value
-
-    if type(pytype) == str:
-        if pytype == 'float':
-            pytype_func = float
-        elif pytype == 'int':
-            pytype_func = lambda s: to_int(s)  # allow "24.0" to be truncated to 24
-        elif pytype == 'str':
-            pytype_func = str
-        elif pytype == 'binary':
-            pytype_func = binary
-        else:
-            raise OpgeeException(f"coercible: '{pytype}' is not a recognized type string")
-    else:
-        pytype_func = pytype
-
-    try:
-        value = pytype_func(value)
-
-    except (TypeError, ValueError) as e:
-        if raiseError:
-            raise OpgeeException("%s: %r is not coercible to %s" % (getFuncName(1), value, pytype))
-        else:
-            return None
-
-    return value
+    s = str(value).strip().lower()
+    if s in ('1', 'true', 'yes'):
+        return True
+    if s in ('0', 'false', 'no'):
+        return False
+    raise OpgeeException(f"Cannot convert '{value}' to boolean")
 
 
-TRIAL_STRING_DELIMITER = ','
+def getFuncName(level=1):
+    """Return the name of the calling function."""
+    import inspect
+    return inspect.stack()[level][3]
 
 
-def parseTrialString(string):
-    """
-    Converts a comma-separated list of ranges into a list of numbers.
-    Ex. 1,3,4-6,2 becomes [1,3,4,5,6,2]. Duplicates are deleted. This
-    function is the inverse of :func:`createTrialString`.
-
-    :param string: (str) comma-separate list of ints or int ranges indicated
-      by two ints separated by a hyphen.
-    :return: (list) a list of ints
-    """
-    rangeStrs = string.split(TRIAL_STRING_DELIMITER)
-    res = set()
-    for rangeStr in rangeStrs:
-        r = [int(x) for x in rangeStr.strip().split('-')]
-        if len(r) == 2:
-            r = range(r[0], r[1] + 1)
-        elif len(r) != 1:
-            raise ValueError('Malformed trial string.')
-        res = res.union(set(r))
-    return list(res)
+def roundup(value, nearest):
+    """Round `value` up to the nearest multiple of `nearest`."""
+    return int(nearest * ((value + nearest - 1) // nearest))
 
 
-def flatten(listOfLists):
-    """
-    Flatten one level of nesting given a list of lists. That is, convert
-    [[1, 2, 3], [4, 5, 6]] to [1, 2, 3, 4, 5, 6].
-
-    :param listOfLists: a list of lists, obviously
-    :return: the flattened list
-    """
-    from itertools import chain
-
-    return list(chain.from_iterable(listOfLists))
-
-
-def roundup(value, digits):
-    return round(value + 0.5, digits)
-
-
-def loadModuleFromPath(module_path, raiseError=True):
-    """
-    Load a module from a '.py' or '.pyc' file from a path that ends in the
-    module name, i.e., from "foo/bar/Baz.py", the module name is 'Baz'.
-
-    :param module_path: (str) the pathname of a python module (.py or .pyc)
-    :param raiseError: (bool) if True, raise an error if the module cannot
-       be loaded
-    :return: (module) a reference to the loaded module, if loaded, else None.
-    :raises: OpgeeException
-    """
-    import importlib.util
-
-    # Extract the module name from the module path
-    module_path = unixPath(module_path)
-    base = os.path.basename(module_path)
-    module_name = base.split('.')[0]
-
-    try:
-        module = sys.modules[module_name]
-        _logger.warning(f"{module} is already in sys.modules")
-        return module
-    except KeyError:
-        module = None
-
-    _logger.debug(f"Loading module '{module_path}'")
-
-    # Load the compiled code if it's a '.pyc', otherwise load the source code
-    try:
-        spec = importlib.util.spec_from_file_location(module_name, module_path)
-        module = importlib.util.module_from_spec(spec)  # creates a new module
-        sys.modules[module_name] = module               # record it to sys.module
-        spec.loader.exec_module(module)
-
-    except Exception as e:
-        errorString = f"Can't load module '{module_name} from path '{module_path}': {e}"
-        if raiseError:
-            raise OpgeeException(errorString)
-
-    return module
+def flatten(lst):
+    """Flatten a list of lists into a single list."""
+    return [item for sublist in lst for item in sublist]
 
 
 def dequantify_dataframe(df):
-    import pandas as pd
+    """Remove pint units from a DataFrame's values."""
+    return df.apply(lambda col: col.pint.magnitude if hasattr(col, 'pint') else col)
 
-    items = {}
 
-    for name, series in df.items():
-        d = {idx: quantity.m for idx, quantity in series.items()}
-        items[name] = d
-
-    new_df = pd.DataFrame(items)
-    return new_df
+# Deprecated alias (removed in a later phase; retained here while callers are migrated)
+getBooleanXML = parse_boolean
