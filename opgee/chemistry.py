@@ -5,6 +5,8 @@ Extracted from Stream class-level data to break stream<->emissions coupling.
 """
 import re
 
+import pandas as pd
+
 from .error import ModelValidationError, OpgeeException
 from .table_manager import TableManager
 from .units import ureg
@@ -48,6 +50,10 @@ def carbon_to_molecule(c_name: str) -> str:
 
 _mgr = TableManager()
 _pubchem_cid_df = _mgr.get_table("pubchem-cid")
+
+#: Public re-export of the pubchem-cid DataFrame for use by `thermodynamics.ChemicalInfo`.
+PUBCHEM_CID_DF: pd.DataFrame = _pubchem_cid_df
+
 HYDROCARBONS: list[str] = list(_pubchem_cid_df.index)
 _max_carbon_number = len(HYDROCARBONS)
 _carbon_number_dict: dict[str, float] = {f"C{n}": float(n) for n in range(1, _max_carbon_number + 1)}
