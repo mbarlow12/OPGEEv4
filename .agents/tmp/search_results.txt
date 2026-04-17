@@ -1,0 +1,138 @@
+# DEPENDENCY GRAPH ANALYSIS FOR OPGEE CODEBASE
+
+## 1. CORE.PY IMPORTS
+Core module imports: OpgeeObject, XmlInstantiable, A, TemperaturePressure, STP, Timer, elt_name, instantiate_subelts, split_attr_name, dict_from_list
+
+Key importers:
+- field.py (XmlInstantiable, elt_name, instantiate_subelts, dict_from_list, STP)
+- stream.py (XmlInstantiable, elt_name, TemperaturePressure)
+- process.py (OpgeeObject, XmlInstantiable, elt_name)
+- model.py (XmlInstantiable, elt_name, instantiate_subelts)
+- analysis.py (XmlInstantiable, elt_name, OpgeeObject)
+- attributes.py (OpgeeObject, XmlInstantiable, A, instantiate_subelts, elt_name)
+- table_update.py (elt_name, XmlInstantiable, OpgeeObject)
+- management: manager.py, graph.py, emissions.py, post_processor.py (OpgeeObject)
+- process_groups.py (XmlInstantiable, elt_name, instantiate_subelts)
+- thermodynamics.py (OpgeeObject, STP, TemperaturePressure)
+- combine_streams.py (STP, TemperaturePressure)
+- compressor.py (OpgeeObject, TemperaturePressure) - single process subclass
+- model_file.py (Timer)
+
+Total files: 39
+
+## 2. FIELD.PY IMPORTS
+Field class is imported in only 4 files:
+- model.py
+- analysis.py
+- graph.py
+- audit.py
+
+Plus lazy import in results.py
+
+## 3. PROCESS.PY IMPORTS
+Process, Boundary, Reservoir classes
+
+Direct importers (6 files):
+- field.py (Process, Reservoir, decache_subclasses)
+- graph.py (Process)
+- model_file.py (reload_subclass_dict)
+- bin/venting_fugitive_dummy_csv.py (Process, _subclass_dict)
+
+Plus lazy imports in:
+- results.py (Boundary)
+
+Total dependency: Field→Process relationship (single file depends on it directly)
+
+## 4. STREAM.PY IMPORTS
+Stream class and phase constants
+
+Key importers (6 files):
+- field.py (Stream)
+- thermodynamics.py (PHASE_GAS, PHASE_LIQUID, PHASE_SOLID, Stream)
+- process.py (Stream)
+- model_file.py (Stream)
+- combine_streams.py (Stream)
+- emissions.py (Stream)
+- compressor.py (Stream) - process subclass
+
+## 5. CONFIG.PY IMPORTS
+Configuration parameter functions: getParam, getParamAsInt, getParamAsBoolean, pathjoin, unixPath, getParamAsList, getConfig, setParam, getSection, setSection, configLoaded
+
+Key importers (12 files):
+- manager.py (getParam, getParamAsInt, getParamAsBoolean, pathjoin)
+- XMLFile.py (getConfigDict, getParam)
+- model_file.py (getParam, pathjoin, unixPath)
+- analysis.py (getParamAsList)
+- field.py (getParamAsList)
+- process.py (getParamAsBoolean)
+- utils.py (unixPath)
+- post_processor.py (getParam)
+- log.py (getParam, getParamAsBoolean, configLoaded, setParam)
+- tool.py (pathjoin, getParam, getConfig, getParamAsBoolean, setParam, getSection, setSection)
+- bin/stream_contents.py (getParam)
+
+## 6. ATTRIBUTES.PY IMPORTS
+AttributeMixin, AttrDefs classes
+
+Key importers (7 files):
+- model.py (AttributeMixin)
+- model_file.py (AttrDefs)
+- analysis.py (AttributeMixin)
+- stream.py (AttributeMixin)
+- audit.py (AttrDefs)
+- field.py (AttributeMixin)
+- process.py (AttrDefs, AttributeMixin)
+
+## 7. MODEL_FILE.PY IMPORTS
+ModelFile, extract_model classes
+
+Key importers (2 files):
+- manager.py (extract_model - direct, ModelFile - lazy)
+- audit.py (ModelFile)
+
+## 8. LOG.PY IMPORTS
+getLogger, setLogLevels, configureLogs
+
+Highly distributed (23 files):
+- model.py, audit.py, xml_utils.py, units.py, smart_defaults.py, manager.py
+- field.py, process.py, energy.py, import_export.py, model_file.py, table_manager.py
+- process_groups.py, XMLFile.py, graph.py, utils.py, stream.py, combine_streams.py
+- tool.py, analysis.py, results.py, attributes.py
+
+## 9. MODEL.PY IMPORTS
+Model class
+
+Importers (1 file):
+- model_file.py (Model)
+
+## 10. ERROR.PY IMPORTS
+Exception classes
+
+All exceptions defined:
+- OpgeeException (base), OpgeeStopIteration, OpgeeMaxIterationsReached, OpgeeIterationConverged
+- AbstractMethodError, AttributeError, FileFormatError, XmlFormatError, ModelValidationError
+- ConfigFileError, CommandlineError, BalanceError, ZeroEnergyFlowError
+- McsUserError, McsSystemError, DistributionSpecError, RemoteError
+
+Imported across 36 files (widespread usage)
+Total exception references: 233 occurrences
+
+Top importers:
+- process.py (29 occurrences - most), field.py (24), attributes.py (10)
+
+## PROCESS PATTERNS (processes/ directory)
+
+Total process files: 51
+
+self.attr() calls: 145 occurrences across 33 process files (65%)
+
+self.field references: 122 occurrences across 43 process files (84%)
+
+Top users of self.field:
+- gas_partition.py (5)
+- exploration.py (8)
+- steam_generator.py (7)
+- transmission_compressor.py (3)
+- drilling.py (5)
+- heavy_oil_upgrading.py (3)
+

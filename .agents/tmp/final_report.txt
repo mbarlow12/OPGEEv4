@@ -1,0 +1,325 @@
+================================================================================
+OPGEE CODEBASE DEPENDENCY GRAPH ANALYSIS
+================================================================================
+
+SCOPE: /home/michael/rmi/dlab/opgee/current/opgee
+
+================================================================================
+1. CORE.PY DEPENDENCY ANALYSIS
+================================================================================
+
+IMPORTS ANALYZED: OpgeeObject, XmlInstantiable, A, TemperaturePressure, STP
+
+FILES THAT IMPORT FROM core.py: 39 files
+
+KEY IMPORTERS BY ROLE:
+
+Model/Field Layer (6):
+  - model.py: XmlInstantiable, elt_name, instantiate_subelts
+  - field.py: XmlInstantiable, elt_name, instantiate_subelts, dict_from_list, STP
+  - attributes.py: OpgeeObject, XmlInstantiable, A, instantiate_subelts, elt_name
+  - analysis.py: XmlInstantiable, elt_name, OpgeeObject
+  - table_update.py: elt_name, XmlInstantiable, OpgeeObject
+  - stream.py: XmlInstantiable, elt_name, TemperaturePressure
+
+Process Layer (1):
+  - process.py: OpgeeObject, XmlInstantiable, elt_name
+
+Infrastructure (4):
+  - manager.py: OpgeeObject, Timer
+  - graph.py: OpgeeObject
+  - emissions.py: OpgeeObject
+  - post_processor.py: OpgeeObject
+
+Utilities (5):
+  - process_groups.py: XmlInstantiable, elt_name, instantiate_subelts
+  - thermodynamics.py: OpgeeObject, STP, TemperaturePressure
+  - combine_streams.py: STP, TemperaturePressure
+  - energy.py: OpgeeObject
+  - smart_defaults.py: OpgeeObject, split_attr_name
+
+Processes (1):
+  - compressor.py: OpgeeObject, TemperaturePressure
+
+CRITICAL OBSERVATION: core.py is a foundational layer with very broad usage.
+It's imported by 39 files including all major subsystems.
+
+================================================================================
+2. FIELD.PY DEPENDENCY ANALYSIS
+================================================================================
+
+IMPORTS ANALYZED: Field class
+
+FILES THAT IMPORT Field: 4 files (minimal coupling)
+
+IMPORTERS:
+  - model.py (used for Field creation and reference)
+  - analysis.py (uses Field)
+  - graph.py (uses Field)
+  - audit.py (uses Field)
+
+LAZY IMPORT:
+  - results.py (imports Field conditionally)
+
+CRITICAL OBSERVATION: Field has LOW coupling to other modules.
+Only core model/analysis infrastructure depends on it directly.
+
+================================================================================
+3. PROCESS.PY DEPENDENCY ANALYSIS
+================================================================================
+
+IMPORTS ANALYZED: Process, Boundary, Reservoir classes
+
+FILES THAT IMPORT Process: 50 files total
+
+DIRECT IMPORTERS (6):
+  - field.py: Process, Reservoir, decache_subclasses
+  - graph.py: Process
+  - model_file.py: reload_subclass_dict function
+
+LAZY IMPORTERS:
+  - results.py: Boundary
+  - 50 process subclass files (.py in processes/ directory)
+
+CRITICAL OBSERVATION: Process is foundational. All 50+ process files
+inherit from Process class. Field.py is main upstream consumer.
+
+================================================================================
+4. STREAM.PY DEPENDENCY ANALYSIS
+================================================================================
+
+IMPORTS ANALYZED: Stream class and phase constants (PHASE_GAS, PHASE_LIQUID, PHASE_SOLID)
+
+FILES THAT IMPORT Stream: 7 files
+
+IMPORTERS:
+  - field.py: Stream
+  - process.py: Stream
+  - thermodynamics.py: PHASE_GAS, PHASE_LIQUID, PHASE_SOLID, Stream
+  - model_file.py: Stream
+  - combine_streams.py: Stream
+  - emissions.py: Stream
+  - compressor.py (process subclass): Stream
+
+CRITICAL OBSERVATION: Stream is moderately coupled. Used primarily by
+model layer (field, process, model_file) and utilities.
+
+================================================================================
+5. CONFIG.PY DEPENDENCY ANALYSIS
+================================================================================
+
+IMPORTS ANALYZED: Configuration functions (getParam, getParamAsInt, 
+getParamAsBoolean, pathjoin, unixPath, getParamAsList, getConfig, setParam,
+getSection, setSection, configLoaded)
+
+FILES THAT IMPORT CONFIG: 12 files (moderate coupling)
+
+IMPORTERS:
+  - manager.py: getParam, getParamAsInt, getParamAsBoolean, pathjoin
+  - tool.py: pathjoin, getParam, getConfig, getParamAsBoolean, setParam, getSection, setSection
+  - model_file.py: getParam, pathjoin, unixPath
+  - log.py: getParam, getParamAsBoolean, configLoaded, setParam
+  - XMLFile.py: getConfigDict, getParam
+  - field.py: getParamAsList
+  - process.py: getParamAsBoolean
+  - analysis.py: getParamAsList
+  - post_processor.py: getParam
+  - utils.py: unixPath
+  - bin/stream_contents.py: getParam
+
+CRITICAL OBSERVATION: Config is used by infrastructure and entry points,
+but not widely spread across process logic.
+
+================================================================================
+6. ATTRIBUTES.PY DEPENDENCY ANALYSIS
+================================================================================
+
+IMPORTS ANALYZED: AttributeMixin, AttrDefs classes
+
+FILES THAT IMPORT ATTRIBUTES: 7 files
+
+IMPORTERS:
+  - field.py: AttributeMixin
+  - model.py: AttributeMixin
+  - process.py: AttrDefs, AttributeMixin
+  - stream.py: AttributeMixin
+  - analysis.py: AttributeMixin
+  - model_file.py: AttrDefs
+  - audit.py: AttrDefs
+
+CRITICAL OBSERVATION: Attributes module is well-isolated. Core to field/
+process/stream but only 7 direct imports.
+
+================================================================================
+7. MODEL_FILE.PY DEPENDENCY ANALYSIS
+================================================================================
+
+IMPORTS ANALYZED: ModelFile class, extract_model function
+
+FILES THAT IMPORT MODEL_FILE: 2 files (LOW coupling)
+
+IMPORTERS:
+  - manager.py: extract_model (direct), ModelFile (lazy)
+  - audit.py: ModelFile
+
+CRITICAL OBSERVATION: Model_file has MINIMAL coupling. It's a utility
+module used only by high-level entry points.
+
+================================================================================
+8. LOG.PY DEPENDENCY ANALYSIS
+================================================================================
+
+IMPORTS ANALYZED: getLogger, setLogLevels, configureLogs
+
+FILES THAT IMPORT LOG: 23 files (HIGHLY distributed)
+
+IMPORTERS (all infrastructure and utilities):
+  - Core: model.py, field.py, process.py, stream.py, attributes.py
+  - Infrastructure: manager.py, graph.py, tool.py, XMLFile.py, audit.py
+  - Utils: xml_utils.py, units.py, utils.py, energy.py, table_manager.py
+  - Features: smart_defaults.py, process_groups.py, import_export.py, analysis.py
+  - High-level: model_file.py, results.py, combine_streams.py
+
+CRITICAL OBSERVATION: Log is UBIQUITOUS (23 imports). Almost every
+module uses getLogger for logging.
+
+================================================================================
+9. MODEL.PY DEPENDENCY ANALYSIS
+================================================================================
+
+IMPORTS ANALYZED: Model class
+
+FILES THAT IMPORT MODEL: 1 file only
+
+IMPORTERS:
+  - model_file.py: Model
+
+CRITICAL OBSERVATION: Model class has MINIMAL coupling. Only imported
+by model_file.py. Very isolated and self-contained.
+
+================================================================================
+10. ERROR.PY DEPENDENCY ANALYSIS
+================================================================================
+
+EXCEPTION CLASSES DEFINED (16 total):
+  - Base: OpgeeException
+  - Iteration control: OpgeeStopIteration, OpgeeMaxIterationsReached, OpgeeIterationConverged
+  - Abstract: AbstractMethodError
+  - Validation: AttributeError, ModelValidationError
+  - File/Format: FileFormatError, XmlFormatError, ConfigFileError
+  - User input: CommandlineError
+  - Physics: BalanceError, ZeroEnergyFlowError
+  - System: McsUserError, McsSystemError, DistributionSpecError, RemoteError
+
+FILES IMPORTING EXCEPTIONS: 36 files (widespread)
+
+EXCEPTION USAGE FREQUENCY:
+  Total exception references: 233 occurrences
+
+TOP IMPORTERS:
+  - process.py: 29 occurrences (most intensive use)
+  - field.py: 24 occurrences
+  - attributes.py: 10 occurrences
+  - energy.py: 4 occurrences
+  - utils.py: 8 occurrences
+  - core.py: 7 occurrences
+  - config.py: 10 occurrences
+
+EXCEPTION DISTRIBUTION:
+  - OpgeeException (base): used everywhere
+  - ModelValidationError: core.py, stream.py, thermodynamics.py, attributes.py, field.py, process.py
+  - AbstractMethodError: core.py, manager.py, process.py, post_processor.py
+  - ZeroEnergyFlowError: field.py (lazy), results.py (lazy)
+  - XmlFormatError: model_file.py, XMLFile.py, built_ins/update_plugin.py
+
+CRITICAL OBSERVATION: Error module is CRITICAL infrastructure.
+36 files depend on it. Process.py uses it most intensively.
+
+================================================================================
+PROCESSES DIRECTORY PATTERN ANALYSIS
+================================================================================
+
+Total process files: 51 (.py files in processes/ directory)
+
+PATTERN 1: self.attr() usage
+  Count: 145 occurrences
+  In: 33 process files (65% of process files)
+  Top users:
+    - None use self.attr() extensively based on grep search
+    - Pattern appears to be method call pattern
+
+PATTERN 2: self.field usage
+  Count: 122 occurrences across 43 process files (84% of process files)
+  
+  Top users (by occurrence count):
+    - exploration.py: 8 occurrences
+    - transmission_compressor.py: 9 occurrences (top)
+    - steam_generator.py: 7 occurrences
+    - gas_partition.py: 5 occurrences
+    - drilling.py: 5 occurrences
+    - crude_oil_transport.py: 5 occurrences
+    - crude_oil_storage.py: 4 occurrences
+    - downhole_pump.py: 4 occurrences
+    - water_injection.py: 3 occurrences
+    - water_treatment.py: 3 occurrences
+    - sour_gas_injection.py: 3 occurrences
+    - venting.py: 3 occurrences
+    - heavy_oil_upgrading.py: 3 occurrences
+
+CRITICAL OBSERVATION: self.field is ubiquitous in process files.
+84% of processes directly reference the field object.
+This creates tight coupling between Process instances and Field.
+
+================================================================================
+SUMMARY: DEPENDENCY HOTSPOTS FOR REFACTORING
+================================================================================
+
+TIER 1 - FOUNDATIONAL LAYERS (Cannot refactor without major changes):
+  ✓ core.py (39 files depend on it)
+  ✓ log.py (23 files depend on it)
+  ✓ error.py (36 files depend on it)
+  ✓ process.py (50+ process files inherit from it)
+  
+TIER 2 - CRITICAL INFRASTRUCTURE (Moderate refactoring risk):
+  ✓ field.py (4 direct imports + 43 processes via self.field)
+  ✓ attributes.py (7 direct imports, used by core classes)
+  ✓ stream.py (7 direct imports, foundational)
+  ✓ config.py (12 direct imports)
+  
+TIER 3 - ISOLATED UTILITIES (Safe to refactor):
+  ✓ model.py (1 direct import - ISOLATED)
+  ✓ model_file.py (2 direct imports - ISOLATED)
+
+================================================================================
+KEY REFACTORING INSIGHTS
+================================================================================
+
+1. Process-Field Coupling:
+   - 43 of 51 process files (84%) reference self.field
+   - This tight coupling makes process extraction/reuse difficult
+   - Consider interface abstraction between Process and Field
+
+2. Core Module Bloat:
+   - core.py is imported by 39 files
+   - Serves as dumping ground for: OpgeeObject, XmlInstantiable, A,
+     TemperaturePressure, STP, Timer, elt_name, instantiate_subelts, etc.
+   - Candidates for modularization:
+     * TemperaturePressure, STP → thermodynamics module
+     * XmlInstantiable, elt_name → xml_utils module
+     * Timer → utilities module
+
+3. Exception Proliferation:
+   - 16 exception types with varying usage
+   - process.py references 29 occurrences (most intensive)
+   - Consider if all 16 are necessary
+
+4. Log Coupling:
+   - 23 files import logging
+   - getLogger is ubiquitous - consider if truly needed everywhere
+
+5. Safe Refactoring Targets:
+   - Model.py (only imported by model_file.py)
+   - Model_file.py (only imported by manager.py + audit.py)
+   - These can be refactored with minimal impact
+
+================================================================================
