@@ -1,19 +1,7 @@
-#
-# Energy use tracking
-#
-# Author: Richard Plevin
-#
-# Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
-# See LICENSE.txt for license details.
-#
 import pandas as pd
 
 from .units import ureg
-from .core import OpgeeObject
 from .error import OpgeeException
-from .log import getLogger
-
-_logger = getLogger(__name__)
 
 # TBD: Decide if these strings are the ones we want to use throughout. Some seem a bit random.
 EN_NATURAL_GAS = 'Natural gas'
@@ -26,7 +14,7 @@ EN_PETCOKE = 'Pet. coke'
 EN_ELECTRICITY = 'Electricity'
 
 
-class Energy(OpgeeObject):
+class Energy:
     """
     Energy is an object wrapper around a pandas.Series holding energy consumption
     rates for a pre-defined set of energy carriers, defined in ``Energy.carriers``.
