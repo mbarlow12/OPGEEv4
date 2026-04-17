@@ -17,7 +17,7 @@ def test_set_emission_rates(test_model_with_change):
     rate_n2o = ureg.Quantity(6.0, 'tonne/day')
 
     procA.add_emission_rates(EM_FLARING, CO2=rate_co2, CH4=rate_ch4, N2O=rate_n2o)
-    df = procA.get_emission_rates(analysis)
+    df = procA.get_emission_rates(analysis.gwp)
     rates = df[EM_FLARING]
 
     assert (rates.N2O == rate_n2o and rates.CH4 == rate_ch4 and rates.CO2 == rate_co2)
