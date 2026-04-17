@@ -6,10 +6,15 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-from ..emissions import EM_FUGITIVES
 import logging
+
+from pint.facets.plain import PlainQuantity as Quantity
+
+from ..context import FieldContext
+from ..emissions import EM_FUGITIVES
 from ..process import Process
 from ..processes.compressor import Compressor
+from ..thermodynamics import Gas
 from .shared import get_energy_carrier
 
 _logger = logging.getLogger(__name__)
@@ -25,8 +30,20 @@ class VRUCompressor(Process):
         output streams:
             -
     """
-    def __init__(self, name, **kwargs):
-        super().__init__(name, **kwargs)
+
+    discharge_press: Quantity[float]
+    eta_compressor: Quantity[float]
+    prime_mover_type: str
+    loss_rate: Quantity[float]
+
+    def __init__(self, name: str, ctx: FieldContext, gas: Gas, discharge_press: Quantity[float], eta_compressor: Quantity[float], prime_mover_type: str, loss_rate: Quantity[float]):
+        super().__init__(name, ctx)
+
+        self.gas = gas
+        self.discharge_press = discharge_press
+        self.eta_compressor = eta_compressor
+        self.prime_mover_type = prime_mover_type
+        self.loss_rate = loss_rate
 
         # TODO: avoid process names in contents.
         self._required_inputs = [
@@ -37,34 +54,22 @@ class VRUCompressor(Process):
             "gas"
         ]
 
-        self.discharge_press = None
-        self.eta_compressor = None
-        self.prime_mover_type = None
-        self.cache_attributes()
-
-    def cache_attributes(self):
-        self.discharge_press = self.attr("discharge_press")
-        self.eta_compressor = self.attr("eta_compressor")
-        self.prime_mover_type = self.attr("prime_mover_type")
-
-    def run(self, analysis):
+    def run(self):
         self.print_running_msg()
-        field = self.field
 
         # mass rate
         input = self.find_input_stream("gas for VRU")
         if input.is_uninitialized():
             return
 
-        loss_rate = self.venting_fugitive_rate()
-        gas_fugitives = self.set_gas_fugitives(input, loss_rate)
+        gas_fugitives = self.set_gas_fugitives(input, self.loss_rate)
 
         gas_to_gathering = self.find_output_stream("gas")
 
         overall_compression_ratio = self.discharge_press / input.tp.P
         energy_consumption, output_temp, output_press = \
             Compressor.get_compressor_energy_consumption(
-                self.field,
+                self.gas,
                 self.prime_mover_type,
                 self.eta_compressor,
                 overall_compression_ratio,

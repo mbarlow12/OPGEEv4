@@ -6,9 +6,14 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-from .shared import get_energy_carrier, get_energy_consumption
 import logging
+
+from pint.facets.plain import PlainQuantity as Quantity
+
+from ..context import FieldContext
 from ..process import Process
+from ..thermodynamics import Gas
+from .shared import get_energy_carrier, get_energy_consumption
 
 _logger = logging.getLogger(__name__)
 
@@ -17,8 +22,21 @@ class LNGRegasification(Process):
     """
     LNG liquefaction calculate emission of transported gas to regasification
     """
-    def __init__(self, name, **kwargs):
-        super().__init__(name, **kwargs)
+
+    efficiency: Quantity
+    energy_intensity_regas: Quantity
+    prime_mover_type: str
+
+    def __init__(
+        self,
+        name: str,
+        ctx: FieldContext,
+        gas: Gas,
+        efficiency: Quantity,
+        energy_intensity_regas: Quantity,
+        prime_mover_type: str,
+    ):
+        super().__init__(name, ctx)
 
         self._required_inputs = [
             "gas",
@@ -29,14 +47,12 @@ class LNGRegasification(Process):
             "gas for distribution",
         ]
 
-        self.cache_attributes()
+        self.gas = gas
+        self.efficiency = efficiency
+        self.energy_intensity_regas = energy_intensity_regas
+        self.prime_mover_type = prime_mover_type
 
-    def cache_attributes(self):
-        self.efficiency = self.attr("efficiency")
-        self.energy_intensity_regas = self.attr("energy_intensity_regas")
-        self.prime_mover_type = self.attr("prime_mover_type")
-
-    def run(self, analysis):
+    def run(self):
         self.print_running_msg()
 
         input = self.find_input_stream("gas")
@@ -63,10 +79,3 @@ class LNGRegasification(Process):
 
         # emissions
         self.set_combustion_emissions()
-
-
-
-
-
-
-
