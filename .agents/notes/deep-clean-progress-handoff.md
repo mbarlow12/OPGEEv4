@@ -10,40 +10,33 @@
 
 ## 1. Status at this handoff
 
-**Just completed:** Phase 3 — all four tasks (3.1 core, 3.2 thermodynamics, 3.3 stream, 3.4 gate).
-**Tag:** `phase-3-gate` at `2e4d322`.
-**Next resume point:** Task 4.1 — restructure `opgee/process.py` base class.
+**Just completed:** Phase 4.1 + Phase 4.2 gate.
+**Tag:** `phase-4-gate` applied at the docs commit on top of `5aabd26`.
+**Next resume point:** Task 5.1 — migrate 12 Tier-1 process subclasses in parallel.
 
-### What landed in this phase
+### What landed in Phase 4
 
 | Task | Commit(s) | Summary |
 |---|---|---|
-| 3.1 core.py | `1509b6a` | Stripped to `OpgeeObject` + `TemperaturePressure` (with set/get/copy_from) + `STP` + `dict_from_list` + `Timer`. 335→91 lines. |
-| 3.2 thermodynamics.py | `83978ff` | Dropped `OpgeeObject` base from `ChemicalInfo`/`Air`/`AbstractSubstance`; deleted `WetAir`; new explicit constructors for Air/DryAir/AbstractSubstance/Oil/Gas/Water (no `field` arg); `R_GAS`/`STP.T`/`STP.P` replace `model.const(...)`. |
-| 3.3 stream.py (initial) | `a5df80f` | Dropped `AttributeMixin` + `XmlInstantiable` bases, deleted `from_xml`/`children`/`validate`/`extend_components`, deleted class-level component data (imported from `opgee.chemistry`), deleted module-level helper duplicates. New `__init__` with `ctx: FieldContext | None = None`, `xml_data`→`initial_data`, dropped `enabled`/`parent`/`field`/`has_exogenous_data`. 747→546 lines. |
-| 3.3 stream.py (review fixes) | `2e4d322` | Code-quality-review follow-ups: new `test_combustion_math` smoke test covering copy/multiply/reset/non_zero/voc_flow_rates/add_combustion_CO2_from; `TODO(phase 6.1)` marker on unused `ctx` param; relocated `_carbon_number_series` → `chemistry.CARBON_NUMBER_SERIES`. |
+| 4.1 process.py restructure | `e9ec51b` | Dropped `AttributeMixin` + `XmlInstantiable` bases; deleted class-registry plumbing (`get_subclasses`, `_subclass_dict`, `_Subclass_dict`, `decache_subclasses`, `_get_subclass`, `reload_subclass_dict`); deleted `Boundary` class; `IntermediateValues` lost its `OpgeeObject` base. New `Process.__init__(self, name: str, ctx: FieldContext)` with minimal instance state (no `model`/`field`/`gas`/`oil`/`water`/`boundary`/`impute_start`/`cycle_start`). Many methods dropped (`run_if_enabled`, `check_enabled`, `find_stream`, `get_reservoir`, `children`, `run_children`, `impute`, `venting_fugitive_rate`, `get_process_EF`, `from_xml`, `validate*`, `valdict`, `within_boundary`, `beyond_boundary`, `check_balances`). Retained methods modified to use `self.ctx.*` in place of `self.field.*` / `self.model.*` per Appendix B. `run(self, analysis)` → `run(self)`. `get_emission_rates(self, gwp)` — direct `gwp` param instead of `analysis.gwp`. `set_gas_fugitives` uses `self.ctx.stp`. `set_iteration_value` uses `self.ctx.simulation.maximum_change`. Class-level `iterating_processes` list moved to module-level `_iterating_processes` (Phase 6.1 will move ownership to Field). `self.process_EF = None` in `__init__`; `compute_emission_combustion` raises `ModelValidationError` if called before a subclass wires it. `Reservoir` kept as a minimal source-node subclass. 1092 → 594 lines (−46%). |
+| 4.1 spec-review fix | `ffacaec` | Spec reviewer flagged `tests/test_processes.py:20` still calling `procA.get_emission_rates(analysis)` — fixed to `procA.get_emission_rates(analysis.gwp)` to match the new signature. Latent (test is `test_model`-fixture-blocked) but fix for correctness. |
+| 4.1 code-quality-review fixes | `5aabd26` | (i) `register_iterating_process`/`check_iterator_convergence`/`reset_all_iteration` converted `@classmethod` → `@staticmethod` (the `cls` arg was pointless after the class-var → module-list move); (ii) `reset_all_iteration` now calls `_iterating_processes.clear()` after looping so a second field run doesn't duplicate entries; (iii) `get_compressor_and_well_loss_rate` body replaced with a clean `NotImplementedError` + Phase 5 TODO (was carrying a misleading `# noqa: F821` on `self.field`, which ruff wouldn't have flagged anyway); (iv) `intermediate_results` type hint corrected from `IntermediateValues \| None` to `dict \| None` (matches what `init_intermediate_results` actually assigns). Also dropped an unused `ureg` import. |
 
-### Gate verification (run at `2e4d322`)
+### Gate verification (run at `5aabd26`)
 
-- `uv run ruff check` on all cleaned modules (chemistry, context, core, emissions, energy, error, import_export, stream, table_manager, thermodynamics, units, utils, combine_streams): **All checks passed!**
-- `uv run pytest tests/test_chemistry.py tests/test_context.py tests/test_core.py tests/test_energy.py tests/test_import_export.py tests/test_molecule_names.py tests/test_stream.py tests/test_table_manager.py tests/test_thermofunction.py tests/test_utils.py tests/test_emissions.py -v`:
-  **116 passed, 6 errors.**
-  - All 55 `test_thermofunction.py` tests green (first activation in the new regime).
-  - 6 errors: `test_emissions.py::test_gwp[5 variants]` + `test_use_GWP_error`. All are fixture-dependent on the deleted `test_model` / `Analysis.use_GWP` infrastructure. **Phase 6.2 scope** — these tests will be adapted or deleted when Field/Analysis is rewritten.
-- Full `uv run pytest` is **not yet runnable** — `opgee/process.py` and `opgee/field.py` still import deleted modules (`attributes`, `smart_defaults`, etc.). Phase 4+ fixes those.
+- `uv run ruff check opgee/process.py tests/test_processes.py` — **All checks passed!**
+- AST parse on `opgee/process.py` — OK.
+- Import smoke: `from opgee.process import Process, Reservoir, IntermediateValues, run_corr_eqns` — OK.
+- `uv run pytest tests/test_chemistry.py tests/test_context.py tests/test_core.py tests/test_energy.py tests/test_import_export.py tests/test_molecule_names.py tests/test_stream.py tests/test_table_manager.py tests/test_thermofunction.py tests/test_utils.py tests/test_emissions.py -q` — **116 passed, 6 errors** (exact Phase 3 baseline; the 6 errors are all `test_emissions.py::test_gwp*` + `test_use_GWP_error`, fixture-blocked on deleted `test_model`, Phase 6.2 scope).
+- Full `uv run pytest` is **still not runnable** — `opgee/field.py` still has deleted-module imports (including `decache_subclasses` now gone from `process.py`, adding one more broken import). Phase 6.1 scope.
 
-### What changed vs. the plan
+### Phase 4 deviations / breadcrumbs
 
-No scope deviations in Phase 3. Two minor implementer deviations, both spec-reviewer-approved:
-
-- **`tests/test_thermofunction.py::test_gas_volume_flow_rate_STP`** — one-line `.to("mmscf/day")` + `rel=10e-3` tolerance. Pre-existing latent bug (sibling test already had this fix); exposed only because `test_thermofunction.py` couldn't run until stream.py's `attributes` import was dropped.
-- **`tests/test_chemistry.py::test_r_gas`** — `str(R_GAS.units) == "joule / kelvin / mole"` → `R_GAS.units == ureg.Unit("joule / kelvin / mole")`. `thermosteam` (transitively imported) mutates `ureg.default_format = '~P'` at load, so the string-based assertion failed once thermofunction could collect. Unit-value comparison is cleaner anyway.
-
-Carried forward open items from prior handoffs (none blocking):
-- `DryAir` singleton (unchanged since 3.2) — candidate for `@functools.cache` classmethod.
-- `Oil.__init__` internally constructs `Water(...)` — candidate for constructor injection in Phase 6.1.
-- Duplicate `test_tp = 1556.0 psia` vs `RES_PRESS = 1556.6` in `test_thermofunction.py` — intentional historical divergence; a clarifying comment is low-priority polish.
-- `thermosteam` globally mutating `ureg.default_format` is a latent risk for any future string-based unit assertion — consider an isolation fixture in `conftest.py` as Phase 6.2 polish.
+- **Scope creep accepted** (reviewer flagged, not a real deviation): implementer dropped the `stream.enabled` filter from `_find_streams_by_type`, `find_output_stream`, and `all_streams_ready` — `Stream.enabled` was already removed in Phase 3.3, so these filters were dead code that'd have raised `AttributeError` if exercised. The code-quality review explicitly endorsed this cleanup.
+- **`tests/test_processes.py` import dropped `Process`**: after deleting the 3 `_get_subclass` tests, ruff flagged `Process` as F401. The spec said "keep `Process, Reservoir`" literally, but the pragmatic ruff-clean drop was accepted by both reviewers.
+- **`test_get_reservoir` at `tests/test_processes.py:51`** references `process.get_reservoir()` which was deleted from `Process`. Fixture-blocked today so it's latent — **Phase 6.2 breadcrumb**: this test needs adaptation (or deletion) alongside the Field rewrite, not blamed on the fixture reintroduction.
+- **`get_compressor_and_well_loss_rate` is now a `NotImplementedError` stub.** Only four callers: `sour_gas_injection`, `gas_lifting_compressor`, `gas_reinjection_well`, `CO2_injection_well` — all in Tier 1 or Tier 2 of Phase 5 migration. The Phase 5 migration for those four files must rebuild this method (or move the logic to explicit constructor params on the subclass) rather than calling the base method.
+- **Off-task subagent anecdote (process improvement note)**: the fix-up subagent for the code-quality-review follow-ups applied all the correct file edits but its *text report* was replaced by output from a different, unrelated skill (a permissions analysis). The controller verified the actual filesystem changes matched the prompt exactly, then committed. Lesson: trust the diff, not the report. If a future subagent's report is nonsensical, check the working tree before re-dispatching.
 
 ---
 
@@ -52,10 +45,10 @@ Carried forward open items from prior handoffs (none blocking):
 | TaskList ID | Status | Subject |
 |---|---|---|
 | #1 | ✅ completed | Phase 3.3: Strip stream.py |
-| #2 | 🔄 in_progress | **Phase 3.4: Verification gate — Phase 3** ← finalizing now (tag + this handoff doc) |
-| #3 | pending | Phase 4.1: Restructure Process base class |
-| #4 | pending | Phase 4.2: Verification gate — Phase 4 |
-| #5 | pending | Phase 5.1: Tier 1 — 12 simple processes (parallel) |
+| #2 | ✅ completed | Phase 3.4: Verification gate — Phase 3 |
+| #3 | ✅ completed | Phase 4.1: Restructure Process base class |
+| #4 | ✅ completed | Phase 4.2: Verification gate — Phase 4 |
+| #5 | 🔄 pending (next) | **Phase 5.1: Tier 1 — 12 simple processes (parallel dispatch)** ← resume here |
 | #6 | pending | Phase 5.2: Tier 2 — 20 medium processes (3 parallel batches) |
 | #7 | pending | Phase 5.3: Tier 3 — 19 complex processes |
 | #8 | pending | Phase 5.4: Refactor `predict_blower_energy_use` |
@@ -68,97 +61,131 @@ Carried forward open items from prior handoffs (none blocking):
 
 ---
 
-## 3. Resume point — Task 4.1: Restructure `opgee/process.py`
+## 3. Resume point — Task 5.1: Tier 1 process subclass migration (parallel, 12 files)
 
 ### Authoritative references
-- Plan: `.agents/docs/plans/2026-04-16-deep-clean-plan.md` Task 4.1
-- Symbol-level retain/drop: `.agents/notes/2026-04-16-deep-clean-process.md` (read in full — it enumerates every method)
-- Transformation patterns (for Phase 5 and for internal `self.field` removal): plan Appendix B
-- `opgee/context.py` — for the `FieldContext` type the new `__init__` takes
+- Plan: `.agents/docs/plans/2026-04-16-deep-clean-plan.md` Task 5.1 + Appendix A (Tier 1 file list) + Appendix B (transformation table)
+- Spec: `.agents/docs/specs/2026-04-16-deep-clean-design.md`
+- Process base (what subclasses must adapt to): `opgee/process.py` at `5aabd26` — new signature, `self.ctx.*` patterns
+- Transformation table (Appendix B of the plan) — **authoritative** for `self.attr("x")` → explicit constructor param, `self.field.*` → `self.ctx.*`, etc.
 
-### Core instruction (summary — full detail in proposal doc)
+### Tier 1 files (12 — parallel dispatch authorized by the plan)
 
-New `Process.__init__`:
-```python
-def __init__(self, name: str, ctx: FieldContext):
-    self.name = name
-    self.ctx = ctx
-    self.emissions = Emissions()
-    self.energy = Energy()
-    self.import_export = ImportExport()
-    self.intermediate_results = IntermediateValues()
-    self.inputs = []
-    self.outputs = []
-    # + iteration-state ivars (visit_count, iteration_count, ...)
-```
+All 12 can be dispatched as parallel implementer subagents simultaneously — they're independent, trivial, and zero-to-two `field.*` references each.
 
-Drop: `AttributeMixin` / `XmlInstantiable` bases, `from_xml`, `validate`/`validate_proc`/`validate_streams`, `children`/`run_if_enabled`/`check_enabled`, `find_stream`, `get_reservoir`, `impute`, `venting_fugitive_rate`, `get_process_EF`, `within_boundary`/`beyond_boundary`, `check_balances`, class-level subclass registry (`get_subclasses`, `_subclass_dict`, `decache_subclasses`, `_get_subclass`, `reload_subclass_dict`), `clear_iterating_process_list`, `set_run_after`/`set_extend`, `Boundary` class entirely.
+| File | Refs | Notes |
+|------|------|-------|
+| `processes/__init__.py` | 0 | Package init — likely just import-hygiene sweep |
+| `processes/flaring.py` | 0 | |
+| `processes/natural_gas_liquid.py` | 0 | |
+| `processes/storage_well.py` | 0 | |
+| `processes/CO2_injection_well.py` | 1 | `field.save_process_data` → `self.ctx.process_data[k] = v` |
+| `processes/pre_membrane_chiller.py` | 1 | `self.attr` → constructor param |
+| `processes/shared.py` | 1 | Helper module, not a Process subclass; also refactor `predict_blower_energy_use` per Task 5.4 (can be deferred) |
+| `processes/sour_gas_injection.py` | 1 | `field.save_process_data` → ctx |
+| `processes/compressor.py` | 2 | Helper class, not a Process subclass |
+| `processes/gas_reinjection_well.py` | 2 | |
+| `processes/LNG_transport.py` | 2 | |
+| `processes/petrocoke_transport.py` | 2 | |
 
-Keep ~35 retained methods (`reset`, `add_emission_rate`/s, `add_energy_rate`/s, `set_combustion_emissions`, `compute_emission_combustion`, `set_import_from_energy`, `set_gas_fugitives`, `get_compressor_and_well_loss_rate`, stream lookup engine, `visit`/`visited`, `predecessors`/`successors`, `set_iteration_value`, `register_iterating_process`/`check_iterator_convergence`/`reset_all_iteration`/`reset_iteration`/`_reset_before_iteration`, `run` abstract, `print_running_msg`, `all_streams_ready`, `sum_intermediate_results`/`init_intermediate_results`/`get_intermediate_results`). Several need modification where they currently reach through `self.field` or `self.model` — use `self.ctx.*` instead per Appendix B.
+### Per-file implementer contract (applied to every Tier 1 subagent)
 
-Keep simplified `Reservoir` (minimal source-node Process subclass). Keep `IntermediateValues` inner class. Keep module-level `run_corr_eqns` helper.
+1. Read the assigned `processes/<file>.py`.
+2. Read `opgee/process.py` to understand the new `__init__(name, ctx)` signature.
+3. Apply transformations (Appendix B):
+   - Add `ctx: FieldContext` param to `__init__` and call `super().__init__(name, ctx)`.
+   - Replace `self.attr("x")` → `self.x` (add as explicit constructor param with class-level type annotation).
+   - Replace `run(self, analysis)` → `run(self)`; drop `analysis.` references.
+   - Replace `self.field.*` and `self.model.*` per the table.
+   - Replace `from .log import getLogger` → `import logging`; `_logger = logging.getLogger(__name__)`.
+   - Remove imports of deleted modules (attributes, config, smart_defaults, etc.).
+   - Use `Quantity[float]` for pint type annotations.
+4. Run `uv run ruff check opgee/processes/<file>.py` — clean.
+5. Return a 1-paragraph report: what changed, ruff status, any surprises.
 
-**Expected consequence**: most `processes/*.py` subclass tests will break at collection time. That's OK — Phase 5.1–5.3 fixes them.
+### Dispatch strategy for Task 5.1
 
-### Pre-flight for Task 4.1 dispatch
-- Verify `opgee.context.FieldContext` exports fields the new Process needs (stp, tables, gwp, process_data) — done in 2.2, confirmed.
-- Verify `opgee.core.STP` + `opgee.chemistry.R_GAS` importable — done.
-- Confirm no surviving call-sites for the class-registry functions outside of `opgee/process.py` itself: grep pending (should be clean — those were XML-plumbing only).
-- Decide whether `self.ctx.process_data` becomes the new home for `self.field.save_process_data(k, v)` / `self.field.get_process_data(k)` — per Appendix B, yes: `self.field.save_process_data(k, v)` → `self.ctx.process_data[k] = v`; `self.field.get_process_data(k)` → `self.ctx.process_data[k]`. Callers migrate in Phase 5.
+- 12 implementer subagents, **sonnet model** (mechanical migration).
+- **Dispatch them all in parallel** in a single assistant turn (per skill `superpowers:dispatching-parallel-agents`).
+- **After all 12 return**: single controller run of `uv run ruff check opgee/processes/` + the scoped pytest set + a review sweep comparing each diff against the contract.
+- Two-stage review at Tier-1 completion (not per-file): spec-compliance reviewer against the plan's Appendix B + a code-quality reviewer dispatched on the whole Tier 1 batch. Individual per-file reviews would be noise.
+- Single commit for the batch: `phase 5: migrate Tier 1 processes (12 files, 0-2 field refs)`.
 
-### Suggested model
-**opus** — 1092-line class with many interlocking methods and subtle dependencies (iteration state, graph traversal hooks). Mechanical migration alone would be sonnet-scale, but the design decisions on what to keep vs. prune want opus judgment.
+### Pre-flight for Task 5.1 dispatch
+- Verify `opgee/context.FieldContext` exports `process_data` (it does — Phase 2.2).
+- Verify `Stream` constructor takes `ctx: FieldContext | None` (it does — Phase 3.3).
+- Verify `Process.__init__` takes `(name, ctx)` (it does — Phase 4.1).
+- Confirm `field.save_process_data(k, v)` call sites in Tier 1 — grep shows `CO2_injection_well.py`, `sour_gas_injection.py`. Both map to `self.ctx.process_data[k] = v`.
 
 ---
 
 ## 4. Tags and recent commits (newest first)
 
 ```
-2e4d322 phase 3: address 3.3 code-quality review (tests + ctx TODO + CARBON_NUMBER_SERIES move)  ← phase-3-gate
+5aabd26 phase 4: address 4.1 code-quality review (iterating_processes clear, F821 cleanup, type hint fix)  ← phase-4-gate
+ffacaec phase 4: fix test_processes.py call-site for new get_emission_rates signature
+e9ec51b phase 4: restructure Process base — new __init__(name, ctx), drop XML/boundary/enabled
+8c531a5 docs: phase 3 gate handoff                                                                         ← phase-3-gate
+2e4d322 phase 3: address 3.3 code-quality review (tests + ctx TODO + CARBON_NUMBER_SERIES move)
 a5df80f phase 3: strip stream.py — remove XML, add FieldContext, extract chemistry
 7f7e664 docs: add progress handoff for phase 3.2 completion
 83978ff phase 3: decouple thermodynamics constructors from field/model
 1509b6a phase 3: strip core.py to OpgeeObject + TP + STP + dict_from_list + Timer
-9938f37 phase 2: create FieldContext with frozen GWPData and SimulationParams  ← phase-2-gate
+9938f37 phase 2: create FieldContext with frozen GWPData and SimulationParams                              ← phase-2-gate
 17e806e phase 2: create chemistry.py with extracted component data
-f544f0f phase 1: fix remaining imports of deleted modules                       ← phase-1-gate
+f544f0f phase 1: fix remaining imports of deleted modules                                                  ← phase-1-gate
 …
-a73fb4f phase 0: bulk delete excluded files, tests, and dependencies           ← phase-0-gate
+a73fb4f phase 0: bulk delete excluded files, tests, and dependencies                                       ← phase-0-gate
 ```
 
-Tag list (chronological): `phase-0-gate` → `phase-1-gate` → `phase-2-gate` → **`phase-3-gate`**.
+Tag list (chronological): `phase-0-gate` → `phase-1-gate` → `phase-2-gate` → `phase-3-gate` → **`phase-4-gate`**.
+
+The `phase-4-gate` tag points at the docs commit that added this handoff on top of `5aabd26`.
 
 ---
 
-## 5. Still-broken-as-expected files (pre-Phase 4)
+## 5. Still-broken-as-expected files (pre-Phase 5)
 
-- `opgee/process.py` — imports `AttributeMixin`, `XmlInstantiable`, XML decorators, config/smart_defaults helpers. Fixed by 4.1.
-- `opgee/field.py` — many deleted-module imports; also has 28 `@SmartDefault.register`-stripped bare methods from Phase 1.9 that are dead code until 6.1.
-- Any test that uses `utils_for_tests.load_test_model` or `configure_logging_for_tests` — still broken. Phase 6.2 cleans up.
-- `test_emissions.py::test_gwp*` + `test_use_GWP_error` — fixture-dependent. Phase 6.2 scope. 6 errors at gate, accepted.
+- `opgee/field.py` — imports deleted modules (`decache_subclasses` [now gone from `process.py`], `smart_defaults`, etc.). Fixed by 6.1.
+- All 51 `opgee/processes/*.py` subclasses — they inherit the old `Process(name, **kwargs)` pattern, reach through `self.field`/`self.attr(...)`/`self.model.*`, and take `run(self, analysis)`. Fixed by Phase 5.1–5.3.
+- `opgee/processes/shared.py::predict_blower_energy_use` — takes `proc` that reads `proc.field.model.const(...)`. Fixed by 5.4.
+- Any test that uses `utils_for_tests.load_test_model` or `configure_logging_for_tests`, or relies on `test_model`/`test_model_with_change`/`test_model2` fixtures. Phase 6.2.
+- `tests/test_processes.py` — `test_get_reservoir` + ~40 other tests rely on Field/Analysis infrastructure. Phase 6.2.
+- `test_emissions.py::test_gwp*` + `test_use_GWP_error` — 6 errors at gate, accepted. Phase 6.2.
 
 ---
 
 ## 6. Files to read at session start (for the next session)
 
 1. **This file** — the handoff.
-2. `.agents/docs/plans/2026-04-16-deep-clean-plan.md` — skim, then read Phase 4 Task 4.1 in detail.
-3. `.agents/notes/2026-04-16-deep-clean-process.md` — authoritative symbol-level proposal for `process.py`.
-4. `opgee/process.py` — read in full (1092 lines; heavy file).
-5. `opgee/context.py` — know the `FieldContext` surface.
-6. Plan Appendix B — transformation patterns that will also govern Phase 5.
+2. `.agents/docs/plans/2026-04-16-deep-clean-plan.md` — skim; read Phase 5 Task 5.1 + Appendix A + Appendix B in detail.
+3. `opgee/process.py` at `5aabd26` — so you know what subclasses must conform to (new `__init__`, `self.ctx.*` surface).
+4. `opgee/processes/__init__.py` + the 4 zero-ref files (`flaring.py`, `natural_gas_liquid.py`, `storage_well.py`) — skim to see how trivial they are before dispatching.
+5. `opgee/processes/CO2_injection_well.py` + `sour_gas_injection.py` — the two `save_process_data` callers — confirm the ctx translation works.
+6. `.agents/notes/2026-04-16-deep-clean-processes_shared.md` — for `shared.py` + `predict_blower_energy_use` context (Task 5.4 will revisit).
 
-Historical reference (unchanged, only skim if needed):
+Historical reference (skim only if specifically needed):
 - `.agents/notes/2026-04-16-deep-clean-progress-handoff.md`
 - `.agents/notes/2026-04-17-deep-clean-progress-handoff.md`
+- `.agents/notes/2026-04-16-deep-clean-process.md` (the proposal doc for Phase 4 — Phase 5 subclasses should treat it as context, not as their spec)
 
 ---
 
 ## 7. Process tips carried forward
 
 1. **Always use `superpowers:subagent-driven-development`** — implementer → spec-compliance review → code-quality review → fix-up as needed → mark complete. Don't skip either review.
-2. **Use `opus` for complex tasks** (process.py restructure, gas_partition.py, steam_generator.py, field.py). Use `sonnet` for mechanical migrations (Tier 1 processes, lint fixes).
-3. **Respect the critical rule** — no re-adding, re-importing, or restoring DELETE/DROP/REMOVE symbols. Every implementer prompt must restate this.
-4. **Flag plan discrepancies proactively** — the plan has several small inconsistencies; when an agent hits one, STOP and escalate.
-5. **Parallel dispatch authorized for Phase 5** — Tier 1 runs 12 subagents in parallel, Tier 2 runs in batches of 5–7, Tier 3 in batches of 2–3. Single-subagent dispatches for `gas_partition.py` and `steam_generator.py`.
+2. **Model selection**:
+   - Tier 1 Phase 5 subclasses (mechanical, 0–2 refs) → **sonnet** in parallel batches.
+   - Tier 2 Phase 5 (3–11 refs) → **sonnet** but watch for judgment calls that merit opus.
+   - Tier 3 Phase 5 complex (12+ refs) + `gas_partition.py` / `steam_generator.py` → **opus**.
+   - Phase 6.1 Field restructure → **opus**.
+   - Reviewers → **sonnet** unless the work is architectural.
+3. **Critical rule**: no re-adding/re-importing/restoring DELETE/DROP/REMOVE symbols. Every implementer prompt must restate this.
+4. **Parallel dispatch authorized for Phase 5**:
+   - Tier 1: 12 subagents in a single assistant turn
+   - Tier 2 Batch A/B/C: 5–7 per batch
+   - Tier 3: pairs / triples
+   - Single-subagent for `gas_partition.py` and `steam_generator.py`.
+5. **Gate checks only over the spec-compliant test subset**. Full `pytest` remains non-runnable until Phase 6.2 — don't chase the 6 pre-existing test_emissions errors in earlier phases.
 6. **Every verification-gate task overwrites this file** — single stable name, not dated. Prior dated handoffs remain as history.
+7. **Trust the diff, not the subagent report.** See §1's off-task subagent anecdote. If a report is nonsense but the file edits look correct, verify directly and commit.
