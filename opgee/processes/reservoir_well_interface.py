@@ -6,20 +6,39 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-import numpy as np
-
-from ..units import ureg
-from ..core import TemperaturePressure, STP
 import logging
+
+import numpy as np
+from pint.facets.plain import PlainQuantity as Quantity
+
+from ..context import FieldContext
+from ..core import TemperaturePressure, STP
 from ..process import Process
 from ..stream import PHASE_GAS
+from ..thermodynamics import Gas, Oil, Water
+from ..units import ureg
 
 _logger = logging.getLogger(__name__)  # data logging
 
 
 class ReservoirWellInterface(Process):
-    def __init__(self, name, **kwargs):
-        super().__init__(name, **kwargs)
+    def __init__(
+        self,
+        name: str,
+        ctx: FieldContext,
+        oil: Oil,
+        gas: Gas,
+        water: Water,
+        res_temp: Quantity[float],
+        res_press: Quantity[float],
+        num_prod_wells: int,
+        productivity_index: Quantity[float],
+        res_perm: Quantity[float],
+        res_thickness: Quantity[float],
+        oil_volume_rate: Quantity[float],
+        frac_CO2_breakthrough: Quantity[float],
+    ):
+        super().__init__(name, ctx)
 
         self._required_inputs = [
             "oil",
@@ -29,30 +48,19 @@ class ReservoirWellInterface(Process):
             "oil",
         ]
 
-        self.frac_CO2_breakthrough = None
-        self.num_prod_wells = None
-        self.oil_volume_rate = None
-        self.permeability = None
-        self.productivity_index = None
-        self.res_thickness = None
-        self.res_tp = None
+        self.oil = oil
+        self.gas = gas
+        self.water = water
+        self.res_tp = TemperaturePressure(res_temp, res_press)
+        self.num_prod_wells = num_prod_wells
+        self.productivity_index = productivity_index
+        self.permeability = res_perm
+        self.res_thickness = res_thickness
+        self.oil_volume_rate = oil_volume_rate
+        self.frac_CO2_breakthrough = frac_CO2_breakthrough
 
-        self.cache_attributes()
-
-    def cache_attributes(self):
-        field = self.field
-        self.res_tp = TemperaturePressure(field.res_temp,
-                                          field.res_press)
-        self.num_prod_wells = field.num_prod_wells
-        self.productivity_index = field.productivity_index
-        self.permeability = self.attr("res_perm")
-        self.res_thickness = self.attr("res_thickness")
-        self.oil_volume_rate = field.oil_volume_rate
-        self.frac_CO2_breakthrough = field.frac_CO2_breakthrough
-
-    def run(self, analysis):
+    def run(self):
         self.print_running_msg()
-        field = self.field
 
         # mass rate
         input = self.find_input_stream("oil")
@@ -64,7 +72,7 @@ class ReservoirWellInterface(Process):
         output = self.find_output_stream("oil")
         output.copy_flow_rates_from(input)
 
-        CO2_flooding_rate = field.get_process_data("CO2_flooding_rate_init")
+        CO2_flooding_rate = self.ctx.process_data.get("CO2_flooding_rate_init")
         if CO2_flooding_rate:
             CO2_breakthrough_mass_rate = CO2_flooding_rate * self.frac_CO2_breakthrough
             output.add_flow_rate("CO2", PHASE_GAS, CO2_breakthrough_mass_rate)
@@ -89,11 +97,11 @@ class ReservoirWellInterface(Process):
         :param input_stream: (Stream) a combined stream with all flows from Reservoir
            to Reservoir-Well Interface
 
-        :return:(pint.Quantity) bottomhole pressure (BHP) in units "psia"
+        :return:(Quantity[float]) bottomhole pressure (BHP) in units "psia"
         """
-        oil = self.field.oil
-        gas = self.field.gas
-        water = self.field.water
+        oil = self.oil
+        gas = self.gas
+        water = self.water
 
         stream_temp = input_stream.tp.T.to("kelvin")
         res_press = input_stream.tp.P.to("psia")
