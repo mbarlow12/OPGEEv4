@@ -32,22 +32,26 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
 ]
 
-[build-system]
-requires = ["setuptools>=61"]
-build-backend = "setuptools.build_meta"
-
 [project.urls]
 Homepage = "https://github.com/RMI/OPGEEv4"
 Downloads = "https://github.com/RMI/OPGEEv4.git"
-
-[tool.setuptools.packages.find]
-include = ["opgee*"]
 
 [tool.pytest.ini_options]
 markers = ["slow: marks tests as slow (skip unless --run-slow is passed)"]
 
 [tool.uv]
 package = true
+
+[tool.uv.workspace]
+members = [
+  "packages/engine",
+  "packages/core",
+  "packages/graph",
+  "packages/processes",
+  "packages/thermo",
+  "packages/data",
+  "packages/field",
+]
 
 [dependency-groups]
 dev = ["pytest>=8.3.4", "pytest-cov>=6.0.0", "ruff>=0.11.8", "ty>=0.0.15"]
