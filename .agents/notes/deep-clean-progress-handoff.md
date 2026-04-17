@@ -1,8 +1,8 @@
 # OPGEE v5 Deep Clean — Final Handoff (Phase 6 complete)
 
 **Branch:** `refactor/v5-deep-clean`
-**Tag:** `phase-6-gate` (HEAD)
-**Status:** REFACTOR COMPLETE — full suite passing, ruff clean, library ready for next steps.
+**Tags at HEAD:** `phase-6-gate`, `STOP`
+**Status:** REFACTOR COMPLETE — full suite passing, ruff clean, library ready for next steps. The `STOP` tag marks the session-stop / resume point for the next session.
 
 ---
 
@@ -18,7 +18,8 @@
 
 | Commit | Subject |
 |---|---|
-| (HEAD) | phase 6.4: delete docs/, restore thermosteam-transitive deps (graphviz, pyyaml) |
+| (HEAD) | docs: phase 6 gate final handoff (self-consistent post-commit state) |
+| `fce975f` | phase 6.4: delete docs/, restore thermosteam-transitive deps (graphviz, pyyaml) |
 | `d4c50fa` | docs: phase 6 gate handoff — refactor complete, phase-6-gate tagged |
 | `27cfd35` | phase 6.4: final ruff cleanup — delete dead generate_models.py, fix conf.py E402 |
 | `51c0675` | phase 6: final cleanup — public API exports, __all__ on processes/, drop dead deps |
@@ -35,7 +36,7 @@
 
 ## 2. Tags (chronological)
 
-`phase-0-gate` → `phase-1-gate` → `phase-2-gate` → `phase-3-gate` → `phase-4-gate` → `phase-5-gate` → `phase-6-gate` (HEAD).
+`phase-0-gate` → `phase-1-gate` → `phase-2-gate` → `phase-3-gate` → `phase-4-gate` → `phase-5-gate` → **`phase-6-gate`** + **`STOP`** (both on this HEAD commit).
 
 Note: `phase-5-tier-2-complete` was an intermediate milestone tag; the canonical gate tags above are the official ones.
 
@@ -59,7 +60,8 @@ See `opgee/__init__.py` for the `__all__` declaration.
 ## 5. Full commit history (phase-0-gate..phase-6-gate)
 
 ```
-(HEAD)  phase 6.4: delete docs/, restore thermosteam-transitive deps
+(HEAD)  docs: phase 6 gate final handoff (self-consistent post-commit state)   ← phase-6-gate, STOP
+fce975f phase 6.4: delete docs/, restore thermosteam-transitive deps (graphviz, pyyaml)
 d4c50fa docs: phase 6 gate handoff — refactor complete, phase-6-gate tagged
 27cfd35 phase 6.4: final ruff cleanup — delete dead generate_models.py, fix conf.py E402
 51c0675 phase 6: final cleanup — public API exports, __all__ on processes/, drop dead deps
@@ -113,10 +115,19 @@ bf48e35 phase 1: clean units.py — stdlib logging, importlib.resources, drop Qt
 
 ## 7. Session task list
 
-All tasks complete:
-- Task 6.1 ✅
-- Task 6.2 ✅
-- Task 6.3 ✅
-- Task 6.4 ✅ (this gate)
+All Phase 6 tasks complete:
+- Task 6.1 Restructure Field ✅
+- Task 6.2 Adapt remaining tests ✅
+- Task 6.3 Final cleanup — public API + dependencies ✅
+- Task 6.4 Final verification gate ✅ (this handoff)
 
-Next session: Phase 6 is done. The next major work is the final code-reviewer dispatch for the whole refactor (spec-compliance + code-quality on the full `phase-0-gate..phase-6-gate` range), then decide whether to merge the branch to main.
+**Next-session pending:**
+- Final code-reviewer dispatch for the whole refactor (spec-compliance + code-quality on the full `phase-0-gate..phase-6-gate` range), then decide whether to merge the branch to main.
+
+## 8. Files to read at session start (for the next session)
+
+1. **This file** — the handoff.
+2. `.agents/docs/plans/2026-04-16-deep-clean-plan.md` — the original plan (skim; refactor is complete, but useful context for the final review).
+3. `.agents/docs/specs/2026-04-16-deep-clean-design.md` — the original spec (the review's primary benchmark).
+4. `opgee/__init__.py` — the public API surface at HEAD.
+5. `opgee/field.py`, `opgee/process.py`, `opgee/stream.py`, `opgee/context.py` — the four central modules to spot-check during the final review.
