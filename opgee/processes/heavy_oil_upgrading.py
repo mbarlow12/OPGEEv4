@@ -13,12 +13,12 @@ from ..core import STP
 from ..emissions import EM_FLARING
 from ..energy import EN_NATURAL_GAS, EN_ELECTRICITY, EN_UPG_PROC_GAS, EN_PETCOKE
 from ..import_export import ELECTRICITY, H2
-from ..log import getLogger
+import logging
 from ..process import Process
 from ..stream import PHASE_GAS
 from ..stream import Stream
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class HeavyOilUpgrading(Process):

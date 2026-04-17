@@ -10,9 +10,9 @@ import networkx as nx
 import pint
 import pandas as pd
 
+import logging
 from .units import ureg
 from .attributes import AttributeMixin
-from .config import getParamAsList
 from .core import XmlInstantiable, elt_name, instantiate_subelts, dict_from_list, STP
 from .emissions import Emissions
 from .energy import Energy
@@ -25,21 +25,15 @@ from .error import (
     ZeroEnergyFlowError,
 )
 from .import_export import ImportExport
-from .log import getLogger
 from .process import Process, Reservoir, decache_subclasses
-from .process_groups import ProcessChoice
 from .processes.steam_generator import SteamGenerator
 from .processes.transport_energy import TransportEnergy
-
-# Import FieldResult from results module for backward compatibility
-from .smart_defaults import SmartDefault
 from .stream import Stream
 from .thermodynamics import Oil, Gas, Water
 from .utils import getBooleanXML, roundup
 from .combine_streams import combine_streams
-from .bfs import bfs
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 def total_emissions(proc, gwp):
@@ -1551,7 +1545,6 @@ class Field(AttributeMixin, XmlInstantiable):
     # Smart Defaults and Distributions
     #
 
-    @SmartDefault.register("WOR", ["steam_flooding", "age", "SOR"])
     def WOR_default(self, steam_flooding, age, SOR):
         from math import exp
 
@@ -1564,13 +1557,11 @@ class Field(AttributeMixin, XmlInstantiable):
         tmp = 4.021 * exp(0.024 * age.to("yr").m) - 4.021
         return tmp if tmp <= 100 else 100
 
-    @SmartDefault.register("SOR", ["steam_flooding"])
     def SOR_default(self, steam_flooding):
         return 3.0 if steam_flooding else 1.0
 
     # NOTE: If GOR is not known, it can be computed from API_grav, but we avoid
     # registering the dependency as this would create a dependency cycle.
-    @SmartDefault.register("GOR", ["API"])
     def GOR_default(self, API):
         api = API.to("degAPI").m
 
@@ -1589,14 +1580,10 @@ class Field(AttributeMixin, XmlInstantiable):
     #     return 47.0 if GOR > 10000 else 32.8
 
     # TODO: Is the default always 7, or always the value of WOR plus 1?
-    @SmartDefault.register("WIR", ["WOR"])
     def WIR_default(self, wor):
         # =J86+1  [J86 is WOR default, 6]
         return wor + 1
 
-    @SmartDefault.register(
-        "stabilizer_column", ["GOR", "gas_lifting", "oil_sands_mine"]
-    )
     def stabilizer_default(self, GOR, gas_lifting, oil_sands_mine):
         # =IF(OR(J55+J56=1,AND(J85<=500,J52=0)),0,1)
         # J52 = gas_lifting (binary)
@@ -1611,7 +1598,6 @@ class Field(AttributeMixin, XmlInstantiable):
         )
 
     # gas flooding injection ratio
-    @SmartDefault.register("GFIR", ["flood_gas_type", "GOR"])
     def GFIR_default(self, flood_gas_type, GOR):
         # =IF(Flood_gas_type=1, 1.5*J85, IF(Flood_gas_type=2, 1200,  IF(Flood_gas_type=3, 10000,  1.5*J85)))
         # J85 is GOR
@@ -1627,13 +1613,11 @@ class Field(AttributeMixin, XmlInstantiable):
         else:
             return 1.5 * GOR
 
-    @SmartDefault.register("depth", ["GOR"])
     def depth_default(self, GOR):
         # =IF(GOR > 10000, Z62, 7122), where Z62 has constant 8285 [gas field default depth]
         gas_field_default_depth = 8285.0
         return gas_field_default_depth if GOR.m > 10000 else 7122.0
 
-    @SmartDefault.register("res_press", ["country", "depth", "steam_flooding"])
     def res_press_default(self, country, depth, steam_flooding):
         # =IF(AND('Active Field'!J59="California",'Active Field'!J54=1),100,0.5*(J62*0.43))
         # J59 = country, J62 = depth, J54 = steam_flooding
@@ -1643,17 +1627,14 @@ class Field(AttributeMixin, XmlInstantiable):
             else 0.5 * depth.to("ft").m * 0.43
         )
 
-    @SmartDefault.register("res_temp", ["depth"])
     def res_temp_default(self, depth):
         # = 70+1.8*J62/100 [J62 = depth]
         return 70 + 1.8 * depth.to("ft").m / 100.0
 
-    @SmartDefault.register("CrudeOilDewatering.heater_treater", ["API"])
     def heater_treater_default(self, API):
         # =IF(J73<18,1,0)  [J73 is API gravity]
         return API.to("degAPI").m < 18
 
-    @SmartDefault.register("num_prod_wells", ["oil_sands_mine", "oil_prod"])
     def num_producing_wells_default(self, oil_sands_mine, oil_prod):
         # =IF(OR(Oil_sands_mine_int_01=1,Oil_sands_mine_nonint_01=1),0,IF(ROUND(J63/87.5,0)<1,1,ROUNDUP(J63/87.5,0)))
         # J63 = oil_prod
@@ -1667,9 +1648,6 @@ class Field(AttributeMixin, XmlInstantiable):
             else max(1.0, round(oil_prod.to("bbl_oil/d").m / 87.5, 0))
         )
 
-    @SmartDefault.register(
-        "num_water_inj_wells", ["oil_sands_mine", "oil_prod", "num_prod_wells"]
-    )
     def oil_prod_default(self, oil_sands_mine, oil_prod, num_prod_wells):
         # =IF(OR(Oil_sands_mine_int_01=1,Oil_sands_mine_nonint_01=1),
         #     0,
@@ -1696,9 +1674,6 @@ class Field(AttributeMixin, XmlInstantiable):
 
         return roundup(num_prod_wells * fraction, 0)
 
-    @SmartDefault.register(
-        "HeavyOilDilution.fraction_diluent", ["oil_sands_mine", "upgrader_type"]
-    )
     def fraction_diluent_default(self, oil_sands_mine, upgrader_type):
         # =IF(AND(J56=1,J111=0),0.3,0) [J56 = 'oil sands mine nonint'; ; J111 = upgrader_type
         return (
@@ -1707,18 +1682,13 @@ class Field(AttributeMixin, XmlInstantiable):
             else 0.0
         )
 
-    @SmartDefault.register("fraction_elec_onsite", ["offshore"])
     def fraction_elec_onsite_default(self, offshore):
         return 1.0 if offshore else 0.0
 
-    @SmartDefault.register(
-        "fraction_remaining_gas_inj", ["natural_gas_reinjection", "gas_flooding"]
-    )
     def fraction_remaining_gas_inj_default(self, natural_gas_reinjection, gas_flooding):
         # =IF(J53=1,1,IF(J50=1,0.5,0)) [J53 = gas_flooding, J50 = natural_gas_reinjection]
         return 1.0 if gas_flooding else (0.5 if natural_gas_reinjection else 0.0)
 
-    @SmartDefault.register("ecosystem_richness", ["offshore"])
     def ecosystem_richness_default(self, offshore):
         # Excel has 3 separate booleans for low, med, high ecosystem richness, but we have
         # just one attribute here; value is one of ('Low carbon', 'Med carbon', 'High carbon').
@@ -1727,7 +1697,6 @@ class Field(AttributeMixin, XmlInstantiable):
         # High: =IF(J70=1,0,0) # TODO: high carbon isn't used?
         return "Low carbon" if offshore else "Med carbon"
 
-    @SmartDefault.register("field_development_intensity", ["offshore"])
     def field_development_intensity_default(self, offshore):
         # Excel has 3 separate booleans for low, med, high intensity, but we have
         # just one attribute here; value is one of ('Low', 'Med', 'High').
@@ -1736,18 +1705,15 @@ class Field(AttributeMixin, XmlInstantiable):
         # High: =IF(J70=1,0,0) # TODO: high intensity isn't used?
         return "Low" if offshore else "Med"
 
-    @SmartDefault.register("common_gas_process_choice", ["oil_sands_mine"])
     def common_gas_process_choice_default(self, oil_sands_mine):
         # Disable the ancillary group of gas-related processes when there is oil sand mine.
         # Otherwise enable all of those processes.
         return "None" if oil_sands_mine != "None" else "All"
 
-    @SmartDefault.register("prod_water_inlet_temp", ["country"])
     def prod_water_inlet_temp_default(self, country):
         temperature = 340 if country == "Canada" else 140
         return ureg.Quantity(temperature, "degF")
 
-    @SmartDefault.register("num_gas_inj_wells", ["num_prod_wells"])
     def num_gas_inj_wells_default(self, num_prod_wells):
         return num_prod_wells * 0.25
 

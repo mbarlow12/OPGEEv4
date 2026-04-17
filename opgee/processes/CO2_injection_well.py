@@ -7,10 +7,10 @@
 # See LICENSE.txt for license details.
 #
 from ..emissions import EM_FUGITIVES
-from ..log import getLogger
+import logging
 from ..process import Process
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class CO2InjectionWell(Process):

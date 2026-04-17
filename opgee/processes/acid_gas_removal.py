@@ -9,12 +9,12 @@
 from ..units import ureg
 from ..emissions import EM_FUGITIVES
 from ..energy import EN_ELECTRICITY
-from ..log import getLogger
+import logging
 from ..process import Process, run_corr_eqns
 from .compressor import Compressor
 from .shared import get_energy_carrier, predict_blower_energy_use, get_bounded_value, get_energy_consumption
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 amine_solution_K_value_dict = { "conv DEA" : 1.45,
                                 "high DEA": 0.95,

@@ -12,13 +12,13 @@ from ..units import ureg
 from ..emissions import EM_FUGITIVES
 from ..energy import EN_NATURAL_GAS, EN_ELECTRICITY
 from ..error import OpgeeException
-from ..log import getLogger
+import logging
 from ..process import Process
 from ..process import run_corr_eqns
 from ..thermodynamics import ChemicalInfo
 from .shared import get_bounded_value, predict_blower_energy_use
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class GasDehydration(Process):

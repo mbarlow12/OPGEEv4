@@ -11,11 +11,11 @@ from ..core import TemperaturePressure
 from ..energy import EN_NATURAL_GAS, EN_ELECTRICITY
 from ..error import BalanceError
 from ..import_export import WATER
-from ..log import getLogger
+import logging
 from ..process import Process
 from .shared import get_energy_consumption
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 # the tolerance is used for checking mass and energy balance
 # (input - output) / input < tolerance

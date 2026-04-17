@@ -12,14 +12,14 @@ from ..units import ureg
 from ..core import STP, TemperaturePressure
 from ..emissions import EM_FUGITIVES
 from ..energy import EN_ELECTRICITY
-from ..log import getLogger
+import logging
 from ..process import Process
 from ..process import run_corr_eqns
 from ..stream import PHASE_GAS, Stream
 from .compressor import Compressor
 from .shared import get_energy_carrier, predict_blower_energy_use, get_bounded_value
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class Demethanizer(Process):

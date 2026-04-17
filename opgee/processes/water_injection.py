@@ -17,11 +17,11 @@ import numpy as np
 
 from .shared import get_energy_carrier, get_energy_consumption
 from ..error import OpgeeException
-from ..log import getLogger
+import logging
 from ..process import Process
 from ..units import ureg
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class WaterInjection(Process):

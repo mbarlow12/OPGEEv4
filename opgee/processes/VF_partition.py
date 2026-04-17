@@ -7,11 +7,11 @@
 # See LICENSE.txt for license details.
 #
 from ..core import STP
-from ..log import getLogger
+import logging
 from ..process import Process
 from ..stream import PHASE_GAS, Stream
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class VFPartition(Process):

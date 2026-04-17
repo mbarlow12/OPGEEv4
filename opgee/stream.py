@@ -17,11 +17,11 @@ from .units import ureg, magnitude
 from .attributes import AttributeMixin
 from .core import XmlInstantiable, elt_name, TemperaturePressure
 from .error import OpgeeException, ModelValidationError
-from .log import getLogger
+import logging
 from .table_manager import TableManager
 from .utils import getBooleanXML, coercible
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 # constants to use instead of strings
 PHASE_SOLID = "solid"

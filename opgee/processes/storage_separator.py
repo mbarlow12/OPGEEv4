@@ -7,11 +7,11 @@
 # See LICENSE.txt for license details.
 #
 from ..core import TemperaturePressure
-from ..log import getLogger
+import logging
 from ..process import Process
 from ..stream import Stream
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class StorageSeparator(Process):

@@ -11,10 +11,10 @@ from ..core import TemperaturePressure
 from ..energy import EN_ELECTRICITY
 from ..error import OpgeeException
 from ..import_export import WATER
-from ..log import getLogger
+import logging
 from ..process import Process
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class WaterTreatment(Process):

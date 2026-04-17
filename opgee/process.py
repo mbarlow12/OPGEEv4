@@ -14,17 +14,16 @@ import pint
 from .units import ureg, magnitude
 from .attributes import AttrDefs, AttributeMixin
 from .combine_streams import combine_streams
-from .config import getParamAsBoolean
 from .core import OpgeeObject, XmlInstantiable, elt_name
 from .emissions import Emissions, EM_COMBUSTION
 from .energy import EN_ELECTRICITY, Energy
 from .error import OpgeeException, AbstractMethodError, OpgeeIterationConverged, ModelValidationError
 from .import_export import ImportExport
-from .log import getLogger
+import logging
 from .stream import Stream
 from .utils import getBooleanXML
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 def get_subclasses(cls):
@@ -40,7 +39,7 @@ def _subclass_dict(superclass):
 
     :return: (dict) subclasses keyed by name
     """
-    allow_redef = getParamAsBoolean('OPGEE.AllowProcessRedefinition')       # DOCUMENT this feature
+    allow_redef = False  # config deleted in phase 0; redefinition disallowed by default
 
     d = {}
 

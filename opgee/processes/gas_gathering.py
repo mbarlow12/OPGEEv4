@@ -9,11 +9,11 @@
 import math
 from ..units import ureg
 from ..emissions import EM_FUGITIVES
-from ..log import getLogger
+import logging
 from ..process import Process
 from ..stream import Stream
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class GasGathering(Process):

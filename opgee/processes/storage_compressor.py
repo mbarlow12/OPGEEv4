@@ -7,13 +7,13 @@
 # See LICENSE.txt for license details.
 #
 from ..emissions import EM_FUGITIVES
-from ..log import getLogger
+import logging
 from ..process import Process
 from ..processes.compressor import Compressor
 from ..stream import PHASE_GAS
 from .shared import get_energy_carrier
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class StorageCompressor(Process):

@@ -12,10 +12,10 @@ from .compressor import Compressor
 from .shared import get_energy_carrier
 from ..core import TemperaturePressure
 from ..emissions import EM_FUGITIVES
-from ..log import getLogger
+import logging
 from ..process import Process
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 class TransmissionCompressor(Process):
     """

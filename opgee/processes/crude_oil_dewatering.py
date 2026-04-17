@@ -9,12 +9,12 @@
 from ..units import ureg
 from ..core import TemperaturePressure
 from ..error import OpgeeException
-from ..log import getLogger
+import logging
 from ..process import Process
 from ..stream import PHASE_LIQUID
 from .shared import get_energy_carrier
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class CrudeOilDewatering(Process):

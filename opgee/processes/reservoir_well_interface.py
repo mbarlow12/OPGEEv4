@@ -10,11 +10,11 @@ import numpy as np
 
 from ..units import ureg
 from ..core import TemperaturePressure, STP
-from ..log import getLogger
+import logging
 from ..process import Process
 from ..stream import PHASE_GAS
 
-_logger = getLogger(__name__)  # data logging
+_logger = logging.getLogger(__name__)  # data logging
 
 
 class ReservoirWellInterface(Process):

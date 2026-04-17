@@ -7,11 +7,11 @@
 # See LICENSE.txt for license details.
 #
 from ..import_export import NGL_LPG
-from ..log import getLogger
+import logging
 from ..process import Process
 from .shared import get_energy_carrier
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class LNGTransport(Process):
