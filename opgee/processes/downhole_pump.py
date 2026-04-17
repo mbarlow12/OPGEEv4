@@ -6,15 +6,19 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-import numpy as np
+import logging
 
-from ..units import ureg
+import numpy as np
+from pint.facets.plain import PlainQuantity as Quantity
+
+from ..combine_streams import combine_streams
+from ..context import FieldContext
 from ..core import TemperaturePressure
 from ..emissions import EM_FUGITIVES
-import logging
 from ..process import Process
-from ..stream import Stream, PHASE_GAS
-from ..combine_streams import combine_streams
+from ..stream import PHASE_GAS, Stream
+from ..thermodynamics import Gas, Oil, Water
+from ..units import ureg
 from .shared import get_energy_carrier, get_energy_consumption_stages
 
 _logger = logging.getLogger(__name__)
@@ -28,42 +32,65 @@ class DownholePump(Process):
     Attributes
         gas_lifting : bool
             Whether gas lifting is enabled in the field.
-        res_temp : pint.Quantity
+        res_temp : Quantity[float]
             The reservoir temperature.
-        oil_volume_rate : pint.Quantity
+        oil_volume_rate : Quantity[float]
             The oil volume rate in the field.
-        eta_pump_well : pint.Quantity
+        eta_pump_well : Quantity[float]
             The efficiency of the downhole pump in the well.
-        prod_tubing_diam : pint.Quantity
+        prod_tubing_diam : Quantity[float]
             The diameter of the production tubing.
         prod_tubing_xsection_area : float
             The cross-sectional area of the production tubing.
-        depth : pint.Quantity
+        depth : Quantity[float]
             The depth of the reservoir.
         friction_factor : float
             The friction factor for the production tubing.
         num_prod_wells : int
             The number of production wells in the field.
-        gravitational_acceleration : pint.Quantity
+        gravitational_acceleration : Quantity[float]
             The gravitational acceleration constant.
         prime_mover_type : str
             The type of prime mover used in the process.
-        wellhead_t : pint.Quantity
+        wellhead_t : Quantity[float]
             The wellhead temperature.
         wellhead_tp : TemperaturePressure
             The wellhead temperature and pressure.
-        oil_sand_mine : bool
+        oil_sand_mine : str
             Whether the field is an oil sands mine.
 
     Methods
-        run(analysis)
+        run()
             Simulates the DownholePump process to lift crude oil from the reservoir
             to the surface and calculates the energy consumption and emissions.
         impute()
             Estimates the completion and workover fugitive stream and adjusts the input stream.
     """
-    def __init__(self, name, **kwargs):
-        super().__init__(name, **kwargs)
+    def __init__(
+        self,
+        name: str,
+        ctx: FieldContext,
+        oil: Oil,
+        gas: Gas,
+        water: Water,
+        downhole_pump: bool,
+        gas_lifting: bool,
+        res_temp: Quantity[float],
+        oil_volume_rate: Quantity[float],
+        eta_pump_well: Quantity[float],
+        prod_tubing_diam: Quantity[float],
+        depth: Quantity[float],
+        friction_factor: Quantity[float],
+        num_prod_wells: int,
+        prime_mover_type: str,
+        wellhead_t: Quantity[float],
+        wellhead_pressure: Quantity[float],
+        oil_sands_mine: str,
+        gravitational_acceleration: Quantity[float],
+        loss_rate: Quantity[float],
+        completion_and_workover_C1_rate: Quantity[float],
+    ):
+        super().__init__(name, ctx)
 
         self._required_inputs = [
             "oil",
@@ -74,43 +101,28 @@ class DownholePump(Process):
             "oil",
         ]
 
-        self.gravitational_acceleration = self.field.model.const("gravitational-acceleration")
+        self.oil = oil
+        self.gas = gas
+        self.water = water
+        self.downhole_pump = downhole_pump
+        self.gas_lifting = gas_lifting
+        self.res_temp = res_temp
+        self.oil_volume_rate = oil_volume_rate
+        self.eta_pump_well = eta_pump_well
+        self.prod_tubing_diam = prod_tubing_diam
+        self.prod_tubing_xsection_area = np.pi * (prod_tubing_diam / 2) ** 2
+        self.depth = depth
+        self.friction_factor = friction_factor
+        self.num_prod_wells = num_prod_wells
+        self.prime_mover_type = prime_mover_type
+        self.wellhead_tp = TemperaturePressure(wellhead_t, wellhead_pressure)
+        self.oil_sand_mine = oil_sands_mine
+        self.gravitational_acceleration = gravitational_acceleration
+        self.loss_rate = loss_rate
+        self.completion_and_workover_C1_rate = completion_and_workover_C1_rate
 
-        self.depth = None
-        self.downhole_pump = None
-        self.eta_pump_well = None
-        self.friction_factor = None
-        self.gas_lifting = None
-        self.num_prod_wells = None
-        self.oil_sand_mine = None
-        self.oil_volume_rate = None
-        self.prime_mover_type = None
-        self.prod_tubing_diam = None
-        self.prod_tubing_xsection_area = None
-        self.res_temp = None
-        self.wellhead_tp = None
-
-        self.cache_attributes()
-
-    def cache_attributes(self):
-        field = self.field
-        self.downhole_pump = field.downhole_pump
-        self.gas_lifting = field.gas_lifting
-        self.res_temp = field.res_temp
-        self.oil_volume_rate = field.oil_volume_rate
-        self.eta_pump_well = self.attr("eta_pump_well")
-        self.prod_tubing_diam = diameter = field.prod_tubing_diam
-        self.prod_tubing_xsection_area = np.pi * (diameter / 2) ** 2
-        self.depth = field.depth
-        self.friction_factor = field.friction_factor
-        self.num_prod_wells = field.num_prod_wells
-        self.prime_mover_type = self.attr("prime_mover_type")
-        self.wellhead_tp = TemperaturePressure(field.wellhead_t, field.attr("wellhead_pressure"))
-        self.oil_sand_mine = field.oil_sands_mine
-
-    def run(self, analysis):
+    def run(self):
         self.print_running_msg()
-        field = self.field
 
         # mass rate
         input = self.find_input_stream("oil")
@@ -121,14 +133,14 @@ class DownholePump(Process):
         if lift_gas is not None and lift_gas.is_initialized():
             input = combine_streams([input, lift_gas])
 
-        loss_rate = field.component_fugitive_table[self.name]
+        loss_rate = self.loss_rate
         gas_fugitives = self.set_gas_fugitives(input, loss_rate)
 
         output = self.find_output_stream("oil")
         output.copy_flow_rates_from(input, tp=self.wellhead_tp)
         output.subtract_rates_from(gas_fugitives)
 
-        completion_workover_fugitive_stream = field.get_process_data("completion_workover_fugitive_stream")
+        completion_workover_fugitive_stream = self.ctx.process_data.get("completion_workover_fugitive_stream")
         if completion_workover_fugitive_stream is not None:
             gas_fugitives.add_flow_rates_from(completion_workover_fugitive_stream)
             output.subtract_rates_from(completion_workover_fugitive_stream)
@@ -136,9 +148,9 @@ class DownholePump(Process):
         self.set_iteration_value(output.total_flow_rate())
 
         # energy use
-        oil = field.oil
-        water = field.water
-        gas = field.gas
+        oil = self.oil
+        water = self.water
+        gas = self.gas
         energy_use = self.energy
         energy_carrier = get_energy_carrier(self.prime_mover_type)
         if not self.gas_lifting:
@@ -186,7 +198,6 @@ class DownholePump(Process):
             wellbore_average_tp = TemperaturePressure(wellbore_average_temp, wellbore_average_press)
             stream = Stream("average", wellbore_average_tp)
             stream.copy_flow_rates_from(input, tp=wellbore_average_tp)
-            # stream.set
             gas_FVF = gas.volume_factor(stream)
             gas_density = gas.density(stream)
             volume_free_gas = free_gas * gas_FVF
@@ -222,21 +233,20 @@ class DownholePump(Process):
         self.emissions.set_from_stream(EM_FUGITIVES, gas_fugitives)
 
     def impute(self):
-        field = self.field
         output = self.find_output_stream("oil")
 
-        loss_rate = field.component_fugitive_table[self.name]
+        loss_rate = self.loss_rate
         loss_rate = (1 / (1 - loss_rate)).to("frac")
 
-        well_completion_and_workover_C1_rate = field.get_completion_and_workover_C1_rate()
-        output_mol_fracs = field.gas.component_molar_fractions(output)
-        output_mass_fracs = field.gas.component_mass_fractions(output_mol_fracs)
+        well_completion_and_workover_C1_rate = self.completion_and_workover_C1_rate
+        output_mol_fracs = self.gas.component_molar_fractions(output)
+        output_mass_fracs = self.gas.component_mass_fractions(output_mol_fracs)
         total_mass_rate_from_completion_workover = well_completion_and_workover_C1_rate / output_mass_fracs["C1"]
         completion_workover_fugitive_series = total_mass_rate_from_completion_workover * output_mass_fracs
 
         completion_workover_fugitive_stream = Stream("completion_workover_fugitive", tp=output.tp)
         completion_workover_fugitive_stream.set_rates_from_series(completion_workover_fugitive_series, phase=PHASE_GAS)
-        field.save_process_data(completion_workover_fugitive_stream=completion_workover_fugitive_stream)
+        self.ctx.process_data["completion_workover_fugitive_stream"] = completion_workover_fugitive_stream
 
         input = self.find_input_stream("oil")
         input.copy_flow_rates_from(output)
