@@ -18,6 +18,8 @@
 
 | Commit | Subject |
 |---|---|
+| (HEAD) | phase 6.4: delete docs/, restore thermosteam-transitive deps (graphviz, pyyaml) |
+| `d4c50fa` | docs: phase 6 gate handoff — refactor complete, phase-6-gate tagged |
 | `27cfd35` | phase 6.4: final ruff cleanup — delete dead generate_models.py, fix conf.py E402 |
 | `51c0675` | phase 6: final cleanup — public API exports, __all__ on processes/, drop dead deps |
 | `50e0b17` | phase 6.2: adapt remaining test files for new Field/Process architecture |
@@ -28,8 +30,8 @@
 
 - Phase 6.1: Rewrote `opgee/field.py` end-to-end. New explicit-param constructor. Internal FieldContext build. networkx DiGraph for process scheduling. Graph metadata (cycle_starts, impute_starts) moved from Process to Field. `run()` simplified to zero args — GWP from ctx. `tests/test_field.py` rewritten for direct instantiation (no XML).
 - Phase 6.2: Deleted 6 test files entirely (XML-dependent or orchestration-dependent). Trimmed test_emissions.py (removed the test_gwp*/test_use_GWP_error suite — the Analysis class is gone). Deleted tests/utils_for_tests.py (no live importers).
-- Phase 6.3: Public API exposed via `opgee/__init__.py` (Field, FieldContext, GWPData, Process, SimulationParams, Stream). Added `__all__` to `opgee/processes/__init__.py` (silenced 46 pre-existing F401 errors). Dropped 12 unused dependencies from pyproject.toml (dash*, dask*, lxml, pydantic-xml, xmlschema, pydantic*, python-dateutil, semver, graphviz, pydot). Moved sphinx deps to a `[dependency-groups] docs` group.
-- Phase 6.4: Deleted dead `scripts/generate_models.py` (used dropped pydantic_xml). Fixed `docs/source/conf.py` E402 (moved `import sphinx_rtd_theme` to top-of-file imports block). Full suite clean.
+- Phase 6.3: Public API exposed via `opgee/__init__.py` (Field, FieldContext, GWPData, Process, SimulationParams, Stream). Added `__all__` to `opgee/processes/__init__.py` (silenced 46 pre-existing F401 errors). Dropped 12 unused dependencies from pyproject.toml (dash*, dask*, lxml, pydantic-xml, xmlschema, pydantic*, python-dateutil, semver, graphviz, pydot). Initially moved sphinx deps to a `[dependency-groups] docs` group — later dropped entirely when the docs/ directory was deleted.
+- Phase 6.4: Deleted dead `scripts/generate_models.py` (used dropped pydantic_xml). Fixed `docs/source/conf.py` E402. Then deleted `docs/` directory entirely (Sphinx docs were a developer convenience for the legacy XML API; they're obsolete for the v5 library). Dropped the `[dependency-groups] docs` sphinx group. Restored `graphviz` and added `pyyaml` as direct deps — both are transitively required by `thermosteam` at import time; the Phase 6.3 "drop unused deps" pass had missed this because `uv sync` didn't prune them until after the docs group was removed.
 
 ## 2. Tags (chronological)
 
@@ -51,12 +53,14 @@ See `opgee/__init__.py` for the `__all__` declaration.
 - **compute_carbon_intensity**: deferred — CI calculation removed from Field.run(). Will be reimplemented as a separate analysis step.
 - **Monte Carlo simulation**: removed. If reintroduced later, it will build on the new Field API.
 - **XML/CLI/GUI/plugins**: removed. The library is now a pure importable package — callers build Field objects directly.
-- **`docs/` build**: sphinx deps moved to a docs group. Run with `uv sync --group docs` then `uv run make -C docs html` to test docs build. Not exercised in CI during this refactor.
+- **Documentation**: the legacy `docs/` directory (Sphinx-based, written for the XML-era API) was deleted in Phase 6.4. Any new docs should be rebuilt from scratch for the new library API.
 - **Pre-existing latent bugs in migrated processes**: the Phase 5 handoff enumerated several latent bugs (diluent_temp/diluent_temp typo, water_treatment makeup_water_table selection, dead ivars in bitumen_mining, etc.) faithfully preserved. These are out-of-scope cleanup for a correctness pass.
 
 ## 5. Full commit history (phase-0-gate..phase-6-gate)
 
 ```
+(HEAD)  phase 6.4: delete docs/, restore thermosteam-transitive deps
+d4c50fa docs: phase 6 gate handoff — refactor complete, phase-6-gate tagged
 27cfd35 phase 6.4: final ruff cleanup — delete dead generate_models.py, fix conf.py E402
 51c0675 phase 6: final cleanup — public API exports, __all__ on processes/, drop dead deps
 50e0b17 phase 6.2: adapt remaining test files for new Field/Process architecture

@@ -101,12 +101,6 @@ uv run pytest tests/test_model.py   # Specific test
 uv run ruff check .
 uv run ruff format .
 
-# CLI tool
-uv run opg --help
-uv run opg run <model.xml>          # Run LCA analysis
-
-# Build documentation
-uv run make -C docs html
 ```
 
 ## Model Definition Format
