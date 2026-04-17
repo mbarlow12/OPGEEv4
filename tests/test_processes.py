@@ -4,25 +4,7 @@ from opgee.units import ureg
 from opgee.energy import EN_NATURAL_GAS, EN_CRUDE_OIL
 from opgee.emissions import EM_FLARING
 from opgee.error import OpgeeException, ZeroEnergyFlowError
-from opgee.process import Process, _get_subclass, Reservoir
-
-
-class NotProcess():
-    pass
-
-
-def test_subclass_lookup_good(test_model):
-    assert _get_subclass(Process, 'ProcA')
-
-
-def test_subclass_lookup_bad_subclass(test_model):
-    with pytest.raises(OpgeeException, match=r'Class .* is not a known subclass of .*'):
-        _get_subclass(Process, 'NonExistentProcess')
-
-
-def test_subclass_lookup_bad_parent(test_model):
-    with pytest.raises(OpgeeException, match=r'_get_subclass: cls .* must be one of .*'):
-        _get_subclass(NotProcess, 'NonExistentProcess')
+from opgee.process import Reservoir
 
 
 def test_set_emission_rates(test_model_with_change):
