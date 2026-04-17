@@ -24,7 +24,7 @@ from .error import (
 )
 from .import_export import ImportExport
 from .stream import Stream
-from .units import magnitude, ureg
+from .units import magnitude
 
 _logger = logging.getLogger(__name__)
 
@@ -134,7 +134,7 @@ class Process:
         # been removed in the deep-clean refactor.
         self.process_EF = None
 
-        self.intermediate_results: IntermediateValues | None = None
+        self.intermediate_results: dict | None = None
 
         # Support for cycles
         self.visit_count = 0  # increment when the Process has been run
@@ -282,35 +282,18 @@ class Process:
         return gas_fugitives
 
     def get_compressor_and_well_loss_rate(self, inlet_stream):
+        """Compute fugitive loss rate through compressors and injection wells.
+
+        TODO(phase 5): re-wire via explicit constructor params — subclasses
+        need access to `num_gas_inj_wells`, `loss_mat_gas_ave_df`, and the
+        `gas` thermo object. Currently only called by sour_gas_injection,
+        gas_lifting_compressor, gas_reinjection_well, CO2_injection_well
+        subclasses, all of which will be migrated in Phase 5.
         """
-        Get the compressor and well loss rate for a given inlet stream.
-
-        Args:
-            inlet_stream: A Stream object representing the inlet stream to the system.
-
-        Returns:
-            A Quantity object representing the compressor and well loss rate for the
-            given inlet stream.
-        """
-
-        if inlet_stream.total_flow_rate() == 0:
-            return ureg.Quantity(0, "frac")
-
-        # TODO(phase 5): this method currently reaches into field-owned data
-        # (`num_gas_inj_wells`, `loss_mat_gas_ave_df`, and `field.gas`). In
-        # phase 5 callers will pass these explicitly or read them from
-        # `self.ctx.tables`; for now keep the legacy field reference so the
-        # method's body remains structurally intact for the subclass migration.
-        field = self.field  # noqa: F821 — Phase 5 fixup; this attribute no longer exists
-        num_gas_inj_wells = field.attr("num_gas_inj_wells")
-        loss_mat_gas_ave_df = field.loss_mat_gas_ave_df
-
-        volume_rate_per_well = field.gas.volume_flow_rate_STP(inlet_stream) / num_gas_inj_wells
-        value = volume_rate_per_well.to("kscf/day").m
-        selected_row = loss_mat_gas_ave_df.loc[loss_mat_gas_ave_df.index < value].iloc[-1]
-
-        result = selected_row["Recip Comp"] if "Compressor" in self.name else selected_row["Well"]
-        return ureg.Quantity(result, "frac")
+        raise NotImplementedError(
+            "get_compressor_and_well_loss_rate: wiring deferred to Phase 5 "
+            "subclass migration"
+        )
 
     def visit(self):
         self.visit_count += 1
@@ -480,13 +463,13 @@ class Process:
 
         self.iteration_value = value
 
-    @classmethod
-    def register_iterating_process(cls, process):
+    @staticmethod
+    def register_iterating_process(process):
         process.iteration_registered = True
         _iterating_processes.append(process)
 
-    @classmethod
-    def check_iterator_convergence(cls):
+    @staticmethod
+    def check_iterator_convergence():
         """
         Check whether the current process is the last of all process iterator values to converge.
         stop when one converges but others have yet to do so.
@@ -497,15 +480,17 @@ class Process:
         if all([proc.iteration_converged for proc in _iterating_processes]):
             raise OpgeeIterationConverged("Change <= maximum_change in all iterating processes")
 
-    @classmethod
-    def reset_all_iteration(cls):
+    @staticmethod
+    def reset_all_iteration():
         """
-        Reset the iteration value and counter in all iterating processes.
+        Reset the iteration value and counter in all iterating processes,
+        then clear the list to prevent duplicate registration on re-entry.
 
         :return: none
         """
         for proc in _iterating_processes:
             proc.reset_iteration()
+        _iterating_processes.clear()
 
     def reset_iteration(self):
         self.visit_count = self.iteration_count = 0
