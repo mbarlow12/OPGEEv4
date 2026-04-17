@@ -7,7 +7,10 @@ authors = [
     { name = "Michael Barlow", email = "mbarlow@rmi.org" }
 ]
 requires-python = ">=3.13.12"
-dependencies = []
+dependencies = [
+    "pyxsteam>=0.4.10",
+    "thermosteam>=0.52.18",
+]
 
 [build-system]
 requires = ["uv_build>=0.11.6,<0.12.0"]
