@@ -1281,135 +1281,191 @@ git tag phase-4-gate
 
 ## Phase 5: Migrate Process Subclasses
 
-### Task 5.1: Tier 1 — Simple processes (pattern validation)
+### Task 5.1: Tier 1 — Simple processes (12 files, parallel dispatch)
 
-**Files:**
-- Modify: ~7 process files with zero `self.field` references
-- Test: adapted process tests
+**Files:** See Appendix A for full list (12 files, 0-2 field refs each).
 
-Start with the 7 processes that have NO field attribute access: `flaring.py`, `LNG_regasification.py`, `natural_gas_liquid.py`, `pre_membrane_chiller.py`, `storage_separator.py`, `storage_well.py`, `__init__.py`.
+All 12 Tier 1 files can be dispatched as parallel subagents simultaneously — they are
+independent and trivial to migrate.
 
-- [ ] **Step 1: Read each Tier 1 process file**
+- [ ] **Step 1: Dispatch 12 parallel subagents, one per file**
 
-For each file, identify:
-- Current `__init__` signature and `super().__init__()` call
-- Any `self.attr()` calls → become constructor params
-- Any `self.field` references → should be zero for these files
-- The `run()` method signature → change from `run(analysis)` to `run()`
+Each subagent receives the file path, the transformation rules (Appendix B), and these instructions:
+1. Read the assigned process file
+2. Read `opgee/process.py` to understand the new `__init__(name, ctx)` signature
+3. Apply transformations:
+   - Add `ctx: FieldContext` parameter, replace `super().__init__(name, **kwargs)` with `super().__init__(name, ctx)`
+   - Replace `self.attr("x")` → `self.x` (add as typed constructor param with class-level annotation)
+   - Replace `run(self, analysis)` → `run(self)`
+   - Remove `analysis.` references inside `run()`
+   - Replace `from .log import getLogger` → `import logging`
+   - Remove imports of deleted modules
+   - Use `Quantity[float]` for pint type annotations
+4. Run `uv run ruff check opgee/processes/<file>`
 
-- [ ] **Step 2: Migrate each Tier 1 process**
+Files:
+- `__init__.py` (0 refs)
+- `flaring.py` (0 refs)
+- `natural_gas_liquid.py` (0 refs)
+- `storage_well.py` (0 refs)
+- `CO2_injection_well.py` (1 ref — `field.save_process_data`)
+- `pre_membrane_chiller.py` (1 ref — `self.attr`)
+- `shared.py` (1 ref — also refactor `predict_blower_energy_use` per Task 5.4)
+- `sour_gas_injection.py` (1 ref — `field.save_process_data`)
+- `compressor.py` (2 refs — helper class, not Process subclass)
+- `gas_reinjection_well.py` (2 refs)
+- `LNG_transport.py` (2 refs)
+- `petrocoke_transport.py` (2 refs)
 
-Pattern for each:
-
-```python
-class Flaring(Process):
-    # Declare typed attributes (if any self.attr() calls exist)
-    
-    def __init__(self, name: str, ctx: FieldContext):
-        super().__init__(name, ctx)
-    
-    def run(self) -> None:
-        # ... existing logic, updated for new API
-```
-
-- Replace `super().__init__(name, **kwargs)` with `super().__init__(name, ctx)`
-- Replace `self.attr("x")` with `self.x` (add to constructor)
-- Replace `run(self, analysis)` with `run(self)`
-- Remove any `analysis.` references inside `run()`
-
-- [ ] **Step 3: Run pytest**
+- [ ] **Step 2: Review subagent results and run pytest**
 
 ```bash
 uv run pytest -x -q 2>&1 | tail -30
 ```
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
 git add opgee/processes/
-git commit -m "phase 5: migrate Tier 1 processes (zero field access)"
+git commit -m "phase 5: migrate Tier 1 processes (12 files, 0-2 field refs)"
 ```
 
 ---
 
-### Task 5.2: Tier 2 — Medium processes
+### Task 5.2: Tier 2 — Medium processes (20 files, 3 parallel batches)
 
-**Files:**
-- Modify: ~30 process files with moderate `self.field` usage
+**Files:** See Appendix A for full list (20 files, 3-11 field refs each).
 
-- [ ] **Step 1: For each Tier 2 process, read the file and identify all field accesses**
+Each subagent reads its assigned file, the field access traces in `.agents/notes/field-attr-*.md`,
+and applies the transformation rules from Appendix B.
 
-Use the traces in `.agents/notes/field-attr-trace-processes.md` and `.agents/notes/field-property-trace-processes.md` as guides.
+- [ ] **Step 1: Batch A — dispatch 7 parallel subagents (3-5 refs each)**
 
-For each access pattern, apply the transformation:
-- `self.field.oil_volume_rate` → `self.oil_volume_rate` (add as constructor param)
-- `self.field.gas` → `self.gas` (add as constructor param: `gas: Gas`)
-- `self.field.oil` → `self.oil` (add as constructor param: `oil: Oil`)
-- `self.field.water` → `self.water` (add as constructor param: `water: Water`)
-- `self.field.stp` → `self.ctx.stp`
-- `self.field.process_data` / `self.field.save_process_data()` / `self.field.get_process_data()` → `self.ctx.process_data`
-- `self.field.import_export` → `self.import_export` (already on Process base) or constructor param
-- `self.field.model.const("name")` → inline constant or `self.ctx.tables`
-- `self.field.component_fugitive_table` → constructor param or `self.ctx.tables`
-- `self.field.attr("name")` → `self.name_attr` (add as constructor param)
-- `self.attr("name")` → `self.name_attr` (add as constructor param)
+- `LNG_regasification.py` (3 refs)
+- `pre_membrane_compressor.py` (3 refs)
+- `storage_compressor.py` (3 refs)
+- `storage_separator.py` (3 refs)
+- `VRU_compressor.py` (3 refs)
+- `gas_distribution.py` (4 refs)
+- `gas_lifting_compressor.py` (4 refs)
 
-- [ ] **Step 2: Migrate each process following the Tier 1 pattern**
-
-Each process gets:
-1. Class-level type annotations for all attributes
-2. Explicit typed `__init__` parameters
-3. `self.field` → `self.ctx` or direct attributes
-4. `run(analysis)` → `run()`
-5. New unit test with direct construction
-
-- [ ] **Step 3: Run pytest after each batch of ~5 processes**
+- [ ] **Step 2: Review Batch A, run pytest, commit**
 
 ```bash
 uv run pytest -x -q 2>&1 | tail -30
+git add opgee/processes/
+git commit -m "phase 5: migrate Tier 2 Batch A (7 files, 3-5 refs)"
 ```
 
-- [ ] **Step 4: Commit after each batch**
+- [ ] **Step 3: Batch B — dispatch 7 parallel subagents (4-8 refs each)**
+
+- `ryan_holmes.py` (4 refs)
+- `CO2_reinjection_compressor.py` (5 refs)
+- `LNG_liquefaction.py` (5 refs)
+- `post_storage_compressor.py` (5 refs)
+- `sour_gas_compressor.py` (5 refs)
+- `CO2_membrane.py` (7 refs)
+- `crude_oil_transport.py` (8 refs)
+
+- [ ] **Step 4: Review Batch B, run pytest, commit**
 
 ```bash
-git add opgee/processes/ tests/
-git commit -m "phase 5: migrate Tier 2 processes — [batch description]"
+uv run pytest -x -q 2>&1 | tail -30
+git add opgee/processes/
+git commit -m "phase 5: migrate Tier 2 Batch B (7 files, 4-8 refs)"
+```
+
+- [ ] **Step 5: Batch C — dispatch 6 parallel subagents (8-11 refs each)**
+
+- `transport_energy.py` (8 refs — helper class)
+- `VF_partition.py` (8 refs)
+- `gas_gathering.py` (9 refs)
+- `gas_reinjection_compressor.py` (9 refs)
+- `transmission_compressor.py` (11 refs)
+- `water_injection.py` (11 refs)
+
+- [ ] **Step 6: Review Batch C, run pytest, commit**
+
+```bash
+uv run pytest -x -q 2>&1 | tail -30
+git add opgee/processes/
+git commit -m "phase 5: migrate Tier 2 Batch C (6 files, 8-11 refs)"
 ```
 
 ---
 
-### Task 5.3: Tier 3 — Complex processes
+### Task 5.3: Tier 3 — Complex processes (19 files, small parallel batches)
 
-**Files:**
-- Modify: `opgee/processes/gas_partition.py` (25+ field accesses)
-- Modify: `opgee/processes/exploration.py` (20+ field accesses)
-- Modify: `opgee/processes/drilling.py` (15+ field accesses)
-- Modify: `opgee/processes/downhole_pump.py` (15+ field accesses)
-- Modify: `opgee/processes/steam_generation.py` + `opgee/processes/steam_generator.py` (15+ each, 40+ uncached attrs)
-- Modify: `opgee/processes/separation.py` (12+ field accesses)
+**Files:** See Appendix A for full list (19 files, 12-61 field refs each).
 
-- [ ] **Step 1: Migrate gas_partition.py (heaviest consumer)**
+Dispatch in batches of 2-3 with review between batches due to complexity.
 
-Read the file. It has 25+ unique field accesses. Each becomes either:
-- A constructor parameter (field-specific values)
-- A `self.ctx` access (process_data, stp, tables)
-- A constructor-injected thermo model (`self.gas: Gas`)
+- [ ] **Step 1: Batch D — dispatch 3 parallel subagents (12-13 refs)**
 
-Write the new constructor with all explicit params. This is the most complex process — if the pattern works here, it works everywhere.
+- `crude_oil_stabilization.py` (12 refs)
+- `crude_oil_storage.py` (13 refs)
+- `heavy_oil_upgrading.py` (13 refs)
 
-- [ ] **Step 2: Migrate steam_generator.py (most constructor params)**
-
-This helper class has ~40 uncached field attrs — all become constructor params on `SteamGenerator`. The `SteamGeneration` process constructs `SteamGenerator` and passes the params through.
-
-- [ ] **Step 3: Migrate remaining Tier 3 processes one at a time**
-
-Each gets individual attention due to complexity. Commit after each.
-
-- [ ] **Step 4: Run full test suite**
+- [ ] **Step 2: Review Batch D, run pytest, commit**
 
 ```bash
 uv run pytest -x -q 2>&1 | tail -30
+git add opgee/processes/
+git commit -m "phase 5: migrate Tier 3 Batch D (3 files, 12-13 refs)"
 ```
+
+- [ ] **Step 3: Batch E — dispatch 3 parallel subagents (14-15 refs)**
+
+- `bitumen_mining.py` (14 refs)
+- `crude_oil_dewatering.py` (14 refs)
+- `reservoir_well_interface.py` (15 refs)
+
+- [ ] **Step 4: Review Batch E, run pytest, commit**
+
+- [ ] **Step 5: Batch F — dispatch 3 parallel subagents (16-18 refs)**
+
+- `acid_gas_removal.py` (16 refs)
+- `gas_dehydration.py` (16 refs)
+- `demethanizer.py` (18 refs)
+
+- [ ] **Step 6: Review Batch F, run pytest, commit**
+
+- [ ] **Step 7: Batch G — dispatch 3 parallel subagents (17-22 refs)**
+
+- `venting.py` (17 refs)
+- `heavy_oil_dilution.py` (22 refs)
+- `water_treatment.py` (22 refs)
+
+- [ ] **Step 8: Review Batch G, run pytest, commit**
+
+- [ ] **Step 9: Batch H — dispatch 3 parallel subagents (24-28 refs)**
+
+- `drilling.py` (24 refs)
+- `steam_generation.py` (25 refs)
+- `downhole_pump.py` (28 refs)
+
+- [ ] **Step 10: Review Batch H, run pytest, commit**
+
+- [ ] **Step 11: Batch I — dispatch 2 parallel subagents (30-32 refs)**
+
+- `separation.py` (30 refs)
+- `exploration.py` (32 refs)
+
+- [ ] **Step 12: Review Batch I, run pytest, commit**
+
+- [ ] **Step 13: gas_partition.py (52 refs) — single subagent, most complex Process**
+
+Heaviest Process subclass. Subagent must read full file + field access traces
+and carefully map all 52 references.
+
+- [ ] **Step 14: Review gas_partition.py, run pytest, commit**
+
+- [ ] **Step 15: steam_generator.py (61 refs) — single subagent, heaviest overall**
+
+Helper class with ~40 uncached field attrs via `field.attr()`. All become typed
+constructor params. `SteamGeneration` process constructs it and passes params.
+
+- [ ] **Step 16: Review steam_generator.py, run pytest, commit**
 
 ---
 
@@ -1657,29 +1713,90 @@ Review the commit history to ensure it tells a clear story.
 
 ---
 
-## Appendix A: Process Subclass Tier Assignments
+## Appendix A: Process Subclass Tier Assignments (all 51 files)
 
-Based on field attribute traces:
+Classification by total field access references (self.field + self.attr + field. alias).
 
-### Tier 1 — Zero field access (7 files)
-- `flaring.py`
-- `LNG_regasification.py`
-- `natural_gas_liquid.py`
-- `pre_membrane_chiller.py`
-- `storage_separator.py`
-- `storage_well.py`
-- `__init__.py`
+### Tier 1 — Simple (12 files, 0-2 references)
 
-### Tier 3 — Complex (6 files, 12+ field accesses each)
-- `gas_partition.py` (25+)
-- `exploration.py` (20+)
-- `drilling.py` (15+)
-- `downhole_pump.py` (15+)
-- `steam_generation.py` + `steam_generator.py` (15+ each)
-- `separation.py` (12+)
+Good candidates for parallel subagent dispatch — each is independent and quick.
 
-### Tier 2 — Everything else (~38 files)
-All remaining process files. Can be batched in groups of ~5-8 for manageable commits.
+| File | Total refs | Notes |
+|------|-----------|-------|
+| `__init__.py` | 0 | Package init |
+| `flaring.py` | 0 | |
+| `natural_gas_liquid.py` | 0 | |
+| `storage_well.py` | 0 | |
+| `CO2_injection_well.py` | 1 | |
+| `pre_membrane_chiller.py` | 1 | |
+| `shared.py` | 1 | Helper module, not a Process subclass |
+| `sour_gas_injection.py` | 1 | |
+| `compressor.py` | 2 | Helper class, not a Process subclass |
+| `gas_reinjection_well.py` | 2 | |
+| `LNG_transport.py` | 2 | |
+| `petrocoke_transport.py` | 2 | |
+
+### Tier 2 — Medium (20 files, 3-11 references)
+
+Can be dispatched in parallel batches of ~5-7 subagents.
+
+| File | Total refs | Notes |
+|------|-----------|-------|
+| `LNG_regasification.py` | 3 | |
+| `pre_membrane_compressor.py` | 3 | |
+| `storage_compressor.py` | 3 | |
+| `storage_separator.py` | 3 | |
+| `VRU_compressor.py` | 3 | |
+| `gas_distribution.py` | 4 | |
+| `gas_lifting_compressor.py` | 4 | |
+| `ryan_holmes.py` | 4 | |
+| `CO2_reinjection_compressor.py` | 5 | |
+| `LNG_liquefaction.py` | 5 | |
+| `post_storage_compressor.py` | 5 | |
+| `sour_gas_compressor.py` | 5 | |
+| `CO2_membrane.py` | 7 | |
+| `crude_oil_transport.py` | 8 | |
+| `transport_energy.py` | 8 | Helper class, not a Process subclass |
+| `VF_partition.py` | 8 | |
+| `gas_gathering.py` | 9 | |
+| `gas_reinjection_compressor.py` | 9 | |
+| `transmission_compressor.py` | 11 | |
+| `water_injection.py` | 11 | |
+
+### Tier 3 — Complex (19 files, 12+ references)
+
+Migrate individually or in small batches of 2-3. Each needs careful attention.
+
+| File | Total refs | Notes |
+|------|-----------|-------|
+| `crude_oil_stabilization.py` | 12 | |
+| `crude_oil_storage.py` | 13 | |
+| `heavy_oil_upgrading.py` | 13 | |
+| `bitumen_mining.py` | 14 | |
+| `crude_oil_dewatering.py` | 14 | |
+| `reservoir_well_interface.py` | 15 | |
+| `acid_gas_removal.py` | 16 | |
+| `gas_dehydration.py` | 16 | |
+| `venting.py` | 17 | |
+| `demethanizer.py` | 18 | |
+| `heavy_oil_dilution.py` | 22 | |
+| `water_treatment.py` | 22 | |
+| `drilling.py` | 24 | |
+| `steam_generation.py` | 25 | |
+| `downhole_pump.py` | 28 | |
+| `separation.py` | 30 | |
+| `exploration.py` | 32 | |
+| `gas_partition.py` | 52 | Heaviest Process subclass |
+| `steam_generator.py` | 61 | Helper class, heaviest overall |
+
+### Totals
+
+| Tier | Files | Parallel strategy |
+|------|-------|-------------------|
+| Tier 1 | 12 | All 12 in parallel |
+| Tier 2 | 20 | 3-4 batches of 5-7 in parallel |
+| Tier 3 | 19 | Individual or pairs |
+| **Total** | **51** | |
 
 ## Appendix B: Key Transformation Patterns
 
