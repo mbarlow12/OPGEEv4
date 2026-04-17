@@ -81,6 +81,9 @@ for _gas in _gases:
 
 CARBON_NUMBER: dict[str, float] = _carbon_number_dict
 
+#: Pint-typed Series of carbon numbers per component; used by Stream.add_combustion_CO2_from.
+CARBON_NUMBER_SERIES: pd.Series = pd.Series(CARBON_NUMBER, dtype="pint[dimensionless]")
+
 COMPONENT_NAMES: list[str] = _solids + _liquids + _gases + _other + HYDROCARBONS
 
 R_GAS = ureg.Quantity(8.31446, "J/mol/K")

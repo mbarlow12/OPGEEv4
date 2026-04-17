@@ -14,7 +14,7 @@ import pandas as pd
 import pint
 
 from .chemistry import (
-    CARBON_NUMBER,
+    CARBON_NUMBER_SERIES,
     COMPONENT_NAMES,
     GASES,
     HYDROCARBONS,
@@ -30,10 +30,6 @@ from .error import OpgeeException
 from .units import magnitude, ureg
 
 _logger = logging.getLogger(__name__)
-
-# Carbon-number series used by ``add_combustion_CO2_from``. Built once at
-# module load from the canonical ``CARBON_NUMBER`` dict in ``opgee.chemistry``.
-_carbon_number_series = pd.Series(CARBON_NUMBER, dtype="pint[dimensionless]")
 
 # Components assumed to combust completely to CO2 (used by
 # ``add_combustion_CO2_from``).
@@ -62,7 +58,7 @@ class Stream:
         self,
         name: str,
         tp: TemperaturePressure | None,
-        ctx: FieldContext | None = None,
+        ctx: FieldContext | None = None,  # TODO(phase 6.1): wired by Field when streams are registered.
         *,
         API=None,
         comp_matrix=None,
@@ -521,7 +517,7 @@ class Stream:
         rate = (
             stream.components.loc[_combustible_components, PHASE_GAS]
             / component_MW[_combustible_components]
-            * _carbon_number_series
+            * CARBON_NUMBER_SERIES[_combustible_components]
             * component_MW["CO2"]
         ).sum()
 
