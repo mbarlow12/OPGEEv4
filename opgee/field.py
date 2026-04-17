@@ -172,7 +172,7 @@ class Field:
         self.wellhead_tp = None
 
         # Build the directed graph and cycle list.
-        self.graph: nx.DiGraph = self._connect_processes()
+        self.graph: nx.MultiDiGraph = self._connect_processes()
         self.cycles: list[list[Process]] = list(nx.simple_cycles(self.graph))
 
         # Graph scheduling metadata (moved from Process in Phase 6.1).
@@ -183,10 +183,6 @@ class Field:
         self.cycle_starts: set[Process] = set()
         if cycle_start is not None:
             self.cycle_starts.add(cycle_start)
-
-        self.run_after: set[Process] = {
-            p for p in self.process_dict.values() if getattr(p, "run_after", False)
-        }
 
         # Validate run_after-tagged processes — they may only feed other
         # run_after procs.
@@ -199,14 +195,14 @@ class Field:
 
     # ---- graph construction & scheduling ------------------------------
 
-    def _connect_processes(self) -> nx.DiGraph:
+    def _connect_processes(self) -> nx.MultiDiGraph:
         """Build a DiGraph from processes and streams.
 
         Each stream contributes one edge ``(src_proc, dst_proc)`` with the
         Stream object attached as ``edge[stream]``. No enabled-state
         filtering — every registered process and stream participates.
         """
-        g: nx.DiGraph = nx.MultiDiGraph()
+        g: nx.MultiDiGraph = nx.MultiDiGraph()
 
         # Add every process as a node and clear stale input/output lists.
         for p in self.process_dict.values():
@@ -240,13 +236,14 @@ class Field:
                 f"Processes {bad} are tagged run_after=True but feed non-run_after processes"
             )
 
-    def _is_cycle_member(self, process: Process) -> bool:
-        return any(process in cycle for cycle in self.cycles)
-
     def _depends_on_cycle(
         self, process: Process, visited: set[Process] | None = None
     ) -> bool:
-        """True if ``process`` reaches a cycle by walking upstream."""
+        """True if ``process`` reaches a cycle by walking upstream.
+
+        Detection relies on: any BFS traversal into a cyclic subgraph will
+        revisit a node already in ``visited``.
+        """
         visited = visited or set()
         for predecessor in process.predecessors():
             if predecessor in visited:
