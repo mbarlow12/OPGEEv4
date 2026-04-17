@@ -11,6 +11,7 @@
 ## 1. Status at this handoff
 
 **Just completed:** Task 5.1 (Tier 1, 12 files) + Task 5.2 (Tier 2, 20 files in 3 batches A/B/C). All committed and verified.
+**Tag:** `phase-5-tier-2-complete` applied at the docs commit on top of `cf3a438`. This is a **mid-phase session-stop** tag, not a phase gate — Phase 5 itself is not done (Tasks 5.3, 5.4, 5.5 remain). The next phase-gate tag will be `phase-5-gate` after Task 5.5.
 **Next resume point:** Task 5.3 — migrate 19 Tier 3 process subclasses in batches D–I, plus single dispatches for `gas_partition.py` (52 refs) and `steam_generator.py` (61 refs).
 
 ### What landed since the previous handoff (phase-4-gate `5aabd26`)
@@ -134,24 +135,26 @@ The `denominator` previously came from per-product field/model lookups (`field.g
 ## 4. Tags and recent commits (newest first)
 
 ```
+(this commit) docs: mid-phase-5 handoff after Tier 1+2 completion (final session-stop revision)  ← phase-5-tier-2-complete
+19f0bbb docs: mid-phase-5 handoff after Tier 1+2 completion (Tier 3 next)
 cf3a438 phase 5: migrate Tier 2 Batch C (6 files, 8-11 field refs) + rewire 3 transport callers
 4a269cf phase 5: migrate Tier 2 Batch B (7 files, 4-8 field refs)
 f5f9344 phase 5: migrate Tier 2 Batch A (7 files, 3-5 field refs)
 6a20b23 phase 5: migrate Tier 1 processes (12 files, 0-2 field refs)
 00d4d4e docs: phase 4 gate handoff
-5aabd26 phase 4: address 4.1 code-quality review                                       ← phase-4-gate
+5aabd26 phase 4: address 4.1 code-quality review                                              ← phase-4-gate
 ffacaec phase 4: fix test_processes.py call-site for new get_emission_rates signature
 e9ec51b phase 4: restructure Process base — new __init__(name, ctx), drop XML/boundary/enabled
-8c531a5 docs: phase 3 gate handoff                                                     ← phase-3-gate
+8c531a5 docs: phase 3 gate handoff                                                            ← phase-3-gate
 2e4d322 phase 3: address 3.3 code-quality review (tests + ctx TODO + CARBON_NUMBER_SERIES move)
 a5df80f phase 3: strip stream.py — remove XML, add FieldContext, extract chemistry
 …
-9938f37 phase 2: create FieldContext with frozen GWPData and SimulationParams          ← phase-2-gate
-f544f0f phase 1: fix remaining imports of deleted modules                              ← phase-1-gate
-a73fb4f phase 0: bulk delete excluded files, tests, and dependencies                   ← phase-0-gate
+9938f37 phase 2: create FieldContext with frozen GWPData and SimulationParams                 ← phase-2-gate
+f544f0f phase 1: fix remaining imports of deleted modules                                     ← phase-1-gate
+a73fb4f phase 0: bulk delete excluded files, tests, and dependencies                          ← phase-0-gate
 ```
 
-Tag list (chronological): `phase-0-gate` → `phase-1-gate` → `phase-2-gate` → `phase-3-gate` → `phase-4-gate`. **No new tag yet** — `phase-5-gate` will be applied at Task 5.5.
+Tag list (chronological): `phase-0-gate` → `phase-1-gate` → `phase-2-gate` → `phase-3-gate` → `phase-4-gate` → **`phase-5-tier-2-complete`** (mid-phase session-stop). The `phase-5-gate` tag will be applied at Task 5.5 after Tier 3 + Task 5.4.
 
 ---
 
@@ -199,5 +202,5 @@ Historical reference (skim only if specifically needed):
    - `gas_partition.py` and `steam_generator.py`: single-subagent each (opus).
    - One controller-side fix-up commit per batch.
 7. **Gate checks only over the spec-compliant test subset**. Full `pytest` remains non-runnable until Phase 6.2 — don't chase the 6 pre-existing test_emissions errors in Phase 5.
-8. **Every verification-gate task overwrites this file** — single stable name, not dated. This handoff was written mid-Phase 5 to checkpoint after Tier 1+2 completion (not at a phase gate). Phase 5.5 will write the next one after Tier 3 completes.
+8. **Every verification-gate task overwrites this file** — single stable name, not dated. This handoff was written mid-Phase 5 to checkpoint after Tier 1+2 completion (not at a phase gate); the `phase-5-tier-2-complete` tag points at this commit. Phase 5.5 will overwrite this file again and apply `phase-5-gate` after Tier 3 completes.
 9. **Trust the diff, not the subagent report.** Verify directly when the report is ambiguous. (See prior 2026-04-17 handoff §1 for the off-task-subagent anecdote.)
