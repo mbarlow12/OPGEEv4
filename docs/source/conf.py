@@ -16,6 +16,7 @@
 
 import os
 import sys
+import sphinx_rtd_theme
 sys.path.insert(0, os.path.abspath('../..'))
 
 from opgee.version import VERSION
@@ -64,7 +65,6 @@ exclude_patterns = []
 #
 #html_theme = 'alabaster'
 
-import sphinx_rtd_theme
 html_theme = "sphinx_rtd_theme"
 html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
