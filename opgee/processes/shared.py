@@ -68,33 +68,33 @@ def get_init_lifting_stream(gas,
 
 
 #
-# Helper function shared by acid_gas_removal and demethanizer
+# Helper function shared by acid_gas_removal, gas_dehydration, and demethanizer
 #
-def predict_blower_energy_use(proc, thermal_load, air_cooler_delta_T=None, water_press=None,
-                              air_cooler_fan_eff=None, air_cooler_speed_reducer_eff=None):
+def predict_blower_energy_use(
+    thermal_load,
+    air_cooler_delta_T,
+    water_press,
+    air_cooler_fan_eff,
+    air_cooler_speed_reducer_eff,
+    air_elevation_const,
+    air_density_ratio,
+):
     """
-    Predict blower energy use per day. Any parameters not explicitly provided are taken
-    from the `proc` object.
+    Predict blower energy use per day. All parameters are explicit (no implicit
+    lookup through a Process). Callers pass the values they previously read off
+    their Field/Model.
 
-    :param thermal_load: (float) thermal load (unit = btu/hr)
-    :param air_cooler_delta_T:
-    :param water_press:
-    :param air_cooler_fan_eff:
-    :param air_cooler_speed_reducer_eff:
-    :return: (pint.Quantity) air cooling fan energy consumption (unit = "kWh/day")
+    :param thermal_load: thermal load (Quantity, btu/hr)
+    :param air_cooler_delta_T: air cooler delta-T (Quantity)
+    :param water_press: water pressure drop (Quantity)
+    :param air_cooler_fan_eff: fan efficiency (Quantity, frac)
+    :param air_cooler_speed_reducer_eff: speed reducer efficiency (Quantity, frac)
+    :param air_elevation_const: air elevation correction (Quantity — was model.const("air-elevation-corr"))
+    :param air_density_ratio: air density ratio (Quantity — was model.const("air-density-ratio"))
+    :return: (Quantity) air cooling fan energy consumption (kWh/day)
     """
-
-    def _value(value, dflt):
-        return (dflt if value is None else value)
-
-    air_cooler_delta_T = _value(air_cooler_delta_T, proc.air_cooler_delta_T)
-    water_press = _value(water_press, proc.water_press)
-    air_cooler_fan_eff = _value(air_cooler_fan_eff, proc.air_cooler_fan_eff)
-    air_cooler_speed_reducer_eff = _value(air_cooler_speed_reducer_eff, proc.air_cooler_speed_reducer_eff)
-
-    model = proc.field.model
-    blower_air_quantity = thermal_load / model.const("air-elevation-corr") / air_cooler_delta_T
-    blower_CFM = blower_air_quantity / model.const("air-density-ratio")
+    blower_air_quantity = thermal_load / air_elevation_const / air_cooler_delta_T
+    blower_CFM = blower_air_quantity / air_density_ratio
     blower_delivered_hp = blower_CFM * water_press / air_cooler_fan_eff
     blower_fan_motor_hp = blower_delivered_hp / air_cooler_speed_reducer_eff
     air_cooler_energy_consumption = get_energy_consumption("Electric_motor", blower_fan_motor_hp)

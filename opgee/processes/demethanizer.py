@@ -1,21 +1,24 @@
 #
-# CrudeOilTransport class
+# Demethanizer class
 #
 # Author: Wennan Long
 #
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-import pandas as pd
+import logging
 
-from ..units import ureg
+import pandas as pd
+from pint.facets.plain import PlainQuantity as Quantity
+
+from ..context import FieldContext
 from ..core import STP, TemperaturePressure
 from ..emissions import EM_FUGITIVES
 from ..energy import EN_ELECTRICITY
-import logging
-from ..process import Process
-from ..process import run_corr_eqns
+from ..process import Process, run_corr_eqns
 from ..stream import PHASE_GAS, Stream
+from ..thermodynamics import Gas, Water
+from ..units import ureg
 from .compressor import Compressor
 from .shared import get_energy_carrier, predict_blower_energy_use, get_bounded_value
 
@@ -29,41 +32,62 @@ class Demethanizer(Process):
     and a heavier hydrocarbon stream (LPG).
 
     Attributes
-       feed_press_demethanizer : pint.Quantity
+       feed_press_demethanizer : Quantity[float]
            The pressure of the feed gas entering the demethanizer column.
-       column_pressure : pint.Quantity
+       column_pressure : Quantity[float]
            The pressure inside the demethanizer column.
-       methane_to_LPG_ratio : pint.Quantity
+       methane_to_LPG_ratio : Quantity[float]
            The desired ratio of methane to LPG in the product streams.
        demethanizer_tbl : pd.DataFrame
            The demethanizer table containing correlation equations for the process.
-       mol_per_scf : pint.Quantity
+       mol_per_scf : Quantity[float]
            The conversion factor for moles to standard cubic feet.
-       eta_reboiler_demethanizer : pint.Quantity
+       eta_reboiler_demethanizer : Quantity[float]
            The efficiency of the reboiler in the demethanizer column.
-       air_cooler_speed_reducer_eff : pint.Quantity
+       air_cooler_speed_reducer_eff : Quantity[float]
            The efficiency of the speed reducer in the air cooler.
-       air_cooler_delta_T : pint.Quantity
+       air_cooler_delta_T : Quantity[float]
            The temperature difference across the air cooler.
-       air_cooler_fan_eff : pint.Quantity
+       air_cooler_fan_eff : Quantity[float]
            The efficiency of the air cooler fan.
-       air_cooler_press_drop : pint.Quantity
+       air_cooler_press_drop : Quantity[float]
            The pressure drop across the air cooler.
-       water_press : pint.Quantity
+       water_press : Quantity[float]
            The water pressure associated with the air cooler pressure drop.
-       eta_compressor : pint.Quantity
+       eta_compressor : Quantity[float]
            The efficiency of the compressor in the demethanizer process.
        prime_mover_type : str
            The type of prime mover used in the process.
 
     Methods
-       run(analysis)
+       run()
            Simulates the Demethanizer process to separate the incoming gas stream
            into a methane-rich stream and a heavier hydrocarbon stream.
    """
 
-    def __init__(self, name, **kwargs):
-        super().__init__(name, **kwargs)
+    def __init__(
+        self,
+        name: str,
+        ctx: FieldContext,
+        gas: Gas,
+        water: Water,
+        feed_press_demethanizer: Quantity[float],
+        column_pressure: Quantity[float],
+        methane_to_LPG_ratio: Quantity[float],
+        eta_reboiler_demethanizer: Quantity[float],
+        air_cooler_speed_reducer_eff: Quantity[float],
+        air_cooler_delta_T: Quantity[float],
+        air_cooler_fan_eff: Quantity[float],
+        air_cooler_press_drop: Quantity[float],
+        eta_compressor: Quantity[float],
+        prime_mover_type: str,
+        air_elevation_const: Quantity[float],
+        air_density_ratio: Quantity[float],
+        gravitational_acceleration: Quantity[float],
+        mol_per_scf: Quantity[float],
+        demethanizer_tbl: pd.DataFrame,
+    ):
+        super().__init__(name, ctx)
 
         # TODO: avoid process names in contents.
         self._required_inputs = [
@@ -75,48 +99,31 @@ class Demethanizer(Process):
             "gas for NGL",
         ]
 
-        field = self.field
-        self.demethanizer_tbl = field.model.demethanizer
-        self.mol_per_scf = field.model.const("mol-per-scf")
+        self.gas = gas
+        self.feed_press_demethanizer = feed_press_demethanizer
+        self.column_pressure = column_pressure
+        self.methane_to_LPG_ratio = methane_to_LPG_ratio
+        self.eta_reboiler_demethanizer = eta_reboiler_demethanizer
+        self.air_cooler_speed_reducer_eff = air_cooler_speed_reducer_eff
+        self.air_cooler_delta_T = air_cooler_delta_T
+        self.air_cooler_fan_eff = air_cooler_fan_eff
+        self.air_cooler_press_drop = air_cooler_press_drop
+        self.eta_compressor = eta_compressor
+        self.prime_mover_type = prime_mover_type
+        self.air_elevation_const = air_elevation_const
+        self.air_density_ratio = air_density_ratio
+        self.mol_per_scf = mol_per_scf
+        self.demethanizer_tbl = demethanizer_tbl
 
-        self.air_cooler_delta_T = None
-        self.air_cooler_fan_eff = None
-        self.air_cooler_press_drop = None
-        self.air_cooler_speed_reducer_eff = None
-        self.column_pressure = None
-        self.eta_compressor = None
-        self.eta_reboiler_demethanizer = None
-        self.feed_press_demethanizer = None
-        self.methane_to_LPG_ratio = None
-        self.prime_mover_type = None
-        self.water_press = None
+        self.water_press = water.density() * air_cooler_press_drop * gravitational_acceleration
 
-        self.cache_attributes()
-
-    def cache_attributes(self):
-        field = self.field
-        self.feed_press_demethanizer = self.attr("feed_press_demethanizer")
-        self.column_pressure = self.attr("column_pressure")
-        self.methane_to_LPG_ratio = self.attr("methane_to_LPG_ratio")
-        self.eta_reboiler_demethanizer = self.attr("eta_reboiler_demethanizer")
-        self.air_cooler_speed_reducer_eff = self.attr("air_cooler_speed_reducer_eff")
-        self.air_cooler_delta_T = self.attr("air_cooler_delta_T")
-        self.air_cooler_fan_eff = self.attr("air_cooler_fan_eff")
-        self.air_cooler_press_drop = self.attr("air_cooler_press_drop")
-        self.water_press = (field.water.density() *
-                           self.air_cooler_press_drop *
-                           field.model.const("gravitational-acceleration"))
-        self.eta_compressor = self.attr("eta_compressor")
-        self.prime_mover_type = self.attr("prime_mover_type")
-
-    def run(self, analysis):
+    def run(self):
         self.print_running_msg()
-        field = self.field
 
         # mass rate
         input = self.find_input_stream("gas for demethanizer")
-        processing_unit_loss_rate_df = field.get_process_data("processing_unit_loss_rate_df")
-        if input.is_uninitialized() or  processing_unit_loss_rate_df is None:
+        processing_unit_loss_rate_df = self.ctx.process_data.get("processing_unit_loss_rate_df")
+        if input.is_uninitialized() or processing_unit_loss_rate_df is None:
             return
 
         loss_rate = processing_unit_loss_rate_df.T[self.name].values[0]
@@ -139,14 +146,14 @@ class Demethanizer(Process):
         feed_gas_mol_frac = self.gas.component_molar_fractions(input)
 
         if "C1" not in feed_gas_mol_frac.index:
-            _logger.warning(f"Feed gas does not contain C1")
+            _logger.warning("Feed gas does not contain C1")
             inlet_C1_mol_frac = 0
         else:
             inlet_C1_mol_frac =\
                 get_bounded_value(feed_gas_mol_frac["C1"].to("frac").m, "inlet_C1_mol_frac", variable_bound_dict)
 
         if "C2" not in feed_gas_mol_frac.index:
-            _logger.warning(f"Feed gas does not contain C2")
+            _logger.warning("Feed gas does not contain C2")
             inlet_C2_mol_frac = 0
         else:
             inlet_C2_mol_frac =\
@@ -176,7 +183,7 @@ class Demethanizer(Process):
                                        zip(hydrocarbon_label, fuel_gas_label)},
                                       dtype="pint[frac]")
 
-        gas_volume_rates = field.gas.volume_flow_rates_STP(input)
+        gas_volume_rates = self.gas.volume_flow_rates_STP(input)
 
         if NGL_mol_frac["C2"].m == 0 or (
                 fuel_gas_mol_frac["C1"] - NGL_mol_frac["C1"] * fuel_gas_mol_frac["C2"] / NGL_mol_frac["C2"]).m == 0:
@@ -187,10 +194,18 @@ class Demethanizer(Process):
                 (fuel_gas_mol_frac["C1"] - NGL_mol_frac["C1"] * fuel_gas_mol_frac["C2"] / NGL_mol_frac["C2"])
 
         reboiler_fuel_use = reboiler_heavy_duty * self.eta_reboiler_demethanizer
-        cooler_energy_consumption = predict_blower_energy_use(self, cooler_thermal_load)
+        cooler_energy_consumption = predict_blower_energy_use(
+            cooler_thermal_load,
+            self.air_cooler_delta_T,
+            self.water_press,
+            self.air_cooler_fan_eff,
+            self.air_cooler_speed_reducer_eff,
+            self.air_elevation_const,
+            self.air_density_ratio,
+        )
 
-        fuel_gas_volume_rate = fuel_gas_prod * field.gas.component_mass_fractions(fuel_gas_mol_frac)
-        fuel_gas_mass = fuel_gas_volume_rate * field.gas.component_gas_rho_STP[fuel_gas_volume_rate.index]
+        fuel_gas_volume_rate = fuel_gas_prod * self.gas.component_mass_fractions(fuel_gas_mol_frac)
+        fuel_gas_mass = fuel_gas_volume_rate * self.gas.component_gas_rho_STP[fuel_gas_volume_rate.index]
 
         gas_to_partition = self.find_output_stream("gas for gas partition")
         gas_to_partition.copy_flow_rates_from(input)
@@ -210,7 +225,7 @@ class Demethanizer(Process):
 
         # inlet boosting compressor
         inlet_compressor_energy_consump, _, _ = \
-            Compressor.get_compressor_energy_consumption(field,
+            Compressor.get_compressor_energy_consumption(self.gas,
                                                          self.prime_mover_type,
                                                          self.eta_compressor,
                                                          self.feed_press_demethanizer / input_tp.P,
@@ -223,7 +238,7 @@ class Demethanizer(Process):
         fuel_gas_stream.set_rates_from_series(fuel_gas_mass, PHASE_GAS, upper_bound_stream=input)
 
         outlet_compressor_energy_consump, _, _ = \
-            Compressor.get_compressor_energy_consumption(field,
+            Compressor.get_compressor_energy_consumption(self.gas,
                                                          self.prime_mover_type,
                                                          self.eta_compressor,
                                                          input_tp.P / fuel_gas_exit_press,

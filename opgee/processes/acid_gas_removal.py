@@ -6,11 +6,17 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-from ..units import ureg
+import logging
+
+import pandas as pd
+from pint.facets.plain import PlainQuantity as Quantity
+
+from ..context import FieldContext
 from ..emissions import EM_FUGITIVES
 from ..energy import EN_ELECTRICITY
-import logging
 from ..process import Process, run_corr_eqns
+from ..thermodynamics import Gas, Water
+from ..units import ureg
 from .compressor import Compressor
 from .shared import get_energy_carrier, predict_blower_energy_use, get_bounded_value, get_energy_consumption
 
@@ -53,14 +59,38 @@ class AcidGasRemoval(Process):
        - amine_solution_K_value: The K value of the amine solution used for CO2 and H2S removal.
 
     Methods:
-       - run(analysis): Runs the acid gas removal process.
+       - run(): Runs the acid gas removal process.
        - calculate_energy_consumption_from_Aspen(input_stream, output_stream, mol_frac_CO2, mol_frac_H2S): Calculates energy
          consumption for the acid gas removal process using Aspen HYSYS simulation.
        - calculate_energy_consumption_from_textbook(input_stream, mol_frac_CO2, mol_frac_H2S): Calculates energy consumption
          for the acid gas removal process using a textbook method.
     """
-    def __init__(self, name, **kwargs):
-        super().__init__(name, **kwargs)
+
+    def __init__(
+        self,
+        name: str,
+        ctx: FieldContext,
+        gas: Gas,
+        water: Water,
+        type_amine: str,
+        ratio_reflux_reboiler: Quantity[float],
+        gas_comp_H2S: Quantity[float],
+        AGR_feedin_press: Quantity[float],
+        regeneration_temp: Quantity[float],
+        eta_reboiler: Quantity[float],
+        air_cooler_delta_T: Quantity[float],
+        air_cooler_press_drop: Quantity[float],
+        air_cooler_fan_eff: Quantity[float],
+        air_cooler_speed_reducer_eff: Quantity[float],
+        eta_compressor: Quantity[float],
+        prime_mover_type: str,
+        gas_path: str,
+        air_elevation_const: Quantity[float],
+        air_density_ratio: Quantity[float],
+        gravitational_acceleration: Quantity[float],
+        AGR_table: pd.DataFrame,
+    ):
+        super().__init__(name, ctx)
 
         self._required_inputs = [
             "gas for AGR",          # TODO: avoid process names in contents. Should be "acidic gas"?
@@ -77,35 +107,12 @@ class AcidGasRemoval(Process):
         # Optional streams include:
         # "gas for CO2 compressor" (output)
 
-        self.AGR_feedin_press = None
-        self.AGR_table = None
-        self.air_cooler_delta_T = None
-        self.air_cooler_fan_eff = None
-        self.air_cooler_press_drop = None
-        self.air_cooler_speed_reducer_eff = None
-        self.air_density_ratio = None
-        self.air_elevation_const = None
-        self.amine_solution_K_value = None
-        self.eta_compressor = None
-        self.eta_reboiler = None
-        self.gas_comp_H2S = None
-        self.prime_mover_type = None
-        self.ratio_reflux_reboiler = None
-        self.regeneration_temp = None
-        self.type_amine = None
-        self.type_amine = None
-        self.water_press = None
+        self.gas = gas
+        self.gas_path = gas_path
 
-        self.cache_attributes()
-
-    def cache_attributes(self):
-        field = self.field
-        m = field.model
-
-        self.type_amine = self.attr("type_amine")
-        self.ratio_reflux_reboiler = self.attr("ratio_reflux_reboiler")
-
-        self.gas_comp_H2S = field.attr("gas_comp_H2S")
+        self.type_amine = type_amine
+        self.ratio_reflux_reboiler = ratio_reflux_reboiler
+        self.gas_comp_H2S = gas_comp_H2S
 
         # TODO: Add this to smart default mode
         if self.gas_comp_H2S < ureg.Quantity(1, "percent"):
@@ -114,34 +121,32 @@ class AcidGasRemoval(Process):
             self.type_amine = "MDEA"
             self.ratio_reflux_reboiler = ureg.Quantity(7.0, "frac")
 
-        self.AGR_feedin_press = field.AGR_feedin_press
-        self.regeneration_temp = self.attr("regeneration_temp")
-        self.eta_reboiler = self.attr("eta_reboiler")
-        self.air_cooler_delta_T = self.attr("air_cooler_delta_T")
-        self.air_cooler_press_drop = self.attr("air_cooler_press_drop")
-        self.air_elevation_const = m.const("air-elevation-corr")
-        self.air_density_ratio = m.const("air-density-ratio")
-        self.water_press = (field.water.density() * self.air_cooler_press_drop *
-                            m.const("gravitational-acceleration"))
-        self.air_cooler_fan_eff = self.attr("air_cooler_fan_eff")
-        self.air_cooler_speed_reducer_eff = self.attr("air_cooler_speed_reducer_eff")
-        self.AGR_table = m.AGR_tbl
-        self.eta_compressor = self.attr("eta_compressor")
-        self.prime_mover_type = self.attr("prime_mover_type")
+        self.AGR_feedin_press = AGR_feedin_press
+        self.regeneration_temp = regeneration_temp
+        self.eta_reboiler = eta_reboiler
+        self.air_cooler_delta_T = air_cooler_delta_T
+        self.air_cooler_press_drop = air_cooler_press_drop
+        self.air_elevation_const = air_elevation_const
+        self.air_density_ratio = air_density_ratio
+        self.water_press = water.density() * self.air_cooler_press_drop * gravitational_acceleration
+        self.air_cooler_fan_eff = air_cooler_fan_eff
+        self.air_cooler_speed_reducer_eff = air_cooler_speed_reducer_eff
+        self.AGR_table = AGR_table
+        self.eta_compressor = eta_compressor
+        self.prime_mover_type = prime_mover_type
 
         value = amine_solution_K_value_dict[self.type_amine] * 100
         self.amine_solution_K_value = ureg.Quantity(value, "gallon*day/minutes/mmscf")
 
-    def run(self, analysis):
+    def run(self):
         self.print_running_msg()
-        field = self.field
 
         if not self.all_streams_ready("gas for AGR"):
             return
 
         # Calculate mass rate
         gas_input_stream = self.find_input_streams("gas for AGR", combine=True)
-        processing_unit_loss_rate_df = field.get_process_data("processing_unit_loss_rate_df")
+        processing_unit_loss_rate_df = self.ctx.process_data.get("processing_unit_loss_rate_df")
         if gas_input_stream.is_uninitialized() or processing_unit_loss_rate_df is None:
             return
 
@@ -160,7 +165,7 @@ class AcidGasRemoval(Process):
                      self.find_output_stream("gas for gas partition")
         output_gas.copy_flow_rates_from(gas_input_stream)
         output_gas.set_gas_flow_rate("CO2", CO2_to_demethanizer)
-        if field.gas_path != "CO2-EOR Membrane":
+        if self.gas_path != "CO2-EOR Membrane":
             H2S_to_demethanizer = 0.05 * gas_input_stream.gas_flow_rate("H2S")
             output_gas.set_gas_flow_rate("H2S", H2S_to_demethanizer)
         output_gas.subtract_rates_from(gas_fugitives)
@@ -182,7 +187,7 @@ class AcidGasRemoval(Process):
         mol_frac_CO2 = feed_gas_mol_frac["CO2"] if "CO2" in feed_gas_mol_frac else ureg.Quantity(0, "frac")
 
         if mol_frac_H2S.m == 0.0 and mol_frac_CO2 == 0.0:
-            _logger.warning(f"Feed gas does not contain H2S and CO2, please consider using non-AGR gas processing path")
+            _logger.warning("Feed gas does not contain H2S and CO2, please consider using non-AGR gas processing path")
             return
 
         if mol_frac_H2S.m <= 0.15 and mol_frac_CO2 <= 0.2:
@@ -259,13 +264,29 @@ class AcidGasRemoval(Process):
 
         reboiler_fuel_use = reboiler_heavy_duty * self.eta_reboiler
         pump_duty_elec = ureg.Quantity(max(0.0, corr_result_df["Pump"] * gas_multiplier), "kW")
-        condenser_elec_consumption = predict_blower_energy_use(self, condenser_thermal_load)
-        amine_cooler_elec_consumption = predict_blower_energy_use(self, cooler_thermal_load)
+        condenser_elec_consumption = predict_blower_energy_use(
+            condenser_thermal_load,
+            self.air_cooler_delta_T,
+            self.water_press,
+            self.air_cooler_fan_eff,
+            self.air_cooler_speed_reducer_eff,
+            self.air_elevation_const,
+            self.air_density_ratio,
+        )
+        amine_cooler_elec_consumption = predict_blower_energy_use(
+            cooler_thermal_load,
+            self.air_cooler_delta_T,
+            self.water_press,
+            self.air_cooler_fan_eff,
+            self.air_cooler_speed_reducer_eff,
+            self.air_elevation_const,
+            self.air_density_ratio,
+        )
 
         # Calculate the reboiler fuel use
         overall_compression_ratio = ureg.Quantity(feed_gas_press, "psia") / input.tp.P
         compressor_energy_consumption, temp, _ = \
-            Compressor.get_compressor_energy_consumption(self.field,
+            Compressor.get_compressor_energy_consumption(self.gas,
                                                          self.prime_mover_type,
                                                          self.eta_compressor,
                                                          overall_compression_ratio,
@@ -315,9 +336,3 @@ class AcidGasRemoval(Process):
         total_reboiler_erergy_consump = self.eta_reboiler * reboiler_heat_duty
 
         return ureg.Quantity(0, "mmbtu/day"), total_reboiler_erergy_consump, total_coolers_energy_consump + total_pump_energy_consump
-
-
-
-
-
-
