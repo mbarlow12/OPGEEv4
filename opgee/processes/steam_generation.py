@@ -6,16 +6,25 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-from ..units import ureg
+import logging
+from typing import TYPE_CHECKING
+
+from pint.facets.plain import PlainQuantity as Quantity
+
+from ..context import FieldContext
 from ..core import TemperaturePressure
 from ..energy import EN_NATURAL_GAS, EN_ELECTRICITY
 from ..error import BalanceError
 from ..import_export import WATER
-from ..log import getLogger
 from ..process import Process
+from ..thermodynamics import Water
+from ..units import ureg
 from .shared import get_energy_consumption
 
-_logger = getLogger(__name__)
+if TYPE_CHECKING:
+    from .steam_generator import SteamGenerator
+
+_logger = logging.getLogger(__name__)
 
 # the tolerance is used for checking mass and energy balance
 # (input - output) / input < tolerance
@@ -23,20 +32,40 @@ tolerance = 0.01
 
 
 class SteamGeneration(Process):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self,
+        name: str,
+        ctx: FieldContext,
+        water: Water,
+        steam_generator: "SteamGenerator",
+        steam_flooding: bool,
+        SOR: Quantity[float],
+        oil_volume_rate: Quantity[float],
+        res_press: Quantity[float],
+        friction_loss_steam_distr: Quantity[float],
+        fraction_steam_cogen: Quantity[float],
+        fraction_steam_solar: Quantity[float],
+        steam_quality_outlet: Quantity[float],
+        steam_quality_after_blowdown: Quantity[float],
+        fraction_blowdown_recycled: Quantity[float],
+        waste_water_reinjection_temp: Quantity[float],
+        waste_water_reinjection_press: Quantity[float],
+        pressure_loss_choke_wellhead: Quantity[float],
+        steam_injection_delta_press: Quantity[float],
+        prod_water_inlet_press: Quantity[float],
+        makeup_water_inlet_press: Quantity[float],
+        eta_displacement_pump: Quantity[float],
+        eta_air_blower_OTSG: Quantity[float],
+        eta_air_blower_HRSG: Quantity[float],
+        eta_air_blower_solar: Quantity[float],
+    ):
+        super().__init__(name, ctx)
 
-        # TODO: this process disables itself under certain circumstances.
-        #  As noted in a comment below, this is undesirable behavior since
-        #  it silently edits the user's model. Rethink how to handle this.
-        #  In the meantime, it requires special processing below:
-        field = self.field
-        if field.steam_flooding == 1 and field.SOR != 0:
+        if steam_flooding == 1 and SOR != 0:
             self._required_inputs = [
                 "produced water",
                 "makeup water"
             ]
-
             self._required_outputs = [
                 "water",
             ]
@@ -44,83 +73,43 @@ class SteamGeneration(Process):
             self._required_inputs = []
             self._required_outputs = []
 
-        self.SOR = None
-        self.eta_air_blower_HRSG = None
-        self.eta_air_blower_OTSG = None
-        self.eta_air_blower_solar = None
-        self.eta_displacement_pump = None
-        self.fraction_OTSG = None
-        self.fraction_blowdown_recycled = None
-        self.fraction_steam_cogen = None
-        self.fraction_steam_solar = None
-        self.friction_loss_steam_distr = None
-        self.makeup_water_inlet_press = None
-        self.oil_volume_rate = None
-        self.pressure_loss_choke_wellhead = None
-        self.prod_water_inlet_press = None
-        self.res_press = None
-        self.steam_flooding_check = None
-        self.steam_generator = None
-        self.steam_generator_press_outlet = None
-        self.steam_injection_delta_press = None
-        self.steam_quality_after_blowdown = None
-        self.steam_quality_outlet = None
-        self.waste_water_reinjection_tp = None
-        self.water_density = None
+        self.water = water
+        self.water_density = water.density()
+        self.steam_generator = steam_generator
+        self.steam_flooding_check = steam_flooding
+        self.SOR = SOR
+        self.oil_volume_rate = oil_volume_rate
+        self.res_press = res_press
+        self.friction_loss_steam_distr = friction_loss_steam_distr
+        self.fraction_steam_cogen = fraction_steam_cogen
+        self.fraction_steam_solar = fraction_steam_solar
+        self.steam_quality_outlet = steam_quality_outlet
+        self.steam_quality_after_blowdown = steam_quality_after_blowdown
+        self.fraction_blowdown_recycled = fraction_blowdown_recycled
+        self.waste_water_reinjection_tp = TemperaturePressure(
+            waste_water_reinjection_temp, waste_water_reinjection_press
+        )
+        self.pressure_loss_choke_wellhead = pressure_loss_choke_wellhead
+        self.steam_injection_delta_press = steam_injection_delta_press
+        self.prod_water_inlet_press = prod_water_inlet_press
+        self.makeup_water_inlet_press = makeup_water_inlet_press
+        self.eta_displacement_pump = eta_displacement_pump
+        self.eta_air_blower_OTSG = eta_air_blower_OTSG
+        self.eta_air_blower_HRSG = eta_air_blower_HRSG
+        self.eta_air_blower_solar = eta_air_blower_solar
 
-        self.cache_attributes()
+        self.fraction_OTSG = 1 - fraction_steam_cogen - fraction_steam_solar
+        self.steam_generator_press_outlet = (
+            (self.res_press + self.steam_injection_delta_press)
+            * self.friction_loss_steam_distr
+            * self.pressure_loss_choke_wellhead
+        )
 
-    def cache_attributes(self):
-        field = self.field
-        self.steam_flooding_check = field.steam_flooding
-        self.SOR = field.SOR
-        self.oil_volume_rate = field.oil_volume_rate
-        self.steam_quality_outlet = self.attr("steam_quality_outlet")
-        self.steam_quality_after_blowdown = self.attr("steam_quality_after_blowdown")
-        self.fraction_blowdown_recycled = self.attr("fraction_blowdown_recycled")
-
-        self.waste_water_reinjection_tp = TemperaturePressure(self.attr("waste_water_reinjection_temp"),
-                                                              self.attr("waste_water_reinjection_press"))
-
-        self.pressure_loss_choke_wellhead = self.attr("pressure_loss_choke_wellhead")
-        self.friction_loss_steam_distr = field.friction_loss_steam_distr
-        self.water_density = self.water.density()
-        self.res_press = field.res_press
-        self.steam_injection_delta_press = self.attr("steam_injection_delta_press")
-        self.steam_generator_press_outlet = ((self.res_press + self.steam_injection_delta_press) *
-                                             self.friction_loss_steam_distr *
-                                             self.pressure_loss_choke_wellhead)
-        self.prod_water_inlet_press = self.attr("prod_water_inlet_press")
-        self.makeup_water_inlet_press = self.attr("makeup_water_inlet_press")
-        self.eta_displacement_pump = self.attr("eta_displacement_pump")
-        self.eta_air_blower_OTSG = self.attr("eta_air_blower_OTSG")
-        self.eta_air_blower_HRSG = self.attr("eta_air_blower_HRSG")
-        self.eta_air_blower_solar = self.attr("eta_air_blower_solar")
-
-        self.fraction_steam_cogen = field.fraction_steam_cogen
-        self.fraction_steam_solar = field.fraction_steam_solar
-        self.fraction_OTSG = 1 - self.fraction_steam_cogen - self.fraction_steam_solar
-
-        # TODO: the SteamGenerator is instantiated only here, in Field, yet it is used only
-        #       in the SteamGeneration process. Is the SteamGenerator intended to be used by
-        #       other processes? If not, this, why not move its methods into SteamGeneration?
-        #       The only methods SteamGenerator called in SteamGeneration are called once each,
-        #       in run().
-        self.steam_generator = field.steam_generator
-
-    def check_enabled(self):
-        # TODO: Don't silently edit the user's model: raise an error instead.
-        if self.steam_flooding_check != 1 or self.SOR == 0:
-            self.set_enabled(False)
-
-    def run(self, analysis):
+    def run(self):
         self.print_running_msg()
         self.set_iteration_value(0)
-        field = self.field
-        import_product = field.import_export
 
         # mass rate
-
         input_prod_water = self.find_input_stream("produced water")
         input_makeup_water = self.find_input_stream("makeup water")
         if input_prod_water.is_uninitialized() and input_makeup_water.is_uninitialized():
@@ -129,19 +118,18 @@ class SteamGeneration(Process):
         prod_water_mass_rate = input_prod_water.liquid_flow_rate("H2O")
         makeup_water_mass_rate = input_makeup_water.liquid_flow_rate("H2O")
         water_mass_rate_for_injection = prod_water_mass_rate + makeup_water_mass_rate
-        steam_injection_volume_rate = water_mass_rate_for_injection / self.water_density
 
         steam_quality_diff_between_blowndown_and_outlet = self.steam_quality_after_blowdown - self.steam_quality_outlet
         steam_quality_diff_between_blowndown_and_outlet = \
             ureg.Quantity(max(steam_quality_diff_between_blowndown_and_outlet.to("frac").m, 0.0), "frac")
 
         if steam_quality_diff_between_blowndown_and_outlet.m < 0:
-            _logger.warning(f"steam quality after blowdown is smaller than steam quality at outlet")
+            _logger.warning("steam quality after blowdown is smaller than steam quality at outlet")
 
         blowdown_water_mass_rate = \
             water_mass_rate_for_injection * steam_quality_diff_between_blowndown_and_outlet / self.steam_quality_outlet
         waste_water_from_blowdown = blowdown_water_mass_rate * (1 - self.fraction_blowdown_recycled)
-        import_product.set_export(self.name, WATER, waste_water_from_blowdown)
+        self.import_export.set_export(self.name, WATER, waste_water_from_blowdown)
 
         recycled_blowdown_water = blowdown_water_mass_rate * self.fraction_blowdown_recycled
 
@@ -196,8 +184,7 @@ class SteamGeneration(Process):
 
         # import/export
         self.set_import_from_energy(energy_use)
-        import_product = field.import_export
-        import_product.set_export(self.name, EN_ELECTRICITY, electricity_HRSG)
+        self.import_export.set_export(self.name, EN_ELECTRICITY, electricity_HRSG)
 
         # emissions
         self.set_combustion_emissions()

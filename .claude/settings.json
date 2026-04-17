@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls *)",
+      "Bash(cat)",
+      "Read(//tmp/**)",
+      "Write(.agents/**)",
+      "Edit(.agents/**)",
+      "Bash(grep *)",
+      "Bash(sort *)",
+      "Bash(uniq *)",
+      "Bash(wc *)",
+      "Bash(uv run pytest *)",
+      "Bash(uv run basedpyright *)",
+      "Bash(uv run ruff *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Read(.agents/**)"
+    ]
+  }
+}

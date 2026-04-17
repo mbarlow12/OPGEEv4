@@ -6,19 +6,39 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-from ..units import ureg
+import logging
+
+from pint.facets.plain import PlainQuantity as Quantity
+
+from ..context import FieldContext
 from ..emissions import EM_FUGITIVES
-from ..log import getLogger
 from ..process import Process
 from ..processes.compressor import Compressor
+from ..thermodynamics import Gas
+from ..units import ureg
 from .shared import get_energy_carrier
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class GasLiftingCompressor(Process):
-    def __init__(self, name, **kwargs):
-        super().__init__(name, **kwargs)
+    def __init__(
+        self,
+        name: str,
+        ctx: FieldContext,
+        gas: Gas,
+        loss_rate: Quantity[float],
+        res_press: Quantity[float],
+        prime_mover_type: str,
+        eta_compressor: Quantity[float],
+    ):
+        super().__init__(name, ctx)
+
+        self.gas = gas
+        self.loss_rate = loss_rate
+        self.res_press = res_press
+        self.prime_mover_type = prime_mover_type
+        self.eta_compressor = eta_compressor
 
         # TODO: avoid process names in contents.
         self._required_inputs = [
@@ -29,27 +49,8 @@ class GasLiftingCompressor(Process):
             "lifting gas"
         ]
 
-        self.res_press = None
-        self.prime_mover_type = None
-        self.eta_compressor = None
-        self.gas_lifting = None
-
-        self.cache_attributes()
-
-    def cache_attributes(self):
-        field = self.field
-        self.res_press = field.res_press
-        self.prime_mover_type = self.attr("prime_mover_type")
-        self.eta_compressor = self.attr("eta_compressor")
-        self.gas_lifting = field.gas_lifting
-
-    def check_enabled(self):
-        if not self.gas_lifting:
-            self.set_enabled(False)
-
-    def run(self, analysis):
+    def run(self):
         self.print_running_msg()
-        field = self.field
 
         # mass rate
         input = self.find_input_stream("lifting gas", raiseError=None)
@@ -57,8 +58,7 @@ class GasLiftingCompressor(Process):
         if input is None or input.is_uninitialized():
             return
 
-        loss_rate = self.get_compressor_and_well_loss_rate(input)
-        gas_fugitives = self.set_gas_fugitives(input, loss_rate)
+        gas_fugitives = self.set_gas_fugitives(input, self.loss_rate)
 
         lifting_gas = self.find_output_stream("lifting gas")
         lifting_gas.copy_flow_rates_from(input)
@@ -68,7 +68,7 @@ class GasLiftingCompressor(Process):
         discharge_press = (self.res_press + input_tp.P) / 2 + ureg.Quantity(100.0, "psia")
         overall_compression_ratio = discharge_press / input_tp.P
         energy_consumption, output_temp, _ = \
-            Compressor.get_compressor_energy_consumption(field,
+            Compressor.get_compressor_energy_consumption(self.gas,
                                                          self.prime_mover_type,
                                                          self.eta_compressor,
                                                          overall_compression_ratio,

@@ -6,14 +6,19 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-from ..units import ureg
+import logging
+
+from pint.facets.plain import PlainQuantity as Quantity
+
+from ..context import FieldContext
 from ..emissions import EM_FUGITIVES
-from ..log import getLogger
 from ..process import Process
 from ..processes.compressor import Compressor
+from ..thermodynamics import Gas
+from ..units import ureg
 from .shared import get_energy_carrier
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class CO2ReinjectionCompressor(Process):
@@ -32,8 +37,29 @@ class CO2ReinjectionCompressor(Process):
         - prime_mover_type: The type of prime mover used to power the compressor.
 
     """
-    def __init__(self, name, **kwargs):
-        super().__init__(name, **kwargs)
+
+    res_press: Quantity[float]
+    eta_compressor: Quantity[float]
+    prime_mover_type: str
+    loss_rate: Quantity[float]
+
+    def __init__(
+        self,
+        name: str,
+        ctx: FieldContext,
+        gas: Gas,
+        res_press: Quantity[float],
+        eta_compressor: Quantity[float],
+        prime_mover_type: str,
+        loss_rate: Quantity[float],
+    ):
+        super().__init__(name, ctx)
+
+        self.gas = gas
+        self.res_press = res_press
+        self.eta_compressor = eta_compressor
+        self.prime_mover_type = prime_mover_type
+        self.loss_rate = loss_rate
 
         # TODO: avoid process names in contents.
         self._required_inputs = [
@@ -44,20 +70,8 @@ class CO2ReinjectionCompressor(Process):
             "gas",
         ]
 
-        self.res_press = None
-        self.eta_compressor = None
-        self.prime_mover_type = None
-
-        self.cache_attributes()
-
-    def cache_attributes(self):
-        self.res_press = self.field.res_press
-        self.eta_compressor = self.attr("eta_compressor")
-        self.prime_mover_type = self.attr("prime_mover_type")
-
-    def run(self, analysis):
+    def run(self):
         self.print_running_msg()
-        field = self.field
 
         # Check if input stream is ready
         if not self.all_streams_ready("gas for CO2 compressor"):
@@ -68,8 +82,7 @@ class CO2ReinjectionCompressor(Process):
         if input.is_uninitialized():
             return
 
-        loss_rate = self.get_compressor_and_well_loss_rate(input)
-        gas_fugitives = self.set_gas_fugitives(input, loss_rate)
+        gas_fugitives = self.set_gas_fugitives(input, self.loss_rate)
 
         # Calculate discharge pressure and iterate over input streams
         discharge_press = self.res_press + ureg.Quantity(500.0, "psia")
@@ -78,7 +91,7 @@ class CO2ReinjectionCompressor(Process):
         for _, input_stream in input_streams.items():
             overall_compression_ratio = discharge_press / input_stream.tp.P
             energy_consumption, out_temp, _ = \
-                Compressor.get_compressor_energy_consumption(field,
+                Compressor.get_compressor_energy_consumption(self.gas,
                                                              self.prime_mover_type,
                                                              self.eta_compressor,
                                                              overall_compression_ratio,
@@ -93,7 +106,7 @@ class CO2ReinjectionCompressor(Process):
 
         self.set_iteration_value(gas_to_well.total_flow_rate())
 
-        field.save_process_data(CO2_reinjection_mass_rate=gas_to_well.gas_flow_rate("CO2"))
+        self.ctx.process_data["CO2_reinjection_mass_rate"] = gas_to_well.gas_flow_rate("CO2")
 
         # energy-use
         energy_use = self.energy

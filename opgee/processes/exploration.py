@@ -6,14 +6,20 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
+import logging
 import math
 
-from ..units import ureg
-from ..energy import EN_DIESEL
-from ..log import getLogger
-from ..process import Process
+import pandas as pd
+from pint.facets.plain import PlainQuantity as Quantity
 
-_logger = getLogger(__name__)
+from ..context import FieldContext
+from ..energy import EN_DIESEL
+from ..process import Process
+from ..thermodynamics import Oil
+from ..units import ureg
+from .transport_energy import TransportEnergy
+
+_logger = logging.getLogger(__name__)
 
 
 class Exploration(Process):
@@ -23,88 +29,86 @@ class Exploration(Process):
         This class calculates the energy consumption and emissions associated with
         drilling, surveying, and transporting crude oil during the exploration phase.
     """
-    def __init__(self, name, **kwargs):
-        super().__init__(name, **kwargs)
+    def __init__(
+        self,
+        name: str,
+        ctx: FieldContext,
+        oil: Oil,
+        transport_energy: TransportEnergy,
+        transport_parameter: pd.DataFrame,
+        vertical_drill_df: pd.DataFrame,
+        horizontal_drill_df: pd.DataFrame,
+        well_size: str,
+        well_complexity: str,
+        eta_rig: str,
+        oil_sands_mine: str,
+        offshore: bool,
+        weight_land_survey: Quantity[float],
+        weight_ocean_survey: Quantity[float],
+        distance_survey: Quantity[float],
+        number_wells_dry: int,
+        number_wells_exploratory: int,
+        num_prod_wells: int,
+        natural_gas_reinjection: bool,
+        gas_flooding: bool,
+        num_water_inj_wells: int,
+        depth: Quantity[float],
+        frac_wells_horizontal: Quantity[float],
+        length_lateral: Quantity[float],
+        field_production_lifetime: Quantity[float],
+        diesel_LHV: Quantity[float],
+        days_per_year: Quantity[float],
+    ):
+        super().__init__(name, ctx)
 
-        field = self.field
-        self.vertical_drill_df = field.vertical_drill_df
-        self.horizontal_drill_df = field.horizontal_drill_df
-        self.transport_parameter = self.model.transport_parameter[["Crude", "Units"]]
+        self.oil = oil
+        self.transport_energy = transport_energy
+        self.transport_parameter = transport_parameter
 
-        self.depth = None
-        self.distance_survey = None
-        self.drill_energy_consumption = None
-        self.drill_fuel_consumption = None
-        self.eta_rig = None
-        self.field_production_lifetime = None
-        self.frac_wells_horizontal = None
-        self.horizontal_drill_energy_intensity = None
-        self.length_lateral = None
-        self.num_gas_inj_wells = None
-        self.num_water_inj_wells = None
-        self.num_wells = None
-        self.number_wells_dry = None
-        self.number_wells_exploratory = None
-        self.offshore = None
-        self.oil_sands_mine = None
-        self.vertical_drill_energy_intensity = None
-        self.weight_land_survey = None
-        self.weight_ocean_survey = None
-        self.well_complexity = None
-        self.well_size = None
+        self.well_size = well_size
+        self.well_complexity = well_complexity
+        self.eta_rig = eta_rig
+        self.oil_sands_mine = oil_sands_mine
+        self.offshore = offshore
+        self.weight_land_survey = weight_land_survey
+        self.weight_ocean_survey = weight_ocean_survey
+        self.distance_survey = distance_survey
+        self.number_wells_dry = number_wells_dry
+        self.number_wells_exploratory = number_wells_exploratory
+        self.depth = depth
+        self.frac_wells_horizontal = frac_wells_horizontal
+        self.length_lateral = length_lateral
+        self.field_production_lifetime = field_production_lifetime
+        self.days_per_year = days_per_year
 
-        self.cache_attributes()
-
-    def cache_attributes(self):
-        field = self.field
-
-        self.well_size = field.well_size
-        self.well_complexity = field.well_complexity
-        self.eta_rig = field.eta_rig
         self.vertical_drill_energy_intensity = \
-            (self.vertical_drill_df.loc[self.eta_rig]).loc[self.well_size][self.well_complexity]
+            (vertical_drill_df.loc[eta_rig]).loc[well_size][well_complexity]
         self.horizontal_drill_energy_intensity = \
-            (self.horizontal_drill_df.loc[self.eta_rig]).loc[self.well_size][self.well_complexity]
+            (horizontal_drill_df.loc[eta_rig]).loc[well_size][well_complexity]
 
-        self.oil_sands_mine = field.oil_sands_mine
-        self.offshore = field.offshore
-        self.weight_land_survey = field.weight_land_survey
-        self.weight_ocean_survey = field.weight_ocean_survey
-        self.distance_survey = field.distance_survey
-        self.number_wells_dry = field.number_wells_dry
-        self.number_wells_exploratory = field.number_wells_exploratory
-
-        num_prod_wells = field.num_prod_wells if self.oil_sands_mine == "None" else 0
-        self.num_gas_inj_wells = 0.25 * num_prod_wells if field.natural_gas_reinjection or field.gas_flooding else 0
-        self.num_water_inj_wells = field.num_water_inj_wells
-        self.num_wells = math.ceil(num_prod_wells + self.num_water_inj_wells + self.num_gas_inj_wells)
-
-        self.depth = field.depth
-        self.frac_wells_horizontal = field.frac_wells_horizontal
-        self.length_lateral = field.length_lateral
-        self.field_production_lifetime = field.field_production_lifetime
+        num_prod_wells_effective = num_prod_wells if oil_sands_mine == "None" else 0
+        self.num_gas_inj_wells = 0.25 * num_prod_wells_effective if natural_gas_reinjection or gas_flooding else 0
+        self.num_water_inj_wells = num_water_inj_wells
+        self.num_wells = math.ceil(num_prod_wells_effective + self.num_water_inj_wells + self.num_gas_inj_wells)
 
         self.drill_fuel_consumption = \
-            (self.vertical_drill_energy_intensity * (1 - self.frac_wells_horizontal) * self.depth +
-             self.horizontal_drill_energy_intensity * self.frac_wells_horizontal * self.length_lateral) * self.num_wells
-        self.drill_energy_consumption = field.model.const("diesel-LHV") * self.drill_fuel_consumption
+            (self.vertical_drill_energy_intensity * (1 - frac_wells_horizontal) * depth +
+             self.horizontal_drill_energy_intensity * frac_wells_horizontal * length_lateral) * self.num_wells
+        self.drill_energy_consumption = diesel_LHV * self.drill_fuel_consumption
 
-    def run(self, analysis):
+    def run(self):
         self.print_running_msg()
 
-        field = self.field
-        m = self.model
-
-        oil_mass_energy_density = field.oil.mass_energy_density()
-        if self.field.get_process_data("crude_LHV") is None:
-            self.field.save_process_data(crude_LHV=oil_mass_energy_density)
+        oil_mass_energy_density = self.oil.mass_energy_density()
+        if self.ctx.process_data.get("crude_LHV") is None:
+            self.ctx.process_data["crude_LHV"] = oil_mass_energy_density
 
         ocean_tank_energy_intensity = \
-            field.transport_energy.get_ocean_tanker_dest_energy_intensity(self.transport_parameter)
-        truck_energy_intensity = field.transport_energy.energy_intensity_truck
+            self.transport_energy.get_ocean_tanker_dest_energy_intensity(self.transport_parameter)
+        truck_energy_intensity = self.transport_energy.energy_intensity_truck
 
-        export_LHV = field.get_process_data("exported_prod_LHV")
-        cumulative_export_LHV = export_LHV * self.field_production_lifetime * m.const("days-per-year")
+        export_LHV = self.ctx.process_data.get("exported_prod_LHV")
+        cumulative_export_LHV = export_LHV * self.field_production_lifetime * self.days_per_year
 
         survey_vehicle_energy_consumption = (truck_energy_intensity * self.weight_land_survey *
                                              self.distance_survey if not self.offshore else
@@ -118,9 +122,9 @@ class Exploration(Process):
         frac_energy_consumption = (survey_vehicle_energy_consumption + drill_energy_consumption) / cumulative_export_LHV
         diesel_consumption = frac_energy_consumption * export_LHV
 
-        field.save_process_data(cumulative_export_LHV=cumulative_export_LHV)
-        field.save_process_data(drill_energy_consumption=self.drill_energy_consumption)
-        field.save_process_data(num_wells=self.num_wells)
+        self.ctx.process_data["cumulative_export_LHV"] = cumulative_export_LHV
+        self.ctx.process_data["drill_energy_consumption"] = self.drill_energy_consumption
+        self.ctx.process_data["num_wells"] = self.num_wells
 
         # energy-use
         energy_use = self.energy

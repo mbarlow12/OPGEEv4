@@ -6,19 +6,40 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-from ..units import ureg
+import logging
+
+import pandas as pd
+from pint.facets.plain import PlainQuantity as Quantity
+
+from ..context import FieldContext
 from ..emissions import EM_FUGITIVES
 from ..energy import EN_NATURAL_GAS, EN_DIESEL
-from ..log import getLogger
 from ..process import Process
 from ..stream import PHASE_GAS
+from ..thermodynamics import Gas
+from ..units import ureg
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class RyanHolmes(Process):
-    def __init__(self, name, **kwargs):
-        super().__init__(name, **kwargs)
+    def __init__(
+        self,
+        name: str,
+        ctx: FieldContext,
+        gas: Gas,
+        daily_use_engine: Quantity[float],
+        diesel_LHV: Quantity[float],
+        mol_to_scf: Quantity[float],
+        RH_process_tbl: pd.DataFrame,
+    ):
+        super().__init__(name, ctx)
+
+        self.gas = gas
+        self.daily_use_engine = daily_use_engine
+        self.diesel_LHV = diesel_LHV
+        self.mol_to_scf = mol_to_scf
+        self.RH_process_tbl = RH_process_tbl
 
         # TODO: avoid process names in contents.
         self._required_inputs = [
@@ -31,25 +52,12 @@ class RyanHolmes(Process):
             "gas for CO2 compressor",
         ]
 
-        self.RH_process_tbl = self.field.model.ryan_holmes_process_tbl
-
-        self.daily_use_engine = None
-        self.diesel_LHV = None
-        self.mol_to_scf = None
-        self.cache_attributes()
-
-    def cache_attributes(self):
-        self.daily_use_engine = self.attr("daily_use_engine")
-        self.diesel_LHV = self.model.const("diesel-LHV")
-        self.mol_to_scf = self.model.const("mol-per-scf")
-
-    def run(self, analysis):
+    def run(self):
         self.print_running_msg()
-        field = self.field
 
         # mass rate
         input = self.find_input_stream("gas for Ryan Holmes")
-        processing_unit_loss_rate_df = field.get_process_data("processing_unit_loss_rate_df")
+        processing_unit_loss_rate_df = self.ctx.process_data.get("processing_unit_loss_rate_df")
         if input.is_uninitialized() or processing_unit_loss_rate_df is None:
             return
 

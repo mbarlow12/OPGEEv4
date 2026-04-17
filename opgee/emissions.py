@@ -1,18 +1,9 @@
-#
-# Emissions handling
-#
-# Author: Richard Plevin
-#
-# Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
-# See LICENSE.txt for license details.
-#
 import pandas as pd
 import pint
 
+from .chemistry import VOCS
 from .units import magnitude, ureg
-from .core import OpgeeObject
 from .error import OpgeeException
-from .stream import Stream
 
 EM_COMBUSTION = 'Combustion'
 EM_LAND_USE = 'Land-use'
@@ -43,7 +34,7 @@ class EmissionsError(OpgeeException):
             return f"{self.func_name}: Unrecognized gas '{self.gas}'"
 
 
-class Emissions(OpgeeObject):
+class Emissions:
     """
     Emissions is an object wrapper around a pandas.Series holding emission flow
     rates for a pre-defined set of substances, defined in ``Emissions.emissions``.
@@ -228,7 +219,7 @@ class Emissions(OpgeeObject):
             self.add_rate(category, EM_CO, series[EM_CO])
 
         # All gas-phase hydrocarbons heavier than methane are considered VOCs
-        voc_rate = series[series.index.intersection(Stream.VOCs)].sum()
+        voc_rate = series[series.index.intersection(VOCS)].sum()
         self.add_rate(category, EM_VOC, voc_rate)
 
     def set_from_series(self, category, series):
@@ -247,7 +238,7 @@ class Emissions(OpgeeObject):
             self.set_rate(category, EM_CO, series[EM_CO])
 
         # All gas-phase hydrocarbons heavier than methane are considered VOCs
-        voc_rate = series[series.index.intersection(Stream.VOCs)].sum()
+        voc_rate = series[series.index.intersection(VOCS)].sum()
         self.set_rate(category, EM_VOC, voc_rate)
 
     def add_rates_from(self, emissions):

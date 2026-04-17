@@ -6,14 +6,19 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-from ..units import ureg
-from ..emissions import EM_FUGITIVES
-from ..log import getLogger
-from ..process import Process
-from ..stream import PHASE_GAS
-from ..stream import Stream
+import logging
 
-_logger = getLogger(__name__)
+import pandas as pd
+from pint.facets.plain import PlainQuantity as Quantity
+
+from ..context import FieldContext
+from ..emissions import EM_FUGITIVES
+from ..process import Process
+from ..stream import PHASE_GAS, Stream
+from ..thermodynamics import Oil, Water
+from ..units import ureg
+
+_logger = logging.getLogger(__name__)
 
 
 class CrudeOilStorage(Process):
@@ -33,17 +38,28 @@ class CrudeOilStorage(Process):
         This process does not use any energy, and only produces emissions from the gas fugitives stream.
 
         Attributes:
-            field: The `Field` object that this process belongs to.
-            oil: The `Oil` object representing the type of crude oil being stored.
+            oil: The ``Oil`` object representing the type of crude oil being stored.
             oil_sands_mine: A string representing the name of the oil sands mine, or "None" if there is no mine.
-            API: The API gravity of the crude oil being stored.
-            storage_gas_comp: The composition of the storage gas.
+            storage_gas_comp: The composition of the storage gas (pre-sliced Series for "Storage Gas").
             CH4_comp: The methane component of the storage gas composition.
             f_FG_CS_VRU: The fraction of exsolved gas that is sent to the vapor recovery unit.
             f_FG_CS_FL: The fraction of exsolved gas that is flared.
+            loss_rate: Fugitive loss rate in kg/bbl_oil (pre-computed by the caller).
     """
-    def __init__(self, name, **kwargs):
-        super().__init__(name, **kwargs)
+
+    def __init__(
+        self,
+        name: str,
+        ctx: FieldContext,
+        oil: Oil,
+        water: Water,
+        storage_gas_comp: pd.Series,
+        oil_sands_mine: str,
+        f_FG_CS_VRU: Quantity[float],
+        f_FG_CS_FL: Quantity[float],
+        loss_rate: Quantity[float],
+    ):
+        super().__init__(name, ctx)
 
         # TODO: avoid process names in contents.
         self._required_inputs = [
@@ -56,24 +72,17 @@ class CrudeOilStorage(Process):
             "oil",
         ]
 
-        self.CH4_comp = None
-        self.f_FG_CS_FL = None
-        self.f_FG_CS_VRU = None
-        self.oil_sands_mine = None
+        self.oil = oil
+        self.water = water
+        self.storage_gas_comp = storage_gas_comp
+        self.CH4_comp = storage_gas_comp["C1"]
+        self.oil_sands_mine = oil_sands_mine
+        self.f_FG_CS_VRU = f_FG_CS_VRU
+        self.f_FG_CS_FL = f_FG_CS_FL
+        self.loss_rate = loss_rate
 
-        self.storage_gas_comp = self.field.imported_gas_comp["Storage Gas"]
-        self.CH4_comp = self.storage_gas_comp["C1"]
-
-        self.cache_attributes()
-
-    def cache_attributes(self):
-        self.oil_sands_mine = self.field.oil_sands_mine
-        self.f_FG_CS_VRU = self.attr("f_FG_CS_VRU") # default 0.9
-        self.f_FG_CS_FL = self.attr("f_FG_CS_FL") # default 0.1
-
-    def run(self, analysis):
+    def run(self):
         self.print_running_msg()
-        field = self.field
 
         # TODO: LPG to blend with crude oil need to be implement after gas branch
         # mass rate
@@ -84,10 +93,8 @@ class CrudeOilStorage(Process):
         oil_mass_rate = input_stream.liquid_flow_rate("oil")
 
         # Calculate gas exsolved upon flashing
-        loss_rate = field.component_fugitive_table[self.name]
-        loss_rate = ureg.Quantity(loss_rate.m, "kg/bbl_oil")
-        oil_volume_rate = oil_mass_rate / (field.oil.specific_gravity(input_stream.API) * field.water.density())
-        gas_exsolved_upon_flashing = oil_volume_rate * loss_rate / self.CH4_comp \
+        oil_volume_rate = oil_mass_rate / (self.oil.specific_gravity(input_stream.API) * self.water.density())
+        gas_exsolved_upon_flashing = oil_volume_rate * self.loss_rate / self.CH4_comp \
             if self.oil_sands_mine == "None" else ureg.Quantity(0, "tonne/day")
 
         # Calculate vapor to flare, VRU, and gas fugitives
@@ -97,7 +104,7 @@ class CrudeOilStorage(Process):
         gas_fugitives = (1 - self.f_FG_CS_VRU - self.f_FG_CS_FL) * gas_exsolved_upon_flashing * self.storage_gas_comp
 
         # Set output streams
-        stp = field.stp
+        stp = self.ctx.stp
         output_flare = self.find_output_stream("gas for partition")
         output_flare.set_rates_from_series(vapor_to_flare, PHASE_GAS)
         output_flare.set_tp(stp)
@@ -106,9 +113,8 @@ class CrudeOilStorage(Process):
         output_VRU.set_rates_from_series(vapor_to_VRU, PHASE_GAS)
         output_VRU.set_tp(stp)
 
-        gas_fugitive_stream = Stream("gas_fugitives", tp=self.field.stp)
+        gas_fugitive_stream = Stream("gas_fugitives", tp=stp)
         gas_fugitive_stream.set_rates_from_series(gas_fugitives, PHASE_GAS)
-        gas_fugitive_stream.set_tp(stp)
 
         output_transport = self.find_output_stream("oil")
         oil_to_transport_mass_rate = (oil_mass_rate -

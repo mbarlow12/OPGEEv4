@@ -6,11 +6,15 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
+import logging
+
+from pint.facets.plain import PlainQuantity as Quantity
+
+from ..context import FieldContext
 from ..emissions import EM_FUGITIVES
-from ..log import getLogger
 from ..process import Process
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class StorageWell(Process):
@@ -18,8 +22,11 @@ class StorageWell(Process):
     Storage well calculate fugitive emission from storage wells.
 
     """
-    def __init__(self, name, **kwargs):
-        super().__init__(name, **kwargs)
+
+    loss_rate: Quantity
+
+    def __init__(self, name: str, ctx: FieldContext, loss_rate: Quantity):
+        super().__init__(name, ctx)
 
         self._required_inputs = [
             "gas",
@@ -29,12 +36,9 @@ class StorageWell(Process):
             "gas",
         ]
 
-        self.cache_attributes()
+        self.loss_rate = loss_rate
 
-    def cache_attributes(self):
-        self.loss_rate = self.venting_fugitive_rate()
-
-    def run(self, analysis):
+    def run(self):
         self.print_running_msg()
 
         input = self.find_input_stream("gas")

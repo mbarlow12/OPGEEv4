@@ -6,17 +6,19 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
+import logging
+
+from ..context import FieldContext
 from ..emissions import EM_FLARING
-from ..log import getLogger
 from ..process import Process
 from ..stream import Stream
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 class Flaring(Process):
 
-    def __init__(self, name, **kwargs):
-        super().__init__(name, **kwargs)
+    def __init__(self, name: str, ctx: FieldContext):
+        super().__init__(name, ctx)
 
         # TODO: avoid process names in contents.
         self._required_inputs = [
@@ -26,7 +28,7 @@ class Flaring(Process):
 
         self._required_outputs = []
 
-    def run(self, analysis):
+    def run(self):
         self.print_running_msg()
 
         # mass rate

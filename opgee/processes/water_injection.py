@@ -6,22 +6,19 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-# WaterInjection class
-#
-# Author: Wennan Long
-#
-# Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
-# See LICENSE.txt for license details.
-#
+import logging
+
 import numpy as np
+from pint.facets.plain import PlainQuantity as Quantity
 
-from .shared import get_energy_carrier, get_energy_consumption
+from ..context import FieldContext
 from ..error import OpgeeException
-from ..log import getLogger
 from ..process import Process
+from ..thermodynamics import Water
 from ..units import ureg
+from .shared import get_energy_carrier, get_energy_consumption
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class WaterInjection(Process):
@@ -34,56 +31,51 @@ class WaterInjection(Process):
         output streams:
             -
     """
-    def __init__(self, name, **kwargs):
-        super().__init__(name, **kwargs)
 
-        # TODO: avoid process names in contents.
+    def __init__(
+        self,
+        name: str,
+        ctx: FieldContext,
+        water: Water,
+        water_reinjection: bool,
+        water_flooding: bool,
+        productivity_index: Quantity[float],
+        res_press: Quantity[float],
+        num_water_inj_wells: Quantity[float],
+        depth: Quantity[float],
+        prod_tubing_diam: Quantity[float],
+        friction_factor: Quantity[float],
+        press_pump: Quantity[float],
+        eta_pump: Quantity[float],
+        prime_mover_type: str,
+        gravitation_acc: Quantity[float],
+        gravitation_const: Quantity[float],
+    ):
+        super().__init__(name, ctx)
+
         self._required_inputs = [
             "water",
         ]
 
         self._required_outputs = []
 
-        self.gravitation_acc = self.model.const("gravitational-acceleration")
-        self.gravitation_const = self.model.const("gravitational-constant")
-        self.water_density = self.water.density()
+        self.water_reinjection = water_reinjection
+        self.water_flooding = water_flooding
+        self.productivity_index = productivity_index
+        self.res_press = res_press
+        self.num_water_inj_wells = num_water_inj_wells
+        self.depth = depth
+        self.prod_tubing_diam = prod_tubing_diam
+        self.xsection_area = np.pi * (prod_tubing_diam / 2) ** 2
+        self.friction_factor = friction_factor
+        self.press_pump = press_pump
+        self.eta_pump = eta_pump
+        self.prime_mover_type = prime_mover_type
+        self.gravitation_acc = gravitation_acc
+        self.gravitation_const = gravitation_const
+        self.water_density = water.density()
 
-        self.depth = None
-        self.eta_pump = None
-        self.friction_factor = None
-        self.num_water_inj_wells = None
-        self.press_pump = None
-        self.prime_mover_type = None
-        self.prod_tubing_diam = None
-        self.productivity_index = None
-        self.res_press = None
-        self.water_flooding = None
-        self.water_reinjection = None
-        self.xsection_area = None
-
-        self.cache_attributes()
-
-    def cache_attributes(self):
-        field = self.field
-        self.water_reinjection = field.water_reinjection
-        self.water_flooding = field.water_flooding
-        self.productivity_index = field.productivity_index
-        self.res_press = field.res_press
-        self.num_water_inj_wells = field.num_water_inj_wells
-
-        self.depth = field.depth
-        self.prod_tubing_diam = field.prod_tubing_diam
-        self.xsection_area = np.pi * (self.prod_tubing_diam / 2) ** 2
-        self.friction_factor = field.friction_factor
-        self.press_pump = self.attr("press_pump")
-        self.eta_pump = self.attr("eta_pump")
-        self.prime_mover_type = self.attr("prime_mover_type")
-
-    def check_enabled(self):
-        if not self.water_reinjection and not self.water_flooding:
-            self.set_enabled(False)
-
-    def run(self, analysis):
+    def run(self):
         self.print_running_msg()
 
         if self.num_water_inj_wells.m == 0:

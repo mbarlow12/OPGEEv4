@@ -6,18 +6,36 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-from ..log import getLogger
+import logging
+
+from pint.facets.plain import PlainQuantity as Quantity
+
+from ..context import FieldContext
 from ..process import Process
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class LNGLiquefaction(Process):
     """
     LNG liquefaction calculate emission of produced gas to liquefaction
     """
-    def __init__(self, name, **kwargs):
-        super().__init__(name, **kwargs)
+
+    def __init__(
+        self,
+        name: str,
+        ctx: FieldContext,
+        lng_temp: Quantity[float],
+        ancillary_loads: Quantity[float],
+        compression_refrigeration_load: Quantity[float],
+        ng_to_liq_rate: Quantity[float],
+    ):
+        super().__init__(name, ctx)
+
+        self.lng_temp = lng_temp
+        self.ancillary_loads = ancillary_loads
+        self.compression_refrigeration_load = compression_refrigeration_load
+        self.ng_to_liq_rate = ng_to_liq_rate
 
         self._required_inputs = [
             "LNG",
@@ -28,19 +46,7 @@ class LNGLiquefaction(Process):
             # "gas fugitives"       # TODO: future feature
         ]
 
-
-        self.ancillary_loads = None
-        self.compression_refrigeration_load = None
-        self.NG_to_liq_rate = None
-
-        self.cache_attributes()
-
-    def cache_attributes(self):
-        self.ancillary_loads = self.attr("ancillary_loads")
-        self.compression_refrigeration_load = self.attr("compression_refrigeration_load")
-        self.NG_to_liq_rate = self.attr("NG_to_liq_rate")
-
-    def run(self, analysis):
+    def run(self):
         self.print_running_msg()
 
         input = self.find_input_stream("LNG")
@@ -49,11 +55,11 @@ class LNGLiquefaction(Process):
             return
 
         # TODO: delete unused code here and below
-        # total_load = (self.compression_refrigeration_load + self.ancillary_loads) * self.NG_to_liq_rate
+        # total_load = (self.compression_refrigeration_load + self.ancillary_loads) * self.ng_to_liq_rate
 
         gas_to_transport = self.find_output_stream("gas")
         gas_to_transport.copy_flow_rates_from(input)
-        gas_to_transport.tp.set(T=self.field.LNG_temp)
+        gas_to_transport.tp.set(T=self.lng_temp)
 
         #TODO: Future versions of OPGEE may treat this process in more detail.
 
@@ -62,4 +68,3 @@ class LNGLiquefaction(Process):
         # gas_fugitives = self.find_output_stream("gas fugitives")
         # gas_fugitives.copy_flow_rates_from(gas_fugitives_temp)
         # gas_fugitives.set_temperature_and_pressure(self.std_temp, self.std_press)
-

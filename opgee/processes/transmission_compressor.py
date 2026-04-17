@@ -7,60 +7,67 @@
 # See LICENSE.txt for license details.
 #
 import math
+import logging
+
+from pint.facets.plain import PlainQuantity as Quantity
 
 from .compressor import Compressor
 from .shared import get_energy_carrier
+from ..context import FieldContext
 from ..core import TemperaturePressure
 from ..emissions import EM_FUGITIVES
-from ..log import getLogger
 from ..process import Process
+from ..thermodynamics import Gas
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
+
 
 class TransmissionCompressor(Process):
     """
     Transmission compressor calculate compressor emissions after the production site boundary.
     """
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
 
-        # TODO: avoid process names in contents.
-        self._required_inputs = [
-            ".*gas",
-        ]
+    # TODO: avoid process names in contents.
+    _required_inputs = [
+        ".*gas",
+    ]
 
-        self._required_outputs = [
-            "gas for storage",
-            "LNG",
-            "gas for distribution",
-        ]
+    _required_outputs = [
+        "gas for storage",
+        "LNG",
+        "gas for distribution",
+    ]
 
-        self.eta_compressor = None
-        self.gas_to_storage_frac = None
-        self.loss_rate = None
-        self.natural_gas_to_liquefaction_frac = None
-        self.press_drop_per_dist = None
-        self.prime_mover_type = None
-        self.transmission_dist = None
-        self.transmission_freq = None
-        self.transmission_inlet_press = None
-        self.transmission_sys_discharge = None
+    def __init__(
+        self,
+        name: str,
+        ctx: FieldContext,
+        gas: Gas,
+        press_drop_per_dist: Quantity[float],
+        transmission_dist: Quantity[float],
+        transmission_freq: Quantity[float],
+        transmission_inlet_press: Quantity[float],
+        prime_mover_type: str,
+        eta_compressor: Quantity[float],
+        gas_to_storage_frac: Quantity[float],
+        natural_gas_to_liquefaction_frac: Quantity[float],
+        transmission_sys_discharge: Quantity[float],
+        loss_rate: Quantity[float],
+    ):
+        super().__init__(name, ctx)
+        self.gas = gas
+        self.press_drop_per_dist = press_drop_per_dist
+        self.transmission_dist = transmission_dist
+        self.transmission_freq = transmission_freq
+        self.transmission_inlet_press = transmission_inlet_press
+        self.prime_mover_type = prime_mover_type
+        self.eta_compressor = eta_compressor
+        self.gas_to_storage_frac = gas_to_storage_frac
+        self.natural_gas_to_liquefaction_frac = natural_gas_to_liquefaction_frac
+        self.transmission_sys_discharge = transmission_sys_discharge
+        self.loss_rate = loss_rate
 
-        self.cache_attributes()
-
-    def cache_attributes(self):
-        self.press_drop_per_dist = self.attr("press_drop_per_dist")
-        self.transmission_dist = self.attr("transmission_dist")
-        self.transmission_freq = self.attr("transmission_freq")
-        self.transmission_inlet_press = self.attr("transmission_inlet_press")
-        self.prime_mover_type = self.attr("prime_mover_type")
-        self.eta_compressor = self.attr("eta_compressor")
-        self.gas_to_storage_frac = self.attr("gas_to_storage_frac")
-        self.natural_gas_to_liquefaction_frac = self.field.natural_gas_to_liquefaction_frac
-        self.transmission_sys_discharge = self.attr("transmission_sys_discharge")
-        self.loss_rate = self.attr("transmission_loss_rate")
-
-    def run(self, analysis):
+    def run(self):
         self.print_running_msg()
 
         input = self.find_input_streams(".*gas", regex=True, combine=True)
@@ -78,7 +85,7 @@ class TransmissionCompressor(Process):
         overall_compression_ratio_init = station_outlet_press.to("psi_absolute") / input.tp.P
         energy_consumption_init, output_temp_init, output_press_init = \
             Compressor.get_compressor_energy_consumption(
-                self.field,
+                self.gas,
                 self.prime_mover_type,
                 self.eta_compressor,
                 overall_compression_ratio_init,
@@ -88,7 +95,7 @@ class TransmissionCompressor(Process):
         overall_compression_ratio_booster = station_outlet_press.to("psi_absolute") / self.transmission_inlet_press
         energy_consumption_booster, output_temp_booster, output_press_booster = \
             Compressor.get_compressor_energy_consumption(
-                self.field,
+                self.gas,
                 self.prime_mover_type,
                 self.eta_compressor,
                 overall_compression_ratio_booster,

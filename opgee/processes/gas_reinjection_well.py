@@ -6,16 +6,31 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
+import logging
+
+from pint.facets.plain import PlainQuantity as Quantity
+
+from ..context import FieldContext
 from ..emissions import EM_FUGITIVES
-from ..log import getLogger
 from ..process import Process
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class GasReinjectionWell(Process):
-    def __init__(self, name, **kwargs):
-        super().__init__(name, **kwargs)
+    gas_flooding: bool
+    natural_gas_reinjection: bool
+    loss_rate: Quantity
+
+    def __init__(
+        self,
+        name: str,
+        ctx: FieldContext,
+        gas_flooding: bool,
+        natural_gas_reinjection: bool,
+        loss_rate: Quantity,
+    ):
+        super().__init__(name, ctx)
 
         # TODO: avoid process names in contents.
         self._required_inputs = [
@@ -26,21 +41,11 @@ class GasReinjectionWell(Process):
             "gas",
         ]
 
-        self.gas_flooding = None
-        self.natural_gas_reinjection = None
+        self.gas_flooding = gas_flooding
+        self.natural_gas_reinjection = natural_gas_reinjection
+        self.loss_rate = loss_rate
 
-        self.cache_attributes()
-
-    def cache_attributes(self):
-        field = self.field
-        self.gas_flooding = field.gas_flooding
-        self.natural_gas_reinjection = field.natural_gas_reinjection
-
-    def check_enabled(self):
-        if not self.natural_gas_reinjection and not self.gas_flooding:
-            self.set_enabled(False)
-
-    def run(self, analysis):
+    def run(self):
         self.print_running_msg()
 
         # mass rate
@@ -49,8 +54,7 @@ class GasReinjectionWell(Process):
         if input.is_uninitialized():
             return
 
-        loss_rate = self.get_compressor_and_well_loss_rate(input)
-        gas_fugitives = self.set_gas_fugitives(input, loss_rate)
+        gas_fugitives = self.set_gas_fugitives(input, self.loss_rate)
 
         gas_to_reservoir = self.find_output_stream("gas")
         gas_to_reservoir.copy_flow_rates_from(input)

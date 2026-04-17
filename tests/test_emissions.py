@@ -2,8 +2,6 @@ import pytest
 import pandas as pd
 from opgee.units import ureg
 from opgee.emissions import Emissions, EM_FUGITIVES, EM_FLARING, EM_LAND_USE, EmissionsError
-from opgee.error import OpgeeException
-
 
 def test_set_rate():
     e = Emissions()
@@ -48,42 +46,6 @@ def test_set_rates_error2():
 
     with pytest.raises(EmissionsError, match=r".*Unrecognized category*"):
         e.set_rates('Not-a-category', CO2=123.45)
-
-
-@pytest.fixture
-def emissions_for_gwp():
-    e = Emissions()
-    e.set_rates(EM_FLARING, CO2=1000, N2O=10, CH4=2, CO=1, VOC=1)
-    return e
-
-
-@pytest.mark.parametrize(
-    "gwp_horizon, gwp_version, expected",
-    [(20,  'AR4',     1000 + 10 * 289 + 2 * 72 + 7.65 + 14),
-     (20,  'AR5',     1000 + 10 * 264 + 2 * 84 + 7.65 + 14),
-     (20,  'AR5_CCF', 1000 + 10 * 264 + 2 * 86 + 18.6 + 14),
-     (100, 'AR4',     1000 + 10 * 298 + 2 * 25 +  1.6 + 3.1),
-     (100, 'AR5',     1000 + 10 * 265 + 2 * 30 +  2.7 + 4.5),
-     ]
-)
-def test_gwp(test_model, emissions_for_gwp, gwp_horizon, gwp_version, expected):
-    original_rates = emissions_for_gwp.data.copy()
-    analysis = test_model.get_analysis('test')
-    analysis.use_GWP(gwp_horizon, gwp_version)
-
-    rates = emissions_for_gwp.rates(gwp=analysis.gwp)
-
-    # check that original rates are unchanged
-    assert all(rates == original_rates)
-
-    # print(f"GHG for ({gwp_horizon}, {gwp_version} => {ghg}")
-    assert rates.loc['GHG', EM_FLARING] == ureg.Quantity(pytest.approx(expected), 'tonne/day')
-
-
-def test_use_GWP_error(test_model):
-    with pytest.raises(OpgeeException, match=r".*GWP version must be one of*"):
-        analysis = test_model.get_analysis('test')
-        analysis.use_GWP(20, 'AR4_CCF')
 
 
 def test_units():

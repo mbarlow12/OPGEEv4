@@ -6,14 +6,16 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-from ..log import getLogger
+import logging
+
+from ..context import FieldContext
 from ..process import Process
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 class NGL(Process):
-    def __init__(self, name, **kwargs):
-        super().__init__(name, **kwargs)
+    def __init__(self, name: str, ctx: FieldContext):
+        super().__init__(name, ctx)
 
         # TODO: avoid process names in contents.
         self._required_inputs = [
@@ -23,7 +25,7 @@ class NGL(Process):
         self._required_outputs = [
             "LPG",
         ]
-    def run(self, analysis):
+    def run(self):
         self.print_running_msg()
 
         if not self.all_streams_ready("gas for NGL"):

@@ -8,24 +8,25 @@
 #
 import math
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 import pint
 from pyXSteam.XSteam import XSteam
 from thermosteam import Chemical, IdealMixture
 
-from .units import ureg
-from .core import OpgeeObject, STP, TemperaturePressure
+from .chemistry import GASES, PHASE_GAS, PHASE_LIQUID, PHASE_SOLID, PUBCHEM_CID_DF, R_GAS
+from .core import STP, TemperaturePressure
 from .error import ModelValidationError
-from .stream import PHASE_GAS, PHASE_LIQUID, PHASE_SOLID, Stream
+from .stream import Stream
+from .units import ureg
 
 
-class ChemicalInfo(OpgeeObject):
+class ChemicalInfo:
     instance = None
 
     def __init__(self):
-        dict_non_hydrocarbon = {name: Chemical(name) for name in Stream.non_hydrocarbon_gases}
-        series = Stream.pubchem_cid_df.PubChem
+        dict_non_hydrocarbon = {name: Chemical(name) for name in GASES}
+        series = PUBCHEM_CID_DF.PubChem
         self._chemical_dict = chemical_dict = {name : Chemical(f"PubChem={num}") for name, num in series.items()}
         chemical_dict.update(dict_non_hydrocarbon)
         self._mol_weights = pd.Series({name: chemical.MW for name, chemical in chemical_dict.items()},
@@ -222,21 +223,18 @@ def Pc(component, with_units=True):
     return pc
 
 
-class Air(OpgeeObject):
+class Air:
     """
     The Air class represents the wet air and dry air chemical properties such as molar weights, density, etc.
     The wet air and dry air composition are given. The molecular weight is in unit g/mol and density is in unit
     kg/m3.
     """
 
-    def __init__(self, field, composition):
+    def __init__(self, composition: list[tuple[str, float]]):
         """
-
-        :param field:
-        :param composition:
+        :param composition: list of (component_name, mole_fraction) tuples.
         """
         self.composition = composition
-        self.field = field
         self.components = [name for name, fraction in self.composition]
         self.mol_fraction = mol_fraction = [fraction for name, fraction in self.composition]
         self.mixture = mixture = IdealMixture.from_chemicals(self.components)
@@ -253,36 +251,13 @@ class Air(OpgeeObject):
         return ureg.Quantity(result, "kg/m**3")
 
 
-# Deprecated? Currently unused.
-class WetAir(Air):
-    """
-    WetAir class represents the composition of wet air.
-    The composition is N2 = 0.774394, O2 = 0.20531, CO2 = 0.000294, H2O = 0.02
-    """
-
-    def __init__(self, field):
-        """
-
-        :param field:
-        """
-        composition = [("N2", 0.774396),
-                       ("O2", 0.20531),
-                       ("CO2", 0.000294),
-                       ("H2O", 0.02)]
-        super().__init__(field, composition)
-
-
 class DryAir(Air):
     """
     DryAir class represents the composition of dry air.
     The composition is obtained from https://www.engineeringtoolbox.com/air-composition-d_212.html
     """
 
-    def __init__(self, field):
-        """
-
-        :param field:
-        """
+    def __init__(self):
         composition = [("Nitrogen", 0.78084),
                        ("Oxygen", 0.20946),
                        ("Argon", 0.00934),
@@ -294,24 +269,22 @@ class DryAir(Air):
                        ("Hydrogen", 0.0000005),
                        ("Xenon", 0.00000009)]
 
-        super().__init__(field, composition)
+        super().__init__(composition)
 
 
-class AbstractSubstance(OpgeeObject):
+class AbstractSubstance:
     """
     AbstractSubstance class is superclass of Oil, Gas and Water
     """
 
-    def __init__(self, field):
+    def __init__(self, res_temp: pint.Quantity, res_press: pint.Quantity):
         """
-
-        :param field:
+        :param res_temp: reservoir temperature (e.g. degF)
+        :param res_press: reservoir pressure (e.g. psia)
         """
-        self.res_tp = TemperaturePressure(field.attr("res_temp"), field.attr("res_press"))
+        self.res_tp = TemperaturePressure(res_temp, res_press)
 
-        self.model = field.model
-
-        self.dry_air = DryAir(field)
+        self.dry_air = DryAir()
 
 
         # TODO: refactor this. Currently each subclass of AbstractSubstance calls this __init__
@@ -336,7 +309,7 @@ class AbstractSubstance(OpgeeObject):
                                       dtype="pint[kelvin]")
         self.component_Pc = pd.Series({name: Pc(name, with_units=False) for name in components},
                                       dtype="pint[Pa]")
-        self.component_gas_rho_STP = pd.Series({name: rho(name, field.stp.T, field.stp.P, PHASE_GAS)
+        self.component_gas_rho_STP = pd.Series({name: rho(name, STP.T, STP.P, PHASE_GAS)
                                                 for name in components}, dtype="pint[kg/m**3]")
 
         self.steam_table = XSteam(XSteam.UNIT_SYSTEM_FLS)
@@ -352,24 +325,38 @@ class Oil(AbstractSubstance):
     pbub_a2 = 0.783716
     pbub_a3 = 1.841408
 
-    def __init__(self, field):
+    def __init__(
+        self,
+        API: pint.Quantity,
+        gas_comp: pd.Series,
+        gas_oil_ratio: pint.Quantity,
+        res_temp: pint.Quantity,
+        res_press: pint.Quantity,
+        TDS: pint.Quantity,
+    ):
         """
         Store common parameters describing crude oil.
 
-        :param field: (opgee.Field) the `Field` of interest, used to get values of various field attributes.
+        :param API: oil API gravity (degAPI).
+        :param gas_comp: associated gas composition as a pd.Series of mole percentages
+            indexed by component name (e.g. dtype="pint[mol_pct]").
+        :param gas_oil_ratio: producing gas-oil ratio at separator conditions (scf/bbl_oil).
+        :param res_temp: reservoir temperature (degF).
+        :param res_press: reservoir pressure (psia).
+        :param TDS: total dissolved solids in produced water (mg/L), forwarded to `Water`.
         """
-        super().__init__(field)
+        super().__init__(res_temp, res_press)
 
-        self.API = API = field.attr("API")
+        self.API = API
         self.oil_LHV_mass = self.mass_energy_density()
         self.component_LHV_mass['oil'] = self.oil_LHV_mass.to("joule/gram")
-        self.gas_comp = field.attrs_with_prefix('gas_comp_')
-        self.gas_oil_ratio = field.attr('GOR')
+        self.gas_comp = gas_comp
+        self.gas_oil_ratio = gas_oil_ratio
         self.oil_specific_gravity = ureg.Quantity(141.5 / (131.5 + API.m), "frac")
         self.total_molar_weight = (self.gas_comp * self.component_MW[self.gas_comp.index]).sum()
         self.gas_specific_gravity = self._gas_specific_gravity()
 
-        self.water = Water(field)
+        self.water = Water(res_temp, res_press, TDS)
 
     # TODO: Used only once, immediately above
     def _gas_specific_gravity(self):
@@ -753,12 +740,12 @@ class Gas(AbstractSubstance):
     Describes the thermodynamic properties of gas.
     """
 
-    def __init__(self, field):
+    def __init__(self, res_temp: pint.Quantity, res_press: pint.Quantity):
         """
-
-        :param field:
+        :param res_temp: reservoir temperature (degF).
+        :param res_press: reservoir pressure (psia).
         """
-        super().__init__(field)
+        super().__init__(res_temp, res_press)
 
     def total_molar_flow_rate(self, stream):
         """
@@ -872,7 +859,7 @@ class Gas(AbstractSubstance):
         :return:
         """
         mass_flow_rate = stream.gas_flow_rates()  # pandas.Series
-        universal_gas_constants = self.model.const("universal-gas-constants")  # J/mol/K
+        universal_gas_constants = R_GAS  # J/mol/K
         molecular_weight = self.component_MW[mass_flow_rate.index]
         Cp = self.component_Cp_STP[mass_flow_rate.index]
         gas_constant = universal_gas_constants / molecular_weight
@@ -1237,9 +1224,14 @@ class Water(AbstractSubstance):
     # Required for the lookup steam table, which has a max of 2 digits.
     steam_tbl_digits = 2
 
-    def __init__(self, field):
-        super().__init__(field)
-        self.TDS = field.attr("total_dissolved_solids")  # mg/L
+    def __init__(self, res_temp: pint.Quantity, res_press: pint.Quantity, TDS: pint.Quantity):
+        """
+        :param res_temp: reservoir temperature (degF).
+        :param res_press: reservoir pressure (psia).
+        :param TDS: total dissolved solids (mg/L).
+        """
+        super().__init__(res_temp, res_press)
+        self.TDS = TDS  # mg/L
         # TODO: this can be improved by adding ions in the H2O in the solution
         self.specific_gravity = ureg.Quantity(1 + self.TDS.m * 0.695 * 1e-6, "frac")
         self.density_STP = self.density()
@@ -1251,8 +1243,8 @@ class Water(AbstractSubstance):
         :return: (float) water density (unit = kg/m3)
         """
 
-        temp = temperature if temperature is not None else self.model.const("std-temperature")
-        press = pressure if pressure is not None else self.model.const("std-pressure")
+        temp = temperature if temperature is not None else STP.T
+        press = pressure if pressure is not None else STP.P
 
         temp = temp.to("degF").m
         press = press.to("psia").m

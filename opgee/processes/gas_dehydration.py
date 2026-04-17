@@ -6,19 +6,22 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-import numpy as np
+import logging
 
-from ..units import ureg
+import numpy as np
+import pandas as pd
+from pint.facets.plain import PlainQuantity as Quantity
+
+from ..context import FieldContext
 from ..emissions import EM_FUGITIVES
 from ..energy import EN_NATURAL_GAS, EN_ELECTRICITY
 from ..error import OpgeeException
-from ..log import getLogger
-from ..process import Process
-from ..process import run_corr_eqns
-from ..thermodynamics import ChemicalInfo
+from ..process import Process, run_corr_eqns
+from ..thermodynamics import ChemicalInfo, Gas, Water
+from ..units import ureg
 from .shared import get_bounded_value, predict_blower_energy_use
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class GasDehydration(Process):
@@ -42,8 +45,28 @@ class GasDehydration(Process):
             gas_path (str): The path of the gas in the process.
             gas_path_dict (dict): Dictionary mapping gas path names to stream names.
     """
-    def __init__(self, name, **kwargs):
-        super().__init__(name, **kwargs)
+
+    def __init__(
+        self,
+        name: str,
+        ctx: FieldContext,
+        gas: Gas,
+        water: Water,
+        gas_path: str,
+        reflux_ratio: Quantity[float],
+        regeneration_feed_temp: Quantity[float],
+        eta_reboiler_dehydrator: Quantity[float],
+        air_cooler_delta_T: Quantity[float],
+        air_cooler_press_drop: Quantity[float],
+        air_cooler_fan_eff: Quantity[float],
+        air_cooler_speed_reducer_eff: Quantity[float],
+        air_elevation_const: Quantity[float],
+        air_density_ratio: Quantity[float],
+        gravitational_acceleration: Quantity[float],
+        mol_to_scf: Quantity[float],
+        gas_dehydration_tbl: pd.DataFrame,
+    ):
+        super().__init__(name, ctx)
 
         self.gas_path_dict = {"Minimal": "gas for gas partition",
                               "Acid Gas": "gas for AGR",
@@ -59,51 +82,31 @@ class GasDehydration(Process):
         ]
 
         self._required_outputs = [
-            self.gas_path_dict[self.field.gas_path],
+            self.gas_path_dict[gas_path],
         ]
 
-        model = self.field.model
+        self.gas = gas
+        self.gas_path = gas_path
+        self.reflux_ratio = reflux_ratio
+        self.regeneration_feed_temp = regeneration_feed_temp
+        self.eta_reboiler_dehydrator = eta_reboiler_dehydrator
+        self.air_cooler_delta_T = air_cooler_delta_T
+        self.air_cooler_press_drop = air_cooler_press_drop
+        self.air_cooler_fan_eff = air_cooler_fan_eff
+        self.air_cooler_speed_reducer_eff = air_cooler_speed_reducer_eff
+        self.air_elevation_const = air_elevation_const
+        self.air_density_ratio = air_density_ratio
+        self.mol_to_scf = mol_to_scf
+        self.gas_dehydration_tbl = gas_dehydration_tbl
 
-        self.gas_dehydration_tbl = model.gas_dehydration_tbl
-        self.mol_to_scf = model.const("mol-per-scf")
-        self.air_elevation_const = model.const("air-elevation-corr")
-        self.air_density_ratio = model.const("air-density-ratio")
+        self.water_press = water.density() * air_cooler_press_drop * gravitational_acceleration
 
-        self.air_cooler_delta_T = None
-        self.air_cooler_fan_eff = None
-        self.air_cooler_press_drop = None
-        self.air_cooler_speed_reducer_eff = None
-        self.eta_reboiler_dehydrator = None
-        self.gas_path = None
-        self.reflux_ratio = None
-        self.regeneration_feed_temp = None
-        self.water_press = None
-
-        self.cache_attributes()
-
-    def cache_attributes(self):
-        field = self.field
-        self.reflux_ratio = field.reflux_ratio
-        self.regeneration_feed_temp = field.regeneration_feed_temp
-        self.eta_reboiler_dehydrator = self.attr("eta_reboiler_dehydrator")
-        self.air_cooler_delta_T = self.attr("air_cooler_delta_T")
-        self.air_cooler_press_drop = self.attr("air_cooler_press_drop")
-        self.air_cooler_fan_eff = self.attr("air_cooler_fan_eff")
-        self.air_cooler_speed_reducer_eff = self.attr("air_cooler_speed_reducer_eff")
-
-        self.water_press = field.water.density() * \
-                           self.air_cooler_press_drop * \
-                           field.model.const("gravitational-acceleration")
-
-        self.gas_path = field.gas_path
-
-    def run(self, analysis):
+    def run(self):
         self.print_running_msg()
-        field = self.field
 
         # mass rate
         input = self.find_input_stream("gas for gas dehydration")
-        processing_unit_loss_rate_df = field.get_process_data("processing_unit_loss_rate_df")
+        processing_unit_loss_rate_df = self.ctx.process_data.get("processing_unit_loss_rate_df")
         if input.is_uninitialized() or processing_unit_loss_rate_df is None:
             return
 
@@ -112,7 +115,7 @@ class GasDehydration(Process):
 
         try:
             output = self.gas_path_dict[self.gas_path]
-        except:
+        except KeyError:
             raise OpgeeException(f"{self.name} gas path is not recognized:{self.gas_path}. "
                                  f"Must be one of {list(self.gas_path_dict.keys())}")
 
@@ -162,10 +165,18 @@ class GasDehydration(Process):
         condenser_thermal_load = ureg.Quantity(max(0., corr_result_df["Condenser"] * gas_multiplier), "kW")
 
         # TODO: Add this stream to water treatment process
-        water_output = ureg.Quantity(max(0., corr_result_df["Resid water"]), "lb/mmscf") * gas_volume_rate
+        _water_output = ureg.Quantity(max(0., corr_result_df["Resid water"]), "lb/mmscf") * gas_volume_rate
 
         reboiler_fuel_use = reboiler_heavy_duty * self.eta_reboiler_dehydrator
-        air_cooler_energy_consumption = predict_blower_energy_use(self, condenser_thermal_load)
+        air_cooler_energy_consumption = predict_blower_energy_use(
+            condenser_thermal_load,
+            self.air_cooler_delta_T,
+            self.water_press,
+            self.air_cooler_fan_eff,
+            self.air_cooler_speed_reducer_eff,
+            self.air_elevation_const,
+            self.air_density_ratio,
+        )
 
         # energy-use
         energy_use = self.energy

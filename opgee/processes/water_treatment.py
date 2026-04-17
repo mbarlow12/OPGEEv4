@@ -6,15 +6,21 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
-from ..units import ureg
+import logging
+
+import pandas as pd
+from pint.facets.plain import PlainQuantity as Quantity
+
+from ..context import FieldContext
 from ..core import TemperaturePressure
 from ..energy import EN_ELECTRICITY
 from ..error import OpgeeException
 from ..import_export import WATER
-from ..log import getLogger
 from ..process import Process
+from ..thermodynamics import Water
+from ..units import ureg
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class WaterTreatment(Process):
@@ -27,8 +33,31 @@ class WaterTreatment(Process):
         Outputs:
             - B
     """
-    def __init__(self, name, **kwargs):
-        super().__init__(name, **kwargs)
+
+    def __init__(
+        self,
+        name: str,
+        ctx: FieldContext,
+        water: Water,
+        water_treatment_table: pd.DataFrame,
+        steam_flooding: bool,
+        water_flooding: bool,
+        water_reinjection: bool,
+        oil_volume_rate: Quantity[float],
+        WIR: Quantity[float],
+        WOR: Quantity[float],
+        SOR: Quantity[float],
+        frac_water_reinj: Quantity[float],
+        steam_quality_outlet: Quantity[float],
+        steam_quality_blowdown: Quantity[float],
+        frac_disp_subsurface: Quantity[float],
+        frac_disp_surface: Quantity[float],
+        makeup_water_treatment_tbl: pd.DataFrame | None,
+        makeup_water_temp: Quantity[float],
+        makeup_water_press: Quantity[float],
+        num_stages: int,
+    ):
+        super().__init__(name, ctx)
 
         self._required_inputs = [
             "water",
@@ -36,76 +65,43 @@ class WaterTreatment(Process):
 
         self._required_outputs = []
 
-        field = self.field
-        if field.steam_flooding:
+        if steam_flooding:
             self._required_outputs.extend([
                 "makeup water",
                 "produced water",
             ])
 
-        if field.water_flooding or field.water_reinjection:
+        if water_flooding or water_reinjection:
             self._required_outputs.append("water")
 
-        self.water_treatment_table = self.model.water_treatment
-
-        self.SOR = None
-        self.WIR = None
-        self.frac_disp_subsurface = None
-        self.frac_disp_surface = None
-        self.frac_water_reinj = None
-        self.makeup_water_tp = None
-        self.makeup_water_treatment = None
-        self.makeup_water_treatment_tbl = None
-        self.num_stages = None
-        self.oil_volume_rate = None
-        self.steam_flooding = None
-        self.steam_quality_blowdown = None
-        self.steam_quality_outlet = None
-        self.water_density_STP = None
-        self.water_flooding = None
-        self.water_reinjection = None
-
-        self.cache_attributes()
-
-    def cache_attributes(self):
-        field = self.field
-        self.oil_volume_rate = field.oil_volume_rate
-        self.WIR = field.WIR
-
-        self.water_reinjection = field.water_reinjection
-        self.water_flooding = field.water_flooding
-        self.frac_water_reinj = field.frac_water_reinj
-        self.water_density_STP = field.water.density()
-
-        self.steam_flooding = field.steam_flooding
-        self.SOR = field.SOR
-        self.steam_quality_outlet = self.attr("steam_quality_at_generator_outlet")
-        self.steam_quality_blowdown = self.attr("steam_quality_after_blowdown")
-
-        self.frac_disp_subsurface = self.attr("fraction_disp_water_subsurface")
-        self.frac_disp_surface = self.attr("fraction_disp_water_surface")
+        self.water = water
+        self.water_density_STP = water.density()
+        self.water_treatment_table = water_treatment_table
+        self.steam_flooding = steam_flooding
+        self.water_flooding = water_flooding
+        self.water_reinjection = water_reinjection
+        self.oil_volume_rate = oil_volume_rate
+        self.WIR = WIR
+        self.WOR = WOR
+        self.SOR = SOR
+        self.frac_water_reinj = frac_water_reinj
+        self.steam_quality_outlet = steam_quality_outlet
+        self.steam_quality_blowdown = steam_quality_blowdown
+        self.frac_disp_subsurface = frac_disp_subsurface
+        self.frac_disp_surface = frac_disp_surface
+        self.makeup_water_treatment_tbl = makeup_water_treatment_tbl
+        self.makeup_water_tp = TemperaturePressure(makeup_water_temp, makeup_water_press)
+        self.num_stages = num_stages
 
         self.makeup_water_treatment = None
-        self.makeup_water_treatment_tbl = self.attr("makeup_water_treatment_table")
-
-        self.makeup_water_tp = TemperaturePressure(self.attr("makeup_water_temp"),
-                                                   self.attr("makeup_water_press"))
-
-        self.num_stages = self.attr("number_of_stages")
 
         self.init_intermediate_results(["Produced Water", "Makeup Water"])
 
-    def run(self, analysis):
+    def run(self):
         """
         Run the WaterTreatment process.
-
-        :param analysis: (opgee.Analysis)
-        :return: nothing
         """
         self.print_running_msg()
-        field = self.field
-
-        self.WOR = field.attr("WOR")
 
         # mass rate
         input = self.find_input_streams("water", combine=True)
@@ -156,7 +152,7 @@ class WaterTreatment(Process):
         surface_disp_rate = water_for_disp * self.frac_disp_surface
         subsurface_disp_rate = water_for_disp * self.frac_disp_subsurface
 
-        water_density = field.water.density() # water is under the standard conditions
+        water_density = self.water.density()  # water is under the standard conditions
         input_water_volume_rate = input_water_mass_rate / water_density
         makeup_water_vol_downstream = (makeup_water_mass + makeup_steam_mass) / water_density
 
@@ -177,11 +173,10 @@ class WaterTreatment(Process):
         energy_use_makeup.set_rate(EN_ELECTRICITY, makeup_water_elec.to("mmBtu/day"))
 
         # import/export
-        import_product = field.import_export
         self.set_import_from_energy(energy_use_makeup)
         self.set_import_from_energy(energy_use_prod)
-        import_product.set_import(self.name, WATER, makeup_water_mass + makeup_steam_mass)
-        import_product.set_export(self.name, WATER, surface_disp_rate + subsurface_disp_rate)
+        self.import_export.set_import(self.name, WATER, makeup_water_mass + makeup_steam_mass)
+        self.import_export.set_export(self.name, WATER, surface_disp_rate + subsurface_disp_rate)
 
         self.sum_intermediate_results()
 

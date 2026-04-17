@@ -6,20 +6,34 @@
 # Copyright (c) 2021-2022 The Board of Trustees of the Leland Stanford Junior University.
 # See LICENSE.txt for license details.
 #
+import logging
+
+from pint.facets.plain import PlainQuantity as Quantity
+
+from ..context import FieldContext
 from ..emissions import EM_FUGITIVES
 from ..import_export import NATURAL_GAS
-from ..log import getLogger
 from ..process import Process
+from ..thermodynamics import Gas
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class GasDistribution(Process):
     """
     Gas distribution calculates emission of gas to distribution
     """
-    def __init__(self, name, **kwargs):
-        super().__init__(name, **kwargs)
+
+    def __init__(
+        self,
+        name: str,
+        ctx: FieldContext,
+        gas: Gas,
+        frac_loss_distribution: Quantity[float],
+        frac_loss_meter: Quantity[float],
+        frac_loss_enduse: Quantity[float],
+    ):
+        super().__init__(name, ctx)
 
         # TODO: avoid process names in contents.
         self._required_inputs = [
@@ -30,16 +44,11 @@ class GasDistribution(Process):
             "gas",
         ]
 
-        self.cache_attributes()
+        self.gas = gas
+        self.frac_loss = frac_loss_distribution + frac_loss_meter + frac_loss_enduse
 
-    def cache_attributes(self):
-        self.frac_loss = (self.attr("frac_loss_distribution") +
-                          self.attr("frac_loss_meter") +
-                          self.attr("frac_loss_enduse"))
-
-    def run(self, analysis):
+    def run(self):
         self.print_running_msg()
-        field = self.field
 
         input = self.find_input_streams("gas for distribution", combine=True)
 
@@ -55,14 +64,8 @@ class GasDistribution(Process):
         gas_mass_rate = gas_to_customer.total_gas_rate()
         gas_mass_energy_density = self.gas.mass_energy_density(gas_to_customer)
         gas_LHV_rate = gas_mass_rate * gas_mass_energy_density
-        import_product = field.import_export
-        import_product.set_export(self.name, NATURAL_GAS, gas_LHV_rate)
+        self.import_export.set_export(self.name, NATURAL_GAS, gas_LHV_rate)
 
         # emissions
         emissions = self.emissions
         emissions.set_from_stream(EM_FUGITIVES, gas_fugitives)
-
-
-
-
-
