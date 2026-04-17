@@ -1,5 +1,4 @@
 import pytest
-from opgee.error import OpgeeException
 from opgee.process import Process
 from .utils_for_tests import load_test_model
 from opgee.units import ureg
@@ -16,10 +15,17 @@ class CopyingProcess(Process):
             input.tp.T = output.tp.T
             input.tp.P = output.tp.P
 
-class Impute1(CopyingProcess): pass
-class Impute2(CopyingProcess): pass
-class Impute3(CopyingProcess): pass
-class Impute4(CopyingProcess): pass
+class Impute1(CopyingProcess):
+    pass
+
+class Impute2(CopyingProcess):
+    pass
+
+class Impute3(CopyingProcess):
+    pass
+
+class Impute4(CopyingProcess):
+    pass
 
 @pytest.fixture(scope="module")
 def good_model(configure_logging_for_tests):

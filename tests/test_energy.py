@@ -57,7 +57,7 @@ def test_set_rates(two_carriers, carrier, rate):
     assert two_carriers[carrier] == ureg.Quantity(rate, 'mmbtu/day')
 
 
-def test_set_rates_error():
+def test_set_rates_keyword_error():
     """Test that an unknown gas name (as keyword arg) throws an OpgeeException"""
     e = Energy()
 

@@ -7,7 +7,8 @@ from opgee.error import OpgeeException, ZeroEnergyFlowError
 from opgee.process import Process, _get_subclass, Reservoir
 
 
-class NotProcess(): pass
+class NotProcess():
+    pass
 
 
 def test_subclass_lookup_good(test_model):

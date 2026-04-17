@@ -70,19 +70,19 @@ def test_find_stream(stream_model):
         proc3.find_output_stream(contents)
 
     streams = proc3.find_output_streams('hydrogen', as_list=False)
-    assert streams and type(streams) == dict and len(streams) == 2
+    assert streams and isinstance(streams, dict) and len(streams) == 2
 
     streams = proc3.find_output_streams('hydrogen', as_list=True)
-    assert streams and type(streams) == list and len(streams) == 2
+    assert streams and isinstance(streams, list) and len(streams) == 2
 
-    with pytest.raises(OpgeeException, match=f".*both 'combine' and 'as_list' cannot be True"):
+    with pytest.raises(OpgeeException, match=".*both 'combine' and 'as_list' cannot be True"):
         proc3.find_output_streams('hydrogen', as_list=True, combine=True)
 
     streams = proc3.find_input_streams('gas.*', as_list=False, regex=True)
-    assert streams and type(streams) == dict
+    assert streams and isinstance(streams, dict)
 
     streams = proc3.find_input_streams('gas.*', as_list=True, regex=True)
-    assert streams and type(streams) == list
+    assert streams and isinstance(streams, list)
 
     with pytest.raises(OpgeeException, match=f".*no input streams contain '{bad_name}'"):
         proc3.find_input_streams(bad_name, combine=False, as_list=False, raiseError=True)
@@ -128,7 +128,7 @@ def test_stream_utils(stream_model):
     from opgee.stream import Stream
     tp = None
     s = Stream('stream1', tp)
-    assert s.tp == None
+    assert s.tp is None
 
     tp = TemperaturePressure(100, 200)
     s.set_tp(tp)

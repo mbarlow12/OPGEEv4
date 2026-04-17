@@ -80,10 +80,10 @@ def test_component_fugitive(test_field):
 
 def test_bad_boundary():
     with pytest.raises(XmlFormatError, match=".*UnknownBoundary is not a known boundary name.*"):
-        model = load_model_from_str(model_xml_1)
+        load_model_from_str(model_xml_1)
 
     with pytest.raises(XmlFormatError, match=".*duplicate.*"):
-        model = load_model_from_str(model_xml_2)
+        load_model_from_str(model_xml_2)
 
     # with pytest.raises(XmlFormatError, match=".*Duplicate declaration of boundary.*"):
     #     model = load_model_from_str(model_xml_2)
