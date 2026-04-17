@@ -3,6 +3,7 @@ from importlib.resources import files
 from typing import Final, Optional
 
 import pint
+import pint_pandas  # noqa: F401  (registers pandas extension dtype for pint[unit])
 from pint.registry import ApplicationRegistry
 
 from opgee.error import OpgeeException
