@@ -1,26 +1,24 @@
+import logging
+from importlib.resources import files
 from typing import Final, Optional
 
 import pint
 from pint.registry import ApplicationRegistry
 
 from opgee.error import OpgeeException
-from opgee.log import getLogger
-from opgee.pkg_utils import resourceStream
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
-# "shadowed" variable here to improve type hinting for `ureg`
 _ureg: Optional[ApplicationRegistry] = None
 
 if _ureg is None:
     _ureg = pint.get_application_registry()
     del _ureg._units["bbl"]
-    stream = resourceStream("etc/units.txt")
-    lines = [line.strip() for line in stream.readlines()]
+    units_path = files("opgee.etc").joinpath("units.txt")
+    lines = [line.strip() for line in units_path.read_text().splitlines()]
     _ureg.load_definitions(lines)
 
 ureg: Final[ApplicationRegistry] = _ureg
-Qty = _ureg.Quantity
 del _ureg
 
 # to avoid redundantly reporting bad units
