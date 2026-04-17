@@ -8,79 +8,138 @@
 #
 import pandas as pd
 
-from ..units import ureg
-from ..core import OpgeeObject
+from pint.facets.plain import PlainQuantity as Quantity
+
+from ..context import FieldContext
 from ..stream import PHASE_GAS
+from ..thermodynamics import Gas, Oil, Water
+from ..units import ureg
 
 
-class SteamGenerator(OpgeeObject):  # N.B. NOT a subclass of Process
-    def __init__(self, field):
-        self.field = field
-        model = field.model
+class SteamGenerator:  # N.B. NOT a subclass of Process
+    def __init__(
+        self,
+        ctx: FieldContext,
+        gas: Gas,
+        oil: Oil,
+        water: Water,
+        SOR: Quantity[float],
+        oil_volume_rate: Quantity[float],
+        res_press: Quantity[float],
+        API: Quantity[float],
+        steam_quality_outlet: Quantity[float],
+        steam_quality_after_blowdown: Quantity[float],
+        fraction_blowdown_recycled: Quantity[float],
+        waste_water_reinjection_temp: Quantity[float],
+        waste_water_reinjection_press: Quantity[float],
+        friction_loss_steam_distr: Quantity[float],
+        pressure_loss_choke_wellhead: Quantity[float],
+        steam_injection_delta_press: Quantity[float],
+        prod_water_inlet_temp: Quantity[float],
+        prod_water_inlet_press: Quantity[float],
+        makeup_water_inlet_temp: Quantity[float],
+        makeup_water_inlet_press: Quantity[float],
+        temperature_inlet_air_OTSG: Quantity[float],
+        OTSG_exhaust_temp_outlet_before_economizer: Quantity[float],
+        OTSG_frac_import_gas: Quantity[float],
+        OTSG_frac_prod_gas: Quantity[float],
+        HRSG_frac_import_gas: Quantity[float],
+        HRSG_frac_prod_gas: Quantity[float],
+        O2_excess_OTSG: Quantity[float],
+        OTSG_fuel_type: str,
+        loss_shell_OTSG: Quantity[float],
+        loss_shell_HRSG: Quantity[float],
+        loss_gaseous_OTSG: Quantity[float],
+        loss_liquid_OTSG: Quantity[float],
+        blowdown_heat_recovery: bool,
+        eta_blowdown_heat_rec_OTSG: Quantity[float],
+        eta_blowdown_heat_rec_HRSG: Quantity[float],
+        economizer_OTSG: bool,
+        preheater_OTSG: bool,
+        economizer_HRSG: bool,
+        preheater_HRSG: bool,
+        eta_economizer_heat_rec_OTSG: Quantity[float],
+        eta_preheater_heat_rec_OTSG: Quantity[float],
+        eta_economizer_heat_rec_HRSG: Quantity[float],
+        eta_preheater_heat_rec_HRSG: Quantity[float],
+        gas_turbine_type: str,
+        duct_firing: bool,
+        duct_firing_inlet_temp: Quantity[float],
+        OTSG_exhaust_temp_series: pd.Series,
+        HRSG_exhaust_temp_series: pd.Series,
+        imported_fuel_gas_comp: pd.Series,
+        processed_prod_gas_comp: pd.Series,
+        inlet_air_comp: pd.Series,
+        prod_combustion_coeff: pd.DataFrame,
+        reaction_combustion_coeff: pd.DataFrame,
+        gas_turbine_tbl: pd.DataFrame,
+    ):
+        self.ctx = ctx
 
-        self.SOR = field.SOR
-        self.oil_volume_rate = field.oil_volume_rate
-        self.steam_quality_outlet = field.attr("steam_quality_outlet")
-        self.steam_quality_after_blowdown = field.attr("steam_quality_after_blowdown")
-        self.fraction_blowdown_recycled = field.attr("fraction_blowdown_recycled")
-        self.waste_water_reinjection_temp = field.attr("waste_water_reinjection_temp")
-        self.waste_water_reinjection_press = field.attr("waste_water_reinjection_press")
-        self.friction_loss_steam_distr = field.attr("friction_loss_steam_distr")
-        self.pressure_loss_choke_wellhead = field.attr("pressure_loss_choke_wellhead")
+        self.SOR = SOR
+        self.oil_volume_rate = oil_volume_rate
+        self.API = API
+        self.steam_quality_outlet = steam_quality_outlet
+        self.steam_quality_after_blowdown = steam_quality_after_blowdown
+        self.fraction_blowdown_recycled = fraction_blowdown_recycled
+        self.waste_water_reinjection_temp = waste_water_reinjection_temp
+        self.waste_water_reinjection_press = waste_water_reinjection_press
+        self.friction_loss_steam_distr = friction_loss_steam_distr
+        self.pressure_loss_choke_wellhead = pressure_loss_choke_wellhead
 
-        self.res_press = field.res_press
-        self.steam_injection_delta_press = field.attr("steam_injection_delta_press")
+        self.res_press = res_press
+        self.steam_injection_delta_press = steam_injection_delta_press
 
-        self.prod_water_inlet_press = field.attr("prod_water_inlet_press")
-        self.makeup_water_inlet_temp = field.attr("makeup_water_inlet_temp")
-        self.makeup_water_inlet_press = field.attr("makeup_water_inlet_press")
-        self.temperature_inlet_air_OTSG = field.attr("temperature_inlet_air_OTSG")
-        self.OTSG_exhaust_temp_outlet_before_economizer = field.attr(
-            "OTSG_exhaust_temp_outlet_before_economizer")
-        self.OTSG_exhaust_temp_series = field.attrs_with_prefix("OTSG_exhaust_temp_")
-        self.HRSG_exhaust_temp_series = field.attrs_with_prefix("HRSG_exhaust_temp_")
+        self.prod_water_inlet_temp = prod_water_inlet_temp
+        self.prod_water_inlet_press = prod_water_inlet_press
+        self.makeup_water_inlet_temp = makeup_water_inlet_temp
+        self.makeup_water_inlet_press = makeup_water_inlet_press
+        self.temperature_inlet_air_OTSG = temperature_inlet_air_OTSG
+        self.OTSG_exhaust_temp_outlet_before_economizer = OTSG_exhaust_temp_outlet_before_economizer
+        self.OTSG_exhaust_temp_series = OTSG_exhaust_temp_series
+        self.HRSG_exhaust_temp_series = HRSG_exhaust_temp_series
 
-        self.imported_fuel_gas_comp = field.imported_gas_comp["Imported Fuel"]
-        self.processed_prod_gas_comp = field.imported_gas_comp["Processed Produced Gas"]
-        self.inlet_air_comp = field.imported_gas_comp["Air"]
+        self.imported_fuel_gas_comp = imported_fuel_gas_comp
+        self.processed_prod_gas_comp = processed_prod_gas_comp
+        self.inlet_air_comp = inlet_air_comp
 
-        self.OTSG_frac_import_gas = field.attr("OTSG_frac_import_gas")
-        self.OTSG_frac_prod_gas = field.attr("OTSG_frac_prod_gas")
-        self.HRSG_frac_import_gas = field.attr("HRSG_frac_import_gas")
-        self.HRSG_frac_prod_gas = field.attr("HRSG_frac_prod_gas")
-        self.O2_excess_OTSG = field.attr("O2_excess_OTSG")
-        self.OTSG_fuel_type = field.attr("fuel_input_type_OTSG")
-        self.loss_shell_OTSG = field.attr("loss_shell_OTSG")
-        self.loss_shell_HRSG = field.attr("loss_shell_HRSG")
-        self.loss_gaseous_OTSG = field.attr("loss_gaseous_OTSG")
-        self.loss_liquid_OTSG = field.attr("loss_liquid_OTSG")
+        self.OTSG_frac_import_gas = OTSG_frac_import_gas
+        self.OTSG_frac_prod_gas = OTSG_frac_prod_gas
+        self.HRSG_frac_import_gas = HRSG_frac_import_gas
+        self.HRSG_frac_prod_gas = HRSG_frac_prod_gas
+        self.O2_excess_OTSG = O2_excess_OTSG
+        self.OTSG_fuel_type = OTSG_fuel_type
+        self.loss_shell_OTSG = loss_shell_OTSG
+        self.loss_shell_HRSG = loss_shell_HRSG
+        self.loss_gaseous_OTSG = loss_gaseous_OTSG
+        self.loss_liquid_OTSG = loss_liquid_OTSG
 
-        self.blowdown_heat_recovery = field.attr("blowdown_heat_recovery")
-        self.eta_blowdown_heat_rec_OTSG = field.attr("eta_blowdown_heat_rec_OTSG")
-        self.eta_blowdown_heat_rec_HRSG = field.attr("eta_blowdown_heat_rec_HRSG")
+        self.blowdown_heat_recovery = blowdown_heat_recovery
+        self.eta_blowdown_heat_rec_OTSG = eta_blowdown_heat_rec_OTSG
+        self.eta_blowdown_heat_rec_HRSG = eta_blowdown_heat_rec_HRSG
 
-        self.economizer_OTSG = field.attr("economizer_OTSG")
-        self.preheater_OTSG = field.attr("preheater_OTSG")
-        self.economizer_HRSG = field.attr("economizer_HRSG")
-        self.preheater_HRSG = field.attr("preheater_HRSG")
+        self.economizer_OTSG = economizer_OTSG
+        self.preheater_OTSG = preheater_OTSG
+        self.economizer_HRSG = economizer_HRSG
+        self.preheater_HRSG = preheater_HRSG
 
-        self.eta_economizer_heat_rec_OTSG = field.attr("eta_economizer_heat_rec_OTSG")
-        self.eta_preheater_heat_rec_OTSG = field.attr("eta_preheater_heat_rec_OTSG")
+        self.eta_economizer_heat_rec_OTSG = eta_economizer_heat_rec_OTSG
+        self.eta_preheater_heat_rec_OTSG = eta_preheater_heat_rec_OTSG
 
-        self.eta_economizer_heat_rec_HRSG = field.attr("eta_economizer_heat_rec_HRSG")
-        self.eta_preheater_heat_rec_HRSG = field.attr("eta_preheater_heat_rec_HRSG")
+        self.eta_economizer_heat_rec_HRSG = eta_economizer_heat_rec_HRSG
+        self.eta_preheater_heat_rec_HRSG = eta_preheater_heat_rec_HRSG
 
-        self.gas_turbine_type = field.attr("gas_turbine_type")
-        self.duct_firing = field.attr("duct_firing")
-        self.duct_firing_inlet_temp = field.attr("duct_firing_inlet_temp")
+        self.gas_turbine_type = gas_turbine_type
+        self.duct_firing = duct_firing
+        self.duct_firing_inlet_temp = duct_firing_inlet_temp
 
-        self.water = field.water
-        self.oil = field.oil
-        self.gas = field.gas
+        self.water = water
+        self.oil = oil
+        self.gas = gas
 
-        self.prod_combustion_coeff = model.prod_combustion_coeff
-        self.reaction_combustion_coeff = model.reaction_combustion_coeff
-        self.gas_turbine_tlb = model.gas_turbine_tbl
+        self.prod_combustion_coeff = prod_combustion_coeff
+        self.reaction_combustion_coeff = reaction_combustion_coeff
+        self.gas_turbine_tlb = gas_turbine_tbl
 
         self.steam_generator_press_outlet = ((self.res_press + self.steam_injection_delta_press) *
                                              self.friction_loss_steam_distr *
@@ -171,7 +230,7 @@ class SteamGenerator(OpgeeObject):  # N.B. NOT a subclass of Process
             delta_H - recoverable_heat_before_economizer - recoverable_heat_before_preheater
         fuel_consumption_for_steam_generation_mass = fuel_demand_for_steam_enthalpy_change / available_enthalpy
         fuel_LHV = \
-            gas_LHV if self.OTSG_fuel_type == "Gas" else self.oil.mass_energy_density(API=self.field.attr("API"),
+            gas_LHV if self.OTSG_fuel_type == "Gas" else self.oil.mass_energy_density(API=self.API,
                                                                                       with_unit=True)
         fuel_consumption_for_steam_generation_energy = fuel_consumption_for_steam_generation_mass * fuel_LHV
 
@@ -244,9 +303,9 @@ class SteamGenerator(OpgeeObject):  # N.B. NOT a subclass of Process
                 self.get_HRSG_inlet_combustion(inlet_temp, gas_MW_combust, gas_LHV, exhaust_consump,
                                                exhaust_consump_LHV_fuel)
         else:
-            inlet, inlet_sum, inlet_MW, inlet_LHV_fuel, inlet_LHV_stream, duct_additional_fuel = \
-                exhaust_consump, exhaust_consump_sum, exhaust_consump_MW, exhaust_consump_LHV_fuel, \
-                exhaust_consump_LHV_stream, ureg.Quantity(0.0, "frac")
+            inlet, inlet_sum, inlet_MW, inlet_LHV_fuel, inlet_LHV_stream, duct_additional_fuel = (  # noqa: F841
+                exhaust_consump, exhaust_consump_sum, exhaust_consump_MW, exhaust_consump_LHV_fuel,
+                exhaust_consump_LHV_stream, ureg.Quantity(0.0, "frac"))
 
         LHV_fuel, LHV_stream = self.get_LHV_fuel_and_steam_series(inlet,
                                                                   self.HRSG_exhaust_temp_series,
@@ -311,7 +370,7 @@ class SteamGenerator(OpgeeObject):  # N.B. NOT a subclass of Process
                  makeup_water_mass_rate):
 
         prod_water_enthalpy_rate = self.water.enthalpy_PT(self.prod_water_inlet_press,
-                                                          self.field.attr("prod_water_inlet_temp"),
+                                                          self.prod_water_inlet_temp,
                                                           prod_water_mass_rate)
         makeup_water_enthalpy_rate = self.water.enthalpy_PT(self.makeup_water_inlet_press,
                                                             self.makeup_water_inlet_temp,
@@ -369,7 +428,7 @@ class SteamGenerator(OpgeeObject):  # N.B. NOT a subclass of Process
         :return: (float, Pandas.Series) air_requirement_fuel; (float) air_requirement_LHV_fuel (unit = MJ/kg)
         """
 
-        liquid_fuel_comp = self.oil.liquid_fuel_composition(self.field.attr("API"))
+        liquid_fuel_comp = self.oil.liquid_fuel_composition(self.API)
 
         if SG_type == "OTSG":
             if self.OTSG_fuel_type == "Gas":
@@ -402,7 +461,7 @@ class SteamGenerator(OpgeeObject):  # N.B. NOT a subclass of Process
 
     def get_exhaust_parameters(self, air_requirement_fuel, SG_type):
 
-        liquid_fuel_comp = self.oil.liquid_fuel_composition(self.field.attr("API"))
+        liquid_fuel_comp = self.oil.liquid_fuel_composition(self.API)
 
         if SG_type == "OTSG":
             if self.OTSG_fuel_type == "Gas":
@@ -482,7 +541,7 @@ class SteamGenerator(OpgeeObject):  # N.B. NOT a subclass of Process
         """
 
         prod_water_enthalpy_rate = self.water.enthalpy_PT(self.prod_water_inlet_press,
-                                                          self.field.attr("prod_water_inlet_temp"),
+                                                          self.prod_water_inlet_temp,
                                                           prod_water_mass_rate)
         makeup_water_enthalpy_rate = self.water.enthalpy_PT(self.makeup_water_inlet_press,
                                                             self.makeup_water_inlet_temp,
@@ -521,7 +580,7 @@ class SteamGenerator(OpgeeObject):  # N.B. NOT a subclass of Process
         """
 
         processed_prod_gas_comp = self.processed_prod_gas_comp
-        exported_gas_stream = self.field.get_process_data("exported_gas")
+        exported_gas_stream = self.ctx.process_data.get("exported_gas")
         if exported_gas_stream and exported_gas_stream.total_flow_rate().m != 0.0:
             exported_gas_comp = self.gas.component_molar_fractions(exported_gas_stream,
                                                                    self.imported_fuel_gas_comp.index)
