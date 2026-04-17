@@ -4,51 +4,78 @@
 **Plan:** `.agents/docs/plans/2026-04-16-deep-clean-plan.md`
 **Spec:** `.agents/docs/specs/2026-04-16-deep-clean-design.md`
 **Execution mode:** `superpowers:subagent-driven-development` — TaskList + dispatched implementer / spec-reviewer / code-quality-reviewer subagents per task.
-**Handoff convention:** This single file is overwritten at every phase gate (and at major mid-phase checkpoints). Prior dated handoffs (`2026-04-16-…`, `2026-04-17-…`) remain in `.agents/notes/` as historical reference only.
+**Handoff convention:** This single file is overwritten at every phase gate.
 
 ---
 
 ## 1. Status at this handoff
 
-**Just completed:** Task 5.1 (Tier 1, 12 files) + Task 5.2 (Tier 2, 20 files in 3 batches A/B/C). All committed and verified.
-**Tag:** `phase-5-tier-2-complete` applied at the docs commit on top of `cf3a438`. This is a **mid-phase session-stop** tag, not a phase gate — Phase 5 itself is not done (Tasks 5.3, 5.4, 5.5 remain). The next phase-gate tag will be `phase-5-gate` after Task 5.5.
-**Next resume point:** Task 5.3 — migrate 19 Tier 3 process subclasses in batches D–I, plus single dispatches for `gas_partition.py` (52 refs) and `steam_generator.py` (61 refs).
+**Just completed:** Phase 5 in full. All 51 Process subclasses + helper classes migrated to the new `Process(name, ctx)` + `run(self)` constructor shape. `TransportEnergy` and `predict_blower_energy_use` helpers fully refactored to pure-param APIs. `SteamGenerator` helper class decoupled from `Field`. Gate tag `phase-5-gate` applied at commit `c6cc513`.
+**Next resume point:** Task 6.1 — restructure `opgee/field.py` (remove AttributeMixin / XmlInstantiable / from_xml / SmartDefault / Boundary / compute_carbon_intensity; introduce new explicit-param constructor; move bfs → networkx; move graph metadata from Process to Field). **Opus** model recommended for this task.
 
-### What landed since the previous handoff (phase-4-gate `5aabd26`)
+### What landed since the previous handoff (phase-5-tier-2-complete `4b28c9c`)
 
-| Commit | Subject | Files |
-|---|---|---|
-| `6a20b23` | phase 5: migrate Tier 1 processes (12 files, 0-2 field refs) | `__init__.py`, `flaring.py`, `natural_gas_liquid.py`, `storage_well.py`, `CO2_injection_well.py`, `pre_membrane_chiller.py`, `shared.py` (audit only), `sour_gas_injection.py`, `compressor.py` (helper class — drop OpgeeObject + `__init__`, retype static-method `field`→`gas: Gas`), `gas_reinjection_well.py` (drop `check_enabled` too), `LNG_transport.py` (NotImplementedError TODO pending TransportEnergy), `petrocoke_transport.py` (same TODO). |
-| `f5f9344` | phase 5: migrate Tier 2 Batch A (7 files, 3-5 field refs) | `LNG_regasification.py`, `pre_membrane_compressor.py`, `storage_compressor.py`, `storage_separator.py`, `VRU_compressor.py`, `gas_distribution.py`, `gas_lifting_compressor.py`. Annotation-style fixes applied (string-quoted/`pint.Quantity` → bare `Quantity[float]`). |
-| `4a269cf` | phase 5: migrate Tier 2 Batch B (7 files, 4-8 field refs) | `ryan_holmes.py`, `CO2_reinjection_compressor.py`, `LNG_liquefaction.py`, `post_storage_compressor.py`, `sour_gas_compressor.py`, `CO2_membrane.py`, `crude_oil_transport.py` (third TODO/NotImplementedError pending TransportEnergy). |
-| `cf3a438` | phase 5: migrate Tier 2 Batch C (6 files, 8-11 field refs) + rewire 3 transport callers | `transport_energy.py` (helper migration: drop `OpgeeObject`, drop `field` first arg from `get_transport_energy_dict`, replace `field.<x>` with constructor params + explicit `denominator` method arg), `VF_partition.py`, `gas_gathering.py`, `gas_reinjection_compressor.py`, `transmission_compressor.py`, `water_injection.py`. **Atomic rewire**: `LNG_transport.py`, `petrocoke_transport.py`, `crude_oil_transport.py` all now call the new TransportEnergy API (NotImplementedError TODOs gone). |
+| Commit | Subject |
+|---|---|
+| `c6cc513` | phase 5: migrate Tier 3 singles gas_partition.py + steam_generator.py (closes Task 5.3) |
+| `b9a53c0` | phase 5: migrate Tier 3 Batch I (2 files, 30-32 refs) + exploration TransportEnergy rewire |
+| `7bf2a46` | phase 5: migrate Tier 3 Batch H (3 files, 24-28 refs) |
+| `ea46dfb` | phase 5: migrate Tier 3 Batch G (3 files, 17-22 refs) + heavy_oil_dilution TransportEnergy rewire |
+| `bc5bdee` | phase 5: migrate Tier 3 Batch F + refactor predict_blower_energy_use (4 files) |
+| `69c2a82` | phase 5: migrate Tier 3 Batch E (3 files, 14-15 refs) |
+| `449ca38` | phase 5: migrate Tier 3 Batch D (3 files, 12-13 refs) |
 
-### TransportEnergy API — final shape (after `cf3a438`)
+**Count:** 19 Tier 3 files migrated in the session (Batches D–I + 2 singles), plus the atomic `predict_blower_energy_use` refactor (Task 5.4 — rolled into Batch F as an atomic rewire like TransportEnergy before it).
 
-`TransportEnergy.__init__(self, residual_oil_LHV: Quantity[float], residual_oil_density: Quantity[float], ocean_tanker_size: Quantity[float])`
+### Helper-class API shapes after Phase 5
 
-`TransportEnergy.get_transport_energy_dict(self, parameter_table, transport_share_fuel, transport_by_mode, LHV_rate, prod_type: str, denominator: Quantity[float])`
+**`TransportEnergy`** (in `opgee/processes/transport_energy.py`):
+```python
+TransportEnergy(residual_oil_LHV, residual_oil_density, ocean_tanker_size)
 
-The `denominator` previously came from per-product field/model lookups (`field.gas.component_LHV_mass[...]`, `model.const(...)`, `field.get_process_data("crude_LHV")`). Each caller now computes the appropriate denominator and passes it explicitly:
-- LNG: `self.gas.component_LHV_mass["C1"]`
-- Petrocoke: `self.petro_coke_heating_value / 1.10231` (short-ton → tonne conversion preserved)
-- Crude oil: `self.ctx.process_data["crude_LHV"]`
+get_transport_energy_dict(parameter_table, transport_share_fuel,
+                          transport_by_mode, LHV_rate, prod_type, denominator)
+```
+Callers: `crude_oil_transport.py`, `LNG_transport.py`, `petrocoke_transport.py`, `heavy_oil_dilution.py`, `exploration.py`.
 
-### Gate verification at `cf3a438`
+**`predict_blower_energy_use`** (in `opgee/processes/shared.py`):
+```python
+predict_blower_energy_use(thermal_load, air_cooler_delta_T, water_press,
+                          air_cooler_fan_eff, air_cooler_speed_reducer_eff,
+                          air_elevation_const, air_density_ratio)
+```
+Callers: `acid_gas_removal.py`, `gas_dehydration.py`, `demethanizer.py`. No more `proc.field.model.const(...)` inside.
 
-- `uv run ruff check opgee/processes/<all 32 files migrated so far>` — **All checks passed!**
-- Forbidden-symbol grep (`self.field`, `self.model.`, `self.attr(`, `cache_attributes`, `def check_enabled`, `set_enabled\b`, `venting_fugitive_rate`, string-quoted `"Quantity[float]"`) over the 32 files — **zero hits in live code** (only references inside TODO/comment text in a few files, which are documentation only).
-- `uv run pytest tests/test_chemistry.py tests/test_context.py tests/test_core.py tests/test_energy.py tests/test_import_export.py tests/test_molecule_names.py tests/test_stream.py tests/test_table_manager.py tests/test_thermofunction.py tests/test_utils.py tests/test_emissions.py -q` — **116 passed, 6 errors** (exact Phase 4 baseline; 6 errors are `test_emissions.py::test_gwp*` + `test_use_GWP_error`, fixture-blocked on deleted `test_model`, Phase 6.2 scope).
-- Full `uv run pytest` is **still not runnable** — `opgee/field.py` still has deleted-module imports; will be fixed in Phase 6.1.
+**`SteamGenerator`** (in `opgee/processes/steam_generator.py`): NO LONGER a subclass of `OpgeeObject`; plain class. Constructor takes `ctx: FieldContext, gas, oil, water` + ~40 explicit scalar params + 8 pre-built Series/DataFrames. Caller (in Phase 6.1 wiring) will build these from the Field. Ivar typo `self.gas_turbine_tlb` preserved for internal stability.
 
-### Phase 5.1/5.2 deviations / breadcrumbs
+### Verification at `phase-5-gate` (commit `c6cc513`)
 
-- **`heavy_oil_dilution.py` (Tier 3)** still uses the legacy 7-arg TransportEnergy API. The Tier 3 implementer for that file MUST rewire it to the new API (matching the LNG/petrocoke/crude pattern from Batch C).
-- **`exploration.py` (Tier 3)** uses `field.transport_energy` (legacy access). Tier 3 implementer must convert to constructor param `transport_energy: TransportEnergy` and route through the new API.
-- **Annotation style watchpoint:** Tier 1 code review flagged a recurring inconsistency where some implementers use `"Quantity[float]"` (string-quoted), some `pint.Quantity` (bare). Each implementer prompt for Tier 3 should explicitly say: **`from pint.facets.plain import PlainQuantity as Quantity` + bare `Quantity[float]`** (not string-quoted, not `pint.Quantity`). The controller fixed these inline in Batches A and B and they have not recurred in Batch C.
-- **Reviewer cadence:** Tier 1 ran full two-stage review (spec + code-quality). Batch A ran spec-only. Batches B/C used inline forbidden-symbol grep + ruff + scoped pytest as the quality gate (skipping reviewer dispatch to conserve session context). For Tier 3 (higher per-file complexity), revert to per-batch spec+code-quality reviewers.
-- **`compressor.py` constructor was deleted** (Tier 1) because it had zero callers. All `Compressor.<staticmethod>(...)` calls now take `gas: Gas` instead of `field`. Every Tier 2 file that used Compressor was updated accordingly. Tier 3 files (e.g. `downhole_pump.py`, `steam_generation.py`, etc.) that use Compressor must do the same.
-- **`get_compressor_and_well_loss_rate` callers fully migrated**: the four pre-existing call sites (`sour_gas_injection`, `gas_lifting_compressor`, `gas_reinjection_well`, `CO2_injection_well`) were all rewired to take `loss_rate: Quantity[float]` as a constructor param. The base method's NotImplementedError stub remains in place but is no longer called from anywhere.
+- `find opgee/processes -maxdepth 1 -name "*.py" ! -name "__init__.py" | xargs uv run ruff check` — **All checks passed!**
+- Forbidden-symbol grep (`self.field`, `self.attr(`, `self.model.`, `cache_attributes`, `def check_enabled`, `set_enabled\b`, `venting_fugitive_rate\b`, `component_fugitive_table` in live code, `"Quantity[float]"`, `pint.Quantity` annotation, `field.transport_energy`, `field.save_process_data`, `field.get_process_data`, `field.import_export`, `field.stp`, `predict_blower_energy_use(self,`) over `opgee/processes/*.py` — **zero hits in live code** across all 51 files (only occasional references inside docstring/comment text that are historical context, not live code).
+- `uv run pytest tests/test_chemistry.py tests/test_context.py tests/test_core.py tests/test_energy.py tests/test_import_export.py tests/test_molecule_names.py tests/test_stream.py tests/test_table_manager.py tests/test_thermofunction.py tests/test_utils.py tests/test_emissions.py -q` — **116 passed, 6 errors** (exact Phase 4 baseline; the 6 errors are the expected `test_gwp*` and `test_use_GWP_error` fixture-blocked tests, scheduled for Phase 6.2).
+- Full `uv run pytest` remains **not runnable** — `opgee/field.py` still imports deleted modules (`smart_defaults`, etc.). This is the Phase 6.1 fix.
+- `uv run ruff check opgee/processes/__init__.py` — still produces 46 F401 errors (explicit re-exports without `__all__` or alias form). This is **pre-existing** (`phase-4-gate` had 47) and out of scope for Phase 5; Phase 6.3 (final cleanup) should address it via `__all__`.
+
+### Phase 5 deviations / breadcrumbs for future sessions
+
+- **Pre-existing latent bugs preserved faithfully** (not migration regressions):
+  - `heavy_oil_dilution.py:72` — `TemperaturePressure(diluent_temp, diluent_temp)` (both args are T; no `diluent_press` param ever existed). Ivar is written but never read.
+  - `water_treatment.py` — the `makeup_water_table` selection at line ~161 uses `self.water_treatment_table` when `makeup_water_treatment_tbl` is truthy (rather than using the supplied makeup table). Fall-through fidelity only.
+  - `bitumen_mining.py` — `downhole_pump`, `upgrader_type`, `gas_comp`, `mined_bitumen_t`, `mined_bitumen_p` constructor params are stored but never read in `run()`. Dead stores faithfully preserved.
+  - `reservoir_well_interface.py` — `oil_volume_rate` param stored but not read.
+  - `acid_gas_removal.py` — `mol_frac_CO2 == 0.0` (pint comparison vs. `.m == 0.0` for H2S on the same line). Works but inconsistent.
+  - `gas_partition.py:316` (inside `gas_flooding_setup` NG-else branch) — local rebind of `reinjected_gas_stream` to `imported_NG_stream` leaves caller's reinjected_gas_stream untouched, so `ctx.process_data["gas_flooding_stream"]` in that path stores the empty original; only the direct `find_output_stream("gas")` write carries actual data.
+  - `steam_generator.py:~98` — `self.OTSG_exhaust_temp_outlet_before_economizer` ivar stored but never read (the pre-built `OTSG_exhaust_temp_series` encodes it).
+
+  All of the above predate the deep-clean and would be out-of-scope cleanup for a future correctness pass.
+
+- **Controller-side fix-ups applied on top of implementer output:** import consolidation (`from ..X import a, b` unification), stdlib-first import reordering in a couple of files (downhole_pump, exploration), dead-code removal (`variables = []` double-init in drilling, orphan `# stream.set` comment in downhole_pump, redundant `set_tp` after `Stream(..., tp=...)` in crude_oil_storage), docstring update for crude_oil_storage loss_rate param, missing class docstring added to heavy_oil_upgrading. Full review loop per batch: spec-compliance reviewer + code-quality reviewer in parallel.
+
+- **Bare `except:` tightened to `except KeyError:`** in four files (ruff E722): bitumen_mining, crude_oil_dewatering, gas_dehydration. Pre-existing; fixed during migration to satisfy the ruff gate.
+
+- **`f`-prefix stripped from f-strings with no placeholders** in a few files (ruff F541): pre-existing lint issues, one-line fixes during migration. Also unused `_water_output` in gas_dehydration (renamed with leading underscore; F841), unused `steam_injection_volume_rate` removed in steam_generation, `# noqa: F841` added to steam_generator's duct_firing else-branch tuple unpacking (preserves original variable-name fidelity).
+
+- **demethanizer.py header comment** said `# CrudeOilTransport class` (copy-paste artifact) — fixed during migration review.
 
 ---
 
@@ -56,151 +83,158 @@ The `denominator` previously came from per-product field/model lookups (`field.g
 
 | TaskList ID | Status | Subject |
 |---|---|---|
-| #1 | ✅ completed | Phase 5.1: Tier 1 — 12 simple processes |
-| #2 | ✅ completed | Phase 5.2: Tier 2 — 20 medium processes (3 batches) |
-| #3 | 🔄 pending (next) | **Phase 5.3: Tier 3 — 19 complex processes (batches D–I + 2 single)** ← resume here |
-| #4 | pending | Phase 5.4: Refactor `predict_blower_energy_use` |
-| #5 | pending | Phase 5.5: Verification gate — Phase 5 |
-| #6 | pending | Phase 6.1: Restructure Field class |
-| #7 | pending | Phase 6.2: Adapt remaining test files |
-| #8 | pending | Phase 6.3: Final cleanup — public API + dependencies |
-| #9 | pending | Phase 6.4: Final verification gate |
-| #10 | pending | Final code-reviewer dispatch for the whole refactor |
+| #1 | ✅ completed | Phase 5.3: Tier 3 — 19 complex processes (batches D–I + 2 single) |
+| #2 | ✅ completed | Phase 5.4: Refactor predict_blower_energy_use (atomic, rolled into Batch F commit) |
+| #3 | 🔄 in_progress | **Phase 5.5: Verification gate — Phase 5** (this handoff closes it) |
+| #4 | pending (next) | **Phase 6.1: Restructure Field class** ← resume here |
+| #5 | pending | Phase 6.2: Adapt remaining test files |
+| #6 | pending | Phase 6.3: Final cleanup — public API + dependencies |
+| #7 | pending | Phase 6.4: Final verification gate |
+| #8 | pending | Final code-reviewer dispatch for whole refactor |
 
-(IDs #1–#10 in this table are TaskCreate IDs from the current session; they were 1–14 in the prior handoff, renumbered after a fresh `TaskCreate` round at session start.)
+(IDs #1–#8 in this table are TaskCreate IDs from the current session.)
 
 ---
 
-## 3. Resume point — Task 5.3: Tier 3 process subclass migration (19 files)
+## 3. Resume point — Task 6.1: Restructure Field class
 
 ### Authoritative references
-- Plan: `.agents/docs/plans/2026-04-16-deep-clean-plan.md` Task 5.3 + Appendix A (Tier 3 file list, 19 files) + Appendix B (transformation table)
+- Plan: `.agents/docs/plans/2026-04-16-deep-clean-plan.md` Task 6.1 (lines ~1527-1614)
 - Spec: `.agents/docs/specs/2026-04-16-deep-clean-design.md`
-- Process base (target shape): `opgee/process.py` at `5aabd26` (unchanged since Phase 4)
-- TransportEnergy reference (for `heavy_oil_dilution.py` and `exploration.py`): the 6 callers already migrated in Tier 2 Batch C — see `crude_oil_transport.py` for the cleanest pattern.
+- Field reference notes: `.agents/notes/2026-04-16-deep-clean-field.md` (historical analysis)
+- Field attribute traces: `.agents/notes/field-attr-*.md`, `.agents/notes/field-property-trace-processes.md`
+- Current `opgee/field.py` (1825 lines — do NOT read fully; use offset/limit or targeted grep)
+- Test file to rewrite: `tests/test_field.py`
 
-### Tier 3 batches (per plan Task 5.3)
+### What Phase 6.1 must do
 
-| Batch | Files | Refs |
-|------|------|------|
-| D | `crude_oil_stabilization.py`, `crude_oil_storage.py`, `heavy_oil_upgrading.py` | 12, 13, 13 |
-| E | `bitumen_mining.py`, `crude_oil_dewatering.py`, `reservoir_well_interface.py` | 14, 14, 15 |
-| F | `acid_gas_removal.py`, `gas_dehydration.py`, `demethanizer.py` | 16, 16, 18 |
-| G | `venting.py`, `heavy_oil_dilution.py`, `water_treatment.py` | 17, 22, 22 |
-| H | `drilling.py`, `steam_generation.py`, `downhole_pump.py` | 24, 25, 28 |
-| I | `separation.py`, `exploration.py` | 30, 32 |
-| (single) | `gas_partition.py` | 52 — heaviest Process subclass |
-| (single) | `steam_generator.py` | 61 — heaviest overall, helper class |
+The current `opgee/field.py` still imports deleted modules and can't even be imported. Phase 6.1 is the biggest single-file refactor of the deep-clean:
 
-### Per-file implementer contract (proven in Tier 1 + Tier 2)
+1. **Remove from Field:**
+   - `AttributeMixin`, `XmlInstantiable` base classes
+   - `from_xml()`, `cache_attributes()`, `set_extend()`, `set_modifies()` class methods
+   - `resolve_process_choices()`, all `@SmartDefault.register`-decorated methods
+   - All Boundary-related methods (Boundary is deferred to post-v5)
+   - `compute_carbon_intensity()` (deferred — CI analysis comes later)
+   - `energy_and_emissions()`, `check_enabled_processes()`
+   - All imports of deleted modules (`smart_defaults`, `audit`, `attributes`, `xml_utils`, `model`, `analysis`, `graph`, `bfs`, `process_groups`, etc.)
 
-1. Read assigned file + `opgee/process.py` lines 1–150 (new __init__ shape).
-2. Apply Appendix B transformations:
-   - `super().__init__(name, **kwargs)` → `super().__init__(name, ctx)`
-   - `__init__(self, name, **kwargs)` → `__init__(self, name: str, ctx: FieldContext, ...explicit typed params)`
-   - `run(self, analysis)` → `run(self)`
-   - `self.attr` / `self.field.attr` / `self.field.<x>` → constructor param
-   - `self.field.gas/oil/water` → `gas: Gas` / etc constructor param
-   - `self.field.stp` → `self.ctx.stp`
-   - `self.field.process_data[k]` → `self.ctx.process_data[k]` (or `.get` for None-guard)
-   - `self.field.save_process_data(k,v)` → `self.ctx.process_data[k] = v`
-   - `self.field.import_export` → `self.import_export` (Process base)
-   - `self.model.const(...)` → constructor param OR inline literal
-   - `self.model.<csv_table>` → constructor param (caller pre-slices)
-   - `self.venting_fugitive_rate()` → `self.loss_rate` constructor param
-   - `self.get_compressor_and_well_loss_rate(...)` → `self.loss_rate` constructor param
-   - `cache_attributes()` method → DELETE; logic absorbed into `__init__`
-   - `check_enabled()` method → DELETE entirely
-   - `Compressor.<staticmethod>(field, ...)` → `Compressor.<staticmethod>(gas, ...)`
-3. Annotation style: `from pint.facets.plain import PlainQuantity as Quantity` + bare `Quantity[float]` (NOT string-quoted, NOT `pint.Quantity`).
-4. Each implementer prompt MUST include the OFF-TOPIC LOCKDOWN preamble + structured Fix Report footer (per `feedback_subagent_guardrails` memory).
-5. Run `uv run ruff check opgee/processes/<file>.py` — must be clean.
-6. Do NOT commit. Do NOT touch other files (except for the heavy_oil_dilution + exploration TransportEnergy rewires, which are scoped to those two files only).
+2. **Add a new explicit-param constructor** taking:
+   - `name: str`
+   - `simulation: SimulationParams`, `gwp: GWPData`, `tables: TableManager` (all via FieldContext)
+   - `processes: list[Process]`, `streams: list[Stream]`
+   - ~7 field-internal physical attrs (`num_prod_wells`, `oil_sands_mine`, `field_production_lifetime`, `res_press`, `res_temp`, `has_grid_mix`, ...)
+   - Constructs `FieldContext` internally; binds processes/streams to a `networkx.DiGraph`.
 
-### Dispatch strategy for Task 5.3
+3. **Replace `bfs.py` with networkx**: `nx.topological_sort`, `nx.simple_cycles`, `nx.ancestors`/`descendants` as needed.
 
-- **Batches D–I**: 2–3 parallel implementers per batch, sonnet model.
-- **`gas_partition.py`**: single subagent, **opus** (52 refs, complex per handoff guidance).
-- **`steam_generator.py`**: single subagent, **opus** (61 refs, helper class with ~40 uncached field attrs).
-- After each batch completes: ruff + scoped pytest + forbidden-symbol grep + (for Tier 3) full spec+code-quality reviewer round (Tier 1/2 batches that skipped code-quality review left some style debt — Tier 3 is more complex per file and needs the full review pass).
-- Single commit per batch: `phase 5: migrate Tier 3 Batch <X> (<n> files, <range> refs)`.
+4. **Move graph metadata from Process to Field**: `cycle_starts`, `impute_starts`, `run_after` become Field instance attrs, populated during graph construction (not read off individual processes).
 
-### Pre-flight for Task 5.3 dispatch
-- Verify all Tier 1 + Tier 2 files are committed (last commit: `cf3a438`).
-- Confirm `TransportEnergy` migration is complete and `heavy_oil_dilution.py` + `exploration.py` are the only remaining users of the legacy API.
-- For each Tier 3 implementer, optionally point to `.agents/notes/field-attr-trace-processes.md` for deep ref maps (the implementer will normally derive everything from file inspection).
+5. **Simplify `run()`**: no `analysis` arg, no `trial_num`. GWP comes from `self.ctx.gwp`.
+
+6. **Rewrite `tests/test_field.py`**: construct Field directly (no XML); keep assertion logic for energy/emission calculations.
+
+### Field-facing callsites in Process subclasses that Phase 6.1 must satisfy
+
+Every migrated Process expects a `FieldContext` (`ctx`), typed thermodynamic helpers (`gas: Gas` / `oil: Oil` / `water: Water`), and explicit scalar/DataFrame params. Field.__init__ (or a helper factory) must build all of these from its own physical state + `TableManager` lookups + `imported_gas_comp` slices and pass them in. Key requirements:
+
+- `SteamGenerator` is constructed ONCE on Field (or just before `SteamGeneration`) with the full 40+ param list. Threaded into `SteamGeneration.__init__` via `steam_generator: "SteamGenerator"`.
+- `TransportEnergy` is constructed ONCE on Field with `(residual_oil_LHV, residual_oil_density, ocean_tanker_size)`. Threaded into each of the 5 TransportEnergy callers.
+- `loss_rate` for fugitive processes: Field (or construction code) looks up `component_fugitive_table[process.name]` once per process and passes the scalar in.
+- `completion_and_workover_C1_rate`: computed once by Field (logic currently in `Field.get_completion_and_workover_C1_rate`, lines 951+ of field.py), passed to `downhole_pump.py` and `exploration.py`.
+- `air_elevation_const`, `air_density_ratio`, `gravitational_acceleration`, `diesel_LHV`, `NG_heating_value`, `petrocoke_heating_value`, `mol_per_scf`, `days_per_year`: these are all `model.const("...")` lookups. Field must look them up once from its `TableManager.constants` and pass to each subprocess that needs them.
+- `imported_gas_comp["<slot>"]` for each gas-composition slot: Field must slice from `imported_gas_comp` and pass the pd.Series to each consumer.
+- `processing_unit_loss_rate_df` (from `gas_gathering.py`) is written to `ctx.process_data["processing_unit_loss_rate_df"]` at run time; three processes (acid_gas_removal, gas_dehydration, demethanizer) read it back.
+- `gas_comp_H2S`: constructor param (was `field.attr("gas_comp_H2S")`), passed to `acid_gas_removal.py`.
+- `WOR`, `API`, `GLIR`, `GFIR`, `FOR`, `SOR`, `oil_volume_rate`, `res_press`, `res_temp`, `wellhead_t`, `wellhead_p`, `stab_gas_press`, `gas_oil_ratio`, `gas_comp`, `depth`, `friction_factor`, `num_prod_wells`, `productivity_index`, `fraction_*`, `frac_*`, `eta_*`, and all the physical scalars: every caller expects these as explicit typed params.
+
+The heaviest wiring work is inside `SteamGenerator` construction — ~50 values to source from Field.
+
+### Dispatch strategy for Task 6.1
+
+- **Single opus implementer** (not parallel): field restructure is architectural. Step 1 of the opus prompt should be to read `.agents/notes/2026-04-16-deep-clean-field.md` plus the plan Task 6.1 verbatim, then `opgee/field.py` in chunks.
+- After opus returns, run spec-reviewer + code-quality reviewer (both on sonnet).
+- Expect the diff to be very large (~1500 deleted lines, ~400 added).
+- After commit, the scoped pytest subset stays at 116 passed / 6 errors; the 6 errors unblock in Phase 6.2 once the remaining test fixtures are rewritten.
 
 ---
 
 ## 4. Tags and recent commits (newest first)
 
 ```
-(this commit) docs: mid-phase-5 handoff after Tier 1+2 completion (final session-stop revision)  ← phase-5-tier-2-complete
-19f0bbb docs: mid-phase-5 handoff after Tier 1+2 completion (Tier 3 next)
+(this commit) docs: phase 5 gate handoff                                                            ← phase-5-gate
+c6cc513 phase 5: migrate Tier 3 singles gas_partition.py + steam_generator.py (closes Task 5.3)
+b9a53c0 phase 5: migrate Tier 3 Batch I (2 files, 30-32 refs) + exploration TransportEnergy rewire
+7bf2a46 phase 5: migrate Tier 3 Batch H (3 files, 24-28 refs)
+ea46dfb phase 5: migrate Tier 3 Batch G (3 files, 17-22 refs) + heavy_oil_dilution TransportEnergy rewire
+bc5bdee phase 5: migrate Tier 3 Batch F + refactor predict_blower_energy_use (4 files)
+69c2a82 phase 5: migrate Tier 3 Batch E (3 files, 14-15 refs)
+449ca38 phase 5: migrate Tier 3 Batch D (3 files, 12-13 refs)
+4b28c9c docs: mid-phase-5 handoff after Tier 1+2 completion (final revision)                        ← phase-5-tier-2-complete
 cf3a438 phase 5: migrate Tier 2 Batch C (6 files, 8-11 field refs) + rewire 3 transport callers
 4a269cf phase 5: migrate Tier 2 Batch B (7 files, 4-8 field refs)
 f5f9344 phase 5: migrate Tier 2 Batch A (7 files, 3-5 field refs)
 6a20b23 phase 5: migrate Tier 1 processes (12 files, 0-2 field refs)
-00d4d4e docs: phase 4 gate handoff
-5aabd26 phase 4: address 4.1 code-quality review                                              ← phase-4-gate
-ffacaec phase 4: fix test_processes.py call-site for new get_emission_rates signature
-e9ec51b phase 4: restructure Process base — new __init__(name, ctx), drop XML/boundary/enabled
-8c531a5 docs: phase 3 gate handoff                                                            ← phase-3-gate
-2e4d322 phase 3: address 3.3 code-quality review (tests + ctx TODO + CARBON_NUMBER_SERIES move)
-a5df80f phase 3: strip stream.py — remove XML, add FieldContext, extract chemistry
-…
-9938f37 phase 2: create FieldContext with frozen GWPData and SimulationParams                 ← phase-2-gate
-f544f0f phase 1: fix remaining imports of deleted modules                                     ← phase-1-gate
-a73fb4f phase 0: bulk delete excluded files, tests, and dependencies                          ← phase-0-gate
+5aabd26 phase 4: address 4.1 code-quality review                                                    ← phase-4-gate
 ```
 
-Tag list (chronological): `phase-0-gate` → `phase-1-gate` → `phase-2-gate` → `phase-3-gate` → `phase-4-gate` → **`phase-5-tier-2-complete`** (mid-phase session-stop). The `phase-5-gate` tag will be applied at Task 5.5 after Tier 3 + Task 5.4.
+Tag list (chronological): `phase-0-gate` → `phase-1-gate` → `phase-2-gate` → `phase-3-gate` → `phase-4-gate` → `phase-5-tier-2-complete` (mid-phase) → **`phase-5-gate`**. Next gate tag will be `phase-6-gate` after Task 6.4.
 
 ---
 
-## 5. Still-broken-as-expected files (pre-Phase 6)
+## 5. Still-broken-as-expected files (entering Phase 6)
 
-- `opgee/field.py` — imports deleted modules (`smart_defaults`, etc.). Fixed by 6.1.
-- All 19 remaining Tier 3 `opgee/processes/*.py` subclasses — they inherit the old `Process(name, **kwargs)` pattern, reach through `self.field`/`self.attr(...)`/`self.model.*`, and take `run(self, analysis)`. Fixed by Phase 5.3.
-- `opgee/processes/shared.py::predict_blower_energy_use` — takes `proc` that reads `proc.field.model.const(...)`. Fixed by 5.4.
+- `opgee/field.py` — imports deleted modules (`smart_defaults`, `audit`, `attributes`, etc.). Fixed by Task 6.1.
+- `opgee/processes/shared.py::predict_blower_energy_use` — **NO**, already refactored in Phase 5.4 (Batch F atomic rewire).
 - `tests/test_processes.py::test_get_reservoir` — references deleted `process.get_reservoir()`. Phase 6.2.
 - `test_emissions.py::test_gwp*` + `test_use_GWP_error` — 6 errors at gate, accepted. Phase 6.2.
-- Any test that uses `utils_for_tests.load_test_model` or relies on `test_model`/`test_model_with_change`/`test_model2` fixtures. Phase 6.2.
+- Any test using `utils_for_tests.load_test_model` or the deleted `test_model`/`test_model_with_change`/`test_model2` fixtures. Phase 6.2.
+- `opgee/processes/__init__.py` — 46 pre-existing F401 errors (explicit re-exports without `__all__`). Phase 6.3 (final cleanup).
 
 ---
 
 ## 6. Files to read at session start (for the next session)
 
 1. **This file** — the handoff.
-2. `.agents/docs/plans/2026-04-16-deep-clean-plan.md` — skim; read Phase 5 Task 5.3 + Appendix A (Tier 3 file list) + Appendix B in detail.
-3. `opgee/process.py` at `cf3a438` — confirm new `Process(name, ctx)` shape (unchanged since Phase 4).
-4. `opgee/processes/transport_energy.py` at `cf3a438` — for the `heavy_oil_dilution.py` and `exploration.py` rewires (the new API).
-5. `opgee/processes/crude_oil_transport.py` at `cf3a438` — cleanest pattern for a TransportEnergy caller; reference template for the two Tier 3 rewires.
-6. (Optional) `opgee/processes/separation.py` or another representative Tier 3 file — to gauge the per-file complexity before dispatching the first batch.
+2. `.agents/docs/plans/2026-04-16-deep-clean-plan.md` — skim; read Phase 6 Task 6.1 in detail (lines ~1527-1614).
+3. `.agents/notes/2026-04-16-deep-clean-field.md` — the historical Field analysis; the Task 6.1 implementer should read this.
+4. `opgee/process.py` at `c6cc513` — confirm new `Process(name, ctx)` shape is unchanged since Phase 4.
+5. `opgee/context.py` — confirm FieldContext interface (the contract Field must satisfy).
+6. `opgee/processes/transport_energy.py` and `opgee/processes/steam_generator.py` — helper-class shapes Field must wire up.
+7. (Optional) 2–3 migrated process files (e.g. `heavy_oil_upgrading.py`, `gas_partition.py`, `steam_generation.py`) — to understand the constructor parameter shapes Field must satisfy.
 
 Historical reference (skim only if specifically needed):
 - `.agents/notes/2026-04-16-deep-clean-progress-handoff.md`
 - `.agents/notes/2026-04-17-deep-clean-progress-handoff.md`
 - `.agents/notes/2026-04-16-deep-clean-process.md`
+- `.agents/notes/field-attr-internal-vs-passthrough.md`
 
 ---
 
 ## 7. Process tips carried forward
 
 1. **Always use `superpowers:subagent-driven-development`** — implementer → spec-compliance review → code-quality review → fix-up as needed → mark complete.
-2. **Model selection**:
-   - Tier 3 simple (12-22 refs) → **sonnet** in pairs/triples per batch.
-   - Tier 3 heavy (24-32 refs) → **sonnet** (still mechanical; opus only if implementer reports BLOCKED on judgment calls).
-   - **`gas_partition.py` (52 refs) and `steam_generator.py` (61 refs) → opus**.
-   - Phase 6.1 Field restructure → **opus**.
-   - Reviewers → **sonnet** unless the work is architectural.
+2. **Model selection for the remaining phases**:
+   - Phase 6.1 (Field restructure) → **opus** (architectural).
+   - Phase 6.2 (test adaptations) → **sonnet** per test file; some may be pure deletes.
+   - Phase 6.3 (public API + pyproject cleanup) → **sonnet**.
+   - Phase 6.4 (final gate) → **sonnet** for the run-and-report pattern.
+   - Final code-review dispatch → **opus** via the `superpowers:code-reviewer` agent subtype.
 3. **Critical rule**: no re-adding/restoring DELETED symbols. Every implementer prompt restates this and lists the specific forbidden symbols.
 4. **Annotation style**: `from pint.facets.plain import PlainQuantity as Quantity` + bare `Quantity[float]`. NOT string-quoted, NOT `pint.Quantity`.
 5. **Subagent prompt guardrails** (per `feedback_subagent_guardrails` memory): every implementer/fix-up prompt MUST wrap with OFF-TOPIC LOCKDOWN preamble + structured Fix Report footer. Reviewer prompts are exempt.
-6. **Parallel dispatch strategy**:
-   - Tier 3 batches D–I: 2–3 parallel implementers per batch.
-   - `gas_partition.py` and `steam_generator.py`: single-subagent each (opus).
-   - One controller-side fix-up commit per batch.
-7. **Gate checks only over the spec-compliant test subset**. Full `pytest` remains non-runnable until Phase 6.2 — don't chase the 6 pre-existing test_emissions errors in Phase 5.
-8. **Every verification-gate task overwrites this file** — single stable name, not dated. This handoff was written mid-Phase 5 to checkpoint after Tier 1+2 completion (not at a phase gate); the `phase-5-tier-2-complete` tag points at this commit. Phase 5.5 will overwrite this file again and apply `phase-5-gate` after Tier 3 completes.
-9. **Trust the diff, not the subagent report.** Verify directly when the report is ambiguous. (See prior 2026-04-17 handoff §1 for the off-task-subagent anecdote.)
+6. **Parallel dispatch strategy for Phase 6**: largely serial — each Phase 6 task is a single-file focus. Run spec + code-quality reviewers in parallel.
+7. **Gate checks**: use the scoped pytest subset + targeted ruff. The full `pytest` and the full `ruff check .` both remain non-runnable until Phase 6.1 and 6.3 respectively.
+8. **Every verification-gate task overwrites this file** — single stable name, not dated.
+9. **Trust the diff, not the subagent report.** Verify directly when the report is ambiguous.
+
+---
+
+## 8. Phase 5 summary statistics
+
+- **Files migrated in Phase 5:** 51 process subclasses + 2 helper classes (`transport_energy.py`, `steam_generator.py`) + 1 helper function (`predict_blower_energy_use` in `shared.py`).
+- **Commits in Phase 5:** 11 (6 tier/batch commits in prior session `4b28c9c`, 7 Tier 3 commits + handoff revision in this session; one atomic rewire merged Task 5.4 into Batch F).
+- **Lines changed (Phase 5 diff):** roughly +1800 / −1600 across the 51 process files (explicit param lists + docstring updates vs. removed cache_attributes / check_enabled / field-access chains).
+- **Session TaskList turnover**: Phase 5.1 Tier 1 and Phase 5.2 Tier 2 completed in a prior session (`4b28c9c`); this session completed Phase 5.3 Tier 3, Phase 5.4 (atomic), and Phase 5.5 (this gate).
+- **Ruff state at gate:** every migrated file individually clean. `opgee/processes/__init__.py` retains its 46 pre-existing F401s (Phase 4 baseline). Full `ruff check .` still fails on `opgee/field.py` (deleted-module imports) — Phase 6.1 fix.
+- **Pytest state at gate:** 116 passed / 6 errors in the Phase 4 baseline subset (exact parity). Full `pytest` still non-runnable until Phase 6.1 + 6.2.
