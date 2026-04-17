@@ -141,3 +141,4 @@ tests/tmp/
 .claude/settings.local.json
 .agents/plans
 .agents/tmp
+.agents/legacy-v4/
