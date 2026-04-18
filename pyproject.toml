@@ -36,7 +36,15 @@ members = [
   "packages/thermo",
   "packages/data",
   "packages/field",
+  "packages/metrics",
+  "packages/stream",
 ]
 
 [dependency-groups]
-dev = ["pytest>=8.3.4", "pytest-cov>=6.0.0", "ruff>=0.11.8", "ty>=0.0.15"]
+dev = [
+    "pytest>=8.3.4",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.11.8",
+    "ty>=0.0.15",
+    "typing-extensions>=4.15.0",
+]

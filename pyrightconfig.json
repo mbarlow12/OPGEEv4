@@ -1,6 +1,14 @@
 {
   "include": ["opgee", "packages"],
-  "extraPaths": ["packages/opgee-input/src", "packges/optee-xml/src"],
+  "extraPaths": [
+    "packages/core/src",
+    "packages/data/src",
+    "packages/engine/src",
+    "packages/field/src",
+    "packages/graph/src",
+    "packges/processes/src",
+    "packges/thermo/src"
+  ],
   "venvPath": ".",
   "venv": ".venv",
   "pythonVersion": "3.12"
